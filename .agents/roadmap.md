@@ -87,7 +87,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Status:** proposed
 
-**Notes:** watch for audio stutter with two vision models running, and for Bluetooth speaker delay (Unresolved threads).
+**Notes:** watch for audio stutter while the hand model runs every frame, and for Bluetooth speaker delay (Unresolved threads).
 
 ---
 

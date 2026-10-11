@@ -11,7 +11,7 @@
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-D1 is publishing the review doc. Share the link; wait for the user to say "iterate". When the review ends, write the approved checkpoints into .agents/roadmap.md and make R1 active only on the user's word.
+The review doc is live: https://claude.ai/code/artifact/57c28193-d565-486b-a796-75bcfb44eaf1 . Wait for the user to say "iterate", then run the review-loop iterate pass (collect comments C1..Cn, delegate, Revisions row, reply on each thread). Also fix the doc's roadmap R3 note ("two vision models" → "hand model"). When the review ends, roadmap is approved → R1 goes active only on the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
