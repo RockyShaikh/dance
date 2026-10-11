@@ -11,7 +11,7 @@ R2: tell gestures apart reliably. Command box (mouse-editable rectangle, default
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B2 (ship) and T2 (tutor). On B2: give the user test steps per R2 done-means; merge only on their word. R1 worktree `.claude/worktrees/agent-a711e219ac20fc31d` is merged; ask before removing it. A dev server may still be running from it on :5173.
+User tests R2 on a real hand: dev server from `.claude/worktrees/agent-aca1e0441ea8b7677` at http://localhost:5174/. On their OK: merge into main, mark R2 done, stow, wishlist review, R3 active on their word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

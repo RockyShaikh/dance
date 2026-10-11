@@ -5,14 +5,15 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B2 | R2 gesture recognition: command box (mouse-editable), dwell/tap/hold, clutch shapes, test bench | ship | worktree (TBD on report) | 2026-10-11 |
 
 ## Waiting on user
+- R2 real-hand test (steps in chat / branch README) → merge `worktree-agent-aca1e0441ea8b7677` on the user's word. Questions: "one hand at a time" rule; allow dwell below 0.6 s for testing?
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
 ## Done (last 10)
+- B2 — R2 built: 145 tests + build pass; 43/43 Playwright sim checks; real-hand unverified — branch `worktree-agent-aca1e0441ea8b7677` (pushed, NOT merged), worktree `.claude/worktrees/agent-aca1e0441ea8b7677` — 2026-10-11
 - T2 — dashboard v2: real R1 code pointers, handedness/palm lesson, R2 concepts + timeline lab — same link — 2026-10-11
 - B1 — R1 built: build + 36 tests pass, fake-camera + still-photo checks OK; real-hand unverified — branch `worktree-agent-a711e219ac20fc31d` (merged to main 6d0fdff after the user's live test + handedness fix 50517b6; worktree kept until the user OKs cleanup), worktree `.claude/worktrees/agent-a711e219ac20fc31d` — 2026-10-11
 - T1 — R1 Learning Dashboard — https://claude.ai/artifact/RQnHUzBeptMZt14sownWyk — 2026-10-11
