@@ -5,14 +5,15 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B1 | R1 bring-up: webcam + MediaPipe Gesture Recognizer + skeleton overlay + pseudo-chord readout (TS/Vite) | ship | worktree (path/branch TBD on report) | 2026-10-11 |
 
 ## Waiting on user
+- R1 real-hand check: run the branch below and confirm the skeleton follows, chords flip, labels right, Left/Right correct; then merge on the user's word.
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
 ## Done (last 10)
+- B1 — R1 built: build + 36 tests pass, fake-camera + still-photo checks OK; real-hand unverified — branch `worktree-agent-a711e219ac20fc31d` (pushed, NOT merged), worktree `.claude/worktrees/agent-a711e219ac20fc31d` — 2026-10-11
 - T1 — R1 Learning Dashboard — https://claude.ai/artifact/RQnHUzBeptMZt14sownWyk — 2026-10-11
 - D1 — review doc published (3 tabs, synced to v1.2) — https://claude.ai/code/artifact/57c28193-d565-486b-a796-75bcfb44eaf1 — 2026-10-11
 - P4 — v1.2: R2 box is mouse-editable; per-session calibration = wish list, R6+ — main — 2026-10-11

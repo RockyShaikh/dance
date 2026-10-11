@@ -11,7 +11,7 @@ R1 bring-up (user: "okay lets start! let's get the r1 brought up"): webcam + han
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B1 (ship, worktree) and T1 (tutor). On B1: review the report, give the user run steps so they can test with a real hand; merge only on the user's word. When R1 passes the user's check → mark R1 done, stow, review the wish list with the user, then R2 goes active on their word.
+User tests R1 on a real hand: `cd .claude/worktrees/agent-a711e219ac20fc31d && npm install && npm run dev` → http://localhost:5173/. Check Left/Right label (`swapHandedness` in src/config.ts), finger chords, labels, fps, distance. If good and the user says so: merge branch `worktree-agent-a711e219ac20fc31d` into main, mark R1 done, stow, review the wish list, R2 active on their word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
