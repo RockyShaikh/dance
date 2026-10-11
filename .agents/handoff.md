@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-R2: tell gestures apart reliably. Command box (mouse-editable rectangle, default right half), 0.6 s dwell, tap vs hold, clutch-shape detection (pinch/claw/two-hand) on a test bench.
+R3: load a local track; open palm = play/pause, index up = restart; webcam + status + timeline on one screen. Built on top of R2 (not yet hand-tested). The user wants R2 and R3 individually rollback-able.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ R2: tell gestures apart reliably. Command box (mouse-editable rectangle, default
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-User tests R2 on a real hand: dev server from `.claude/worktrees/agent-aca1e0441ea8b7677` at http://localhost:5174/. On their OK: merge into main, mark R2 done, stow, wishlist review, R3 active on their word.
+Wait for B3. Then give the user R3 test steps (R2 checks can be folded in). Integration only on their word: merge `r2-gestures` --no-ff → tag r2-done, then `r3-audio` --no-ff → tag r3-done. The R2 dev server may still be running on :5174.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

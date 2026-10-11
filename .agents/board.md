@@ -5,9 +5,10 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B3 | R3 audio + webcam, open palm = play/pause, index = restart; built on r2-gestures | ship | branch `r3-audio` (based on `r2-gestures`) | 2026-10-11 |
 
 ## Waiting on user
-- R2 real-hand test (steps in chat / branch README) → merge `worktree-agent-aca1e0441ea8b7677` on the user's word. Questions: "one hand at a time" rule; allow dwell below 0.6 s for testing?
+- R2 real-hand test still pending (user moved on to R3). Branch `r2-gestures` (= worktree-agent-aca1e0441ea8b7677). Open questions: "one hand at a time" rule; allow dwell below 0.6 s?
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
