@@ -8,14 +8,13 @@
 - Planner v0 docs exist; P2 revision in flight (see board).
 - User decisions recorded in AGENTS.md: rotation knob (wiper/steering tilt), pinch clutch first, claw/two-hand/Doctor-Strange circle as alternatives, R5 = speed knob, both in/out methods A/B in R4.
 - Later decisions (in AGENTS.md): joystick knob is the favourite, but all variants get tried; above-head command zone plus a 0.6 s hold; distance deferred; solo user, laptop in front; not a startup. These were also sent to P2.
-- No code; not a git repo.
+- No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
 When P2 lands: review-loop the spec + roadmap (commentable surface). No checkpoint goes active until the user approves the roadmap.
 
 ## Open questions
-- Meaning of "restart to a point"; after-restart behaviour; which hand; music source (assume local files).
-- git init + commit .agents/? (recommended yes)
+- After-restart behaviour (lead-in?); which hand.
 
 ## Last updated
 2026-10-11 — Claude Code main thread

@@ -1,6 +1,6 @@
 # Dance — Spec (v1, draft)
 
-*Status: draft for review · revised 2026-10-11 (v1: research reports, knob decisions, command zone, setup decisions) · Companion docs: [roadmap](../.agents/roadmap.md), [wish list](../.agents/wishlist.md)*
+*Status: draft for review · revised 2026-10-11 (v1: research reports, knob decisions, command zone, setup decisions, loop model) · Companion docs: [roadmap](../.agents/roadmap.md), [wish list](../.agents/wishlist.md)*
 
 A personal project: a tool the user is building for their own practice. Research is cited where it shaped a choice: **[market]** = `.agents/research/market-dance-tools.md` (what other practice tools do), **[workflows]** = `.agents/research/dancer-workflows.md` (how dancers drill). "User" = the user's own words (see `AGENTS.md` → Decisions).
 
@@ -23,6 +23,7 @@ Priorities (user's order):
 - **Where:** the laptop sits **directly in front of you, facing you** (it happens to be in front of a mirror). You face the laptop while practicing.
 - **How you practice:** in chunks of 4–8 counts: play, stop, go back to the chunk start, repeat [workflows]. **Commands happen between attempts, not mid-move** [workflows].
 - **Hardware:** the laptop's built-in webcam, and laptop or external speakers.
+- **Audio source:** **local audio files only** (decided). YouTube is on the wish list.
 - **Distance / range:** **not a concern yet.** Gestures first, range later (user). We work at whatever distance gestures work, note it, and tune range afterwards (wish list → Unresolved threads).
 
 ## 3. Interaction model
@@ -30,7 +31,7 @@ Priorities (user's order):
 ```
  dance a chunk ──► stop, raise a hand ABOVE YOUR HEAD, show a shape
               ──► a ring fills (≥ 0.6 s) ──► sound + full-width banner
-              ──► music responds (restart gives a 3-2-1 lead-in) ──► dance again
+              ──► music responds ──► dance again
 ```
 
 Principles:
@@ -77,9 +78,9 @@ All command shapes must be made **in the command zone** (above your head).
 | # | Gesture | Detected by | **Tap** (ring fills once, then drop the hand) | **Hold** (keep holding ~1.5 s) | Roadmap |
 |---|---|---|---|---|---|
 | 1 | **Open palm**, "stop sign" | `Open_Palm` label | **Play / Pause** (fires as soon as the ring fills) | same as tap | R3 |
-| 2 | **Index up**, "one more time" | `Pointing_Up` label | **Restart to last start**, with lead-in (§4.5) | **Restart from the top** | R3 (top only) → R4 |
-| 3 | **Peace / V** | `Victory` label | **Loop step:** 1st = set IN, 2nd = set OUT and start looping, 3rd = clear | **Clear the loop** now | R4 |
-| 4 | **Pinch** (grab the knob) | our rule (§5.2) | While held: the hand is a **knob**. Release to let go | — | detect R2, use R4 + R5 |
+| 2 | **Index up**, "one more time" | `Pointing_Up` label | **Restart:** loop start if one is set, otherwise song start (§4.5) | **Restart from the song start**, even with a loop set | R3 (song start) → R4 |
+| 3 | **Peace / V** | `Victory` label | **Loop step**, marking where the music is *right now*: 1st = set loop start, 2nd = set loop end and start looping, 3rd = clear | **Clear the loop** now | R4 |
+| 4 | **Pinch** (grab the knob) | our rule (§5.2) | While held: the hand is a **knob** (R4: nudge the loop start back; R5: speed). Release to let go | — | detect R2, use R4 + R5 |
 
 What was removed, and why:
 
@@ -100,32 +101,37 @@ Borrowed from looper foot pedals: each switch does one thing on a tap and anothe
 
 Cost: a tap fires a fraction of a second later, on release. That's fine between attempts.
 
-### 4.5 Restart and lead-in
+### 4.5 Restart (decided)
 
-- **"Last start"** = the loop IN point if a loop is set; otherwise the place playback last started from. Dancers liked this behaviour in DanceMaster, which "automatically returns to the last place you started from" [workflows].
-- **Index tap** → jump to last start → **lead-in** → play. **Index hold** → jump to 0:00 → lead-in → play.
-- **Lead-in (R4):** pause at the target, show a huge **3-2-1** with a tick sound, then play. Default 3 s, adjustable 0–5 s (0 = play immediately) [market: LoopStep count-in; workflows: time to get back into position]. A tempo-synced "5, 6, 7, 8" and pre-roll (starting a beat *before* IN) are on the wish list.
-- In **R3** (no loops yet), index restarts from the top immediately.
+- **Index tap** → jump to the **loop start if one is set, otherwise the song start**, and play (user).
+- **Index hold** → jump to the song start and play, even with a loop set. This is a convenience borrowed from looper pedals, where holding rewind goes to the start [market].
+- Playback restarts immediately. A lead-in (3-2-1 or "5, 6, 7, 8") is on the wish list, though both reports found dancers want time to get back into position [market, workflows].
+- R3 has no loops yet, so index always goes to the song start there.
 
-### 4.6 Setting IN and OUT: two methods to compare (R4)
+### 4.6 Making a loop: mark as it plays, then nudge the start back (R4)
 
-The user wants to try both and keep whichever feels better:
+The user's model (decided): you don't hunt for points. **Let the music play and mark where it is with a gesture.** You'll always overplay the start, so the knob is a **fine-tune** for pulling the loop start back a couple of counts. The end doesn't need precision; a few counts of overshoot is fine ("that's just considered trailing", user).
 
-- **Method A, scrub then set:** music paused; **pinch** in the zone to grab the knob, turn the hand to move the playhead (§5), release, then **V-tap** to set the point.
-- **Method B, play, pause, set:** let it play, **open palm** to pause where you want, then **V-tap** to set the point.
+```
+ music playing ──► V-tap above head ──► LOOP START marked (a bit late: you overplayed)
+               ──► keep dancing/listening ──► V-tap ──► LOOP END marked, looping starts
+               ──► (any time a start exists) grab the knob ──► nudge the START back/forward ──► release
+               ──► index-tap to hear it from the new start
+```
 
-Both end with the same V-tap; only the way you reach the spot differs.
+- **Mark start:** V-tap while playing. The marker lands where the music is.
+- **Mark end:** V-tap again, and looping starts. No fine-tune for the end in R4.
+- **Nudge the start:** grab the knob (pinch first) and turn. The loop start marker moves backward or forward while the loop bar shows it huge, with its time. The nudge moves only the marker. To hear the result, index-tap (restart from loop start), or wait for the loop to come round (assumed; §9).
+- Units are seconds (no beat detection yet). With the joystick, more tilt = faster nudge, and a small dead zone means a light touch does nothing.
+- A V-tap while paused also works: the point lands exactly where you paused. It falls out of the same gesture rather than being a separate method.
 
-**Points land late, so we compensate** [workflows]:
+**Late marks, small automatic fix.** Reaction time plus recognition time makes a gesture-set mark land after the moment you meant [workflows]. We stamp the mark at the moment the shape was first recognized (when the ring *started*, not when it fired), minus a small tunable offset (default 0.15 s). This trims the lag from the 0.6 s hold. The bigger "couple of counts" overplay is what the nudge is for.
 
-1. A point set **while playing** is stamped at the moment the shape was first recognized (when the ring *started*), minus a small tunable reaction offset (default 0.15 s).
-2. A point set **while paused** uses the exact paused position. Both methods set points while paused, so they mostly avoid the problem.
-
-Beat-snapping would hide the rest; it's on the wish list because it needs tempo detection.
+Because overplay is predictable, an **automatic pre-roll** (start every new loop N seconds earlier than marked) could remove most nudging. It's on the wish list as an option, not built.
 
 ### 4.7 Feedback (readable from where you dance)
 
-- **Always visible:** a giant status word (PLAYING / PAUSED / LOOP / 3-2-1), the loop bar with IN/OUT flags, and the **command-zone line** across the video.
+- **Always visible:** a giant status word (PLAYING / PAUSED / LOOP), the loop bar with IN/OUT flags, and the **command-zone line** across the video.
 - **While holding:** a ring around the hand fills, labelled with what will fire ("LOOP: SET IN…"); the hold ring appears outside it. The zone line brightens while your hand is above it.
 - **On fire:** a full-width banner for ~1 s plus a short soft sound, distinct for transport and loop actions. The sound can be turned off.
 - **Knob grabbed:** a dial graphic at the hand, with the value shown huge.
@@ -133,7 +139,7 @@ Beat-snapping would hide the rest; it's on the wish list because it needs tempo 
 
 ## 5. The knob (hand rotation)
 
-User: rotation scrubs two things: **speed**, live like a DJ deck, judged by ear (an on-screen number is optional and low priority), and the **playhead** for placing IN/OUT. The motion is "like a windshield wiper, like a steering wheel," a tilt in the plane of the screen. The user wants to **experiment with every variant**. A spring-loaded joystick is the favourite to try first: "the only way that one can work, which could feel better. Who knows?"
+User: rotation scrubs two things: **speed**, live like a DJ deck, judged by ear (an on-screen number is optional and low priority), and the **loop start**, for nudging it back a couple of counts after you overplay it (R4; it's a fine-tune, not a way to find points). The motion is "like a windshield wiper, like a steering wheel," a tilt in the plane of the screen. The user wants to **experiment with every variant**. A spring-loaded joystick is the favourite to try first: "the only way that one can work, which could feel better. Who knows?"
 
 A knob has three parts we keep separate, so any combination can be tried from a settings panel:
 
@@ -163,7 +169,7 @@ For all clutches: if tracking drops while grabbed, the value **freezes** (never 
 | Motion | How it's measured | Range |
 |---|---|---|
 | **Tilt** (wiper / steering wheel; user) | Imagine a needle from the wrist to the base of the middle finger. Its angle on screen, compared with straight up, is the tilt. A wiper swings the forearm from the elbow; a steering wheel turns the hand. Both change this angle | Limited by the wrist and forearm |
-| **Circling** ("Doctor Strange portal"; user) | Track the palm centre moving in a circle. Estimate the circle's centre as the average palm position over the last ~1 s, measure the palm's angle around that centre, and add up the changes: clockwise = forward, counter-clockwise = back. One full circle = a fixed amount (e.g. 5 s of scrub, or 10% speed) | **Unlimited**, like a jog wheel |
+| **Circling** ("Doctor Strange portal"; user) | Track the palm centre moving in a circle. Estimate the circle's centre as the average palm position over the last ~1 s, measure the palm's angle around that centre, and add up the changes: clockwise = forward, counter-clockwise = back. One full circle = a fixed amount (e.g. 2 s of nudge, or 10% speed) | **Unlimited**, like a jog wheel |
 
 Circling is measured from where the whole hand is, a big and steady signal, rather than from finger detail. Its costs: it needs about half a circle before the direction is known.
 
@@ -186,7 +192,7 @@ All variants stay in the experiment (user). Because clutch, motion and mapping a
 
 Per use:
 
-- **Scrubbing for IN/OUT (R4, Method A):** music paused; the joystick moves the playhead (more tilt = faster) and the timeline enlarges. Starting assumption: silent scrub with a huge playhead readout (§9).
+- **Nudging the loop start (R4):** the joystick moves the loop-start marker back or forward (more tilt = faster), shown huge on the loop bar. The music keeps doing what it was doing. Gain is low, since the job is "a couple of counts," i.e. a few seconds at most.
 - **Speed (R5):** music playing; the joystick nudges speed up or down live, pitch preserved (time-stretching [workflows: TempoWatch]). Centre holds the current speed. A "click" (detent) at 1.0× makes normal speed easy to find. The on-screen % is optional and small (user).
 
 Research note: practice tools and dancers usually use a few fixed speeds (0.5 / 0.75 / 0.9 / 1.0) [market, workflows]. Fixed presets stay on the wish list as a fallback if the knob doesn't feel right.
@@ -211,11 +217,11 @@ Research note: practice tools and dancers usually use a few fixed speeds (0.5 / 
               │ zone, dwell, tap vs  │        │ clutch → motion →    │             │
               │ hold, cooldown       │        │ mapping              │             │
               └──────────┬───────────┘        └──────────┬───────────┘             │
-                         │ commands                      │ scrub / speed value     │
+                         │ commands                      │ nudge / speed value     │
                          ▼                               ▼                         ▼
               ┌──────────────────────────────────────────────┐   ┌──────────────────────────┐
               │ Audio engine: play/pause/seek, loop IN..OUT, │──►│ UI: webcam + skeleton,   │
-              │ lead-in, speed (pitch preserved)             │   │ zone line, status, loop  │
+              │ speed (pitch preserved)                      │   │ zone line, status, loop  │
               └──────────────────────────────────────────────┘   │ bar, rings, dial, banner │
                                                                  └──────────────────────────┘
 ```
@@ -257,18 +263,17 @@ The user's call: get gestures working first, debug range afterwards. We note the
 │                      (mirrored webcam view + skeleton)                   │
 │                                                                          │
 │        ╭───╮                                                             │
-│        │ ╱ │  KNOB: SCRUB  ◄◄   ← dial appears only while grabbed        │
+│        │ ╱ │  KNOB: NUDGE START ◄◄  ← dial appears only while grabbed   │
 │        ╰───╯                                                             │
 │   T0 I1 M1 R0 P0  →  Victory          (debug readout, can be hidden)    │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  ════════█▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓█══════════════════════════   │  ← loop bar, LARGE flags
-│          IN 0:31.0         ▲ playhead       OUT 0:47.5                   │
+│        START 0:31.0        ▲ playhead       END 0:47.5                   │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  above head:  ✋ play/pause   ☝ tap: last start · hold: top              │  ← cheat sheet
+│  above head:  ✋ play/pause   ☝ tap: loop/song start · hold: song start  │  ← cheat sheet
 │               ✌ tap: in→out→clear · hold: clear   🤏 grab knob  [keys]   │
 └──────────────────────────────────────────────────────────────────────────┘
 
-Restart: a huge  3 … 2 … 1  in the middle, then playback resumes.
 Any command: a full-width banner for ~1 s, e.g.  ⏮ RESTART FROM IN
 ```
 
@@ -278,28 +283,24 @@ Any command: a full-width banner for ~1 s, e.g.  ⏮ RESTART FROM IN
 - No range tuning yet (gestures first).
 - No solving of choreography/command collisions beyond the zone and dwell (Unresolved thread).
 - No pose or step analysis, scoring, or recording of the dancer.
-- No streaming services (Spotify, Apple Music); local audio files only.
+- Local audio files only (decided): no YouTube, Spotify or Apple Music.
 - No accounts or cloud; no mobile version; no custom ML training.
 
 ## 9. Open questions for the user
 
 Each has a working assumption so work can continue.
 
-1. **Lead-in after restart:** (a) a 3-2-1 countdown at the target, default 3 s, adjustable 0–5 s; (b) pre-roll: start a couple of seconds before the target; (c) both; (d) none.
-   **Assumption: (a).**
-2. **Restart meaning:** tap index = last start (loop IN, else where play last began); hold = top of the song. Alternatives: tap = always loop IN or top; or swap tap and hold.
-   **Assumption: as proposed.**
-3. **Knob grab and the zone:** (a) the grab must start above your head, then you can lower your hand while grabbed; (b) the knob only works while your hand stays above your head; (c) the knob ignores the zone.
+1. **Knob grab and the zone:** (a) the grab must start above your head, then you can lower your hand while grabbed; (b) the knob only works while your hand stays above your head; (c) the knob ignores the zone.
    **Assumption: (a).** (b) is tiring; (c) risks accidental grabs.
-4. **Scrubbing sound (R4, Method A):** (a) silent, with a huge playhead readout; (b) short audio snippets as you scrub, DJ-style.
-   **Assumption: (a) first**; (b) is on the wish list.
-5. **Speed range for R5:** **Assumption: 0.5× to 1.25×**, with a detent at 1.0×.
-6. **R4 is the biggest checkpoint** (loop, restart + lead-in, and the knob experiment). Keep as one, or split into R4a (loop + restart using Method B) and R4b (knob scrub, Method A)?
-   **Assumption: keep as one; split if it drags.**
+2. **After nudging the loop start:** (a) only the marker moves; you index-tap to hear it from the new start; (b) on release, playback jumps to the new start automatically so you hear it at once.
+   **Assumption: (a)**, since it reuses an existing gesture and never interrupts the music unasked.
+3. **Speed range for R5:** **Assumption: 0.5× to 1.25×**, with a detent at 1.0×.
 
-**Defaults we're assuming unless you object:** zone line from the pose model (fixed draggable line as a debug stand-in); loop back to IN automatically at OUT; confirmation sound on, quiet, toggleable; either hand works for commands; laptop screen only; Chrome only.
+**Decided (no longer open):** restart goes to the loop start if set, else the song start; local audio files only; loops are marked as the music plays, and the knob only nudges the start.
+
+**Defaults we're assuming unless you object:** index *hold* = song start even with a loop set; the zone line comes from the pose model (a fixed draggable line as a debug stand-in); loop back to start automatically at the end; confirmation sound on, quiet, toggleable; either hand works for commands; laptop screen only; Chrome only.
 
 ## 10. Research sources
 
 - `.agents/research/market-dance-tools.md`: used for the Vidami loop cycle, tap vs hold, count-in on restart, keyboard parity, fist-tracking weakness, and code references.
-- `.agents/research/dancer-workflows.md`: used for "commands happen between attempts", "return to last start" plus lead-in, late-landing points, and readable feedback.
+- `.agents/research/dancer-workflows.md`: used for "commands happen between attempts", restart behaviour, late-landing marks, and readable feedback.
