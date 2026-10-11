@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-"Make a dance tool for learning choreography": hands-free control of practice music via webcam hand gestures. Right now: finish spec + roadmap (R1–R5) + wish list, then run the review loop with the user.
+R1 bring-up (user: "okay lets start! let's get the r1 brought up"): webcam + hand skeleton overlay + pseudo-chord readout.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-The review doc is live: https://claude.ai/code/artifact/57c28193-d565-486b-a796-75bcfb44eaf1 . Wait for the user to say "iterate", then run the review-loop iterate pass (collect comments C1..Cn, delegate, Revisions row, reply on each thread). Also fix the doc's roadmap R3 note ("two vision models" → "hand model"). When the review ends, roadmap is approved → R1 goes active only on the user's word.
+Wait for B1 (ship, worktree) and T1 (tutor). On B1: review the report, give the user run steps so they can test with a real hand; merge only on the user's word. When R1 passes the user's check → mark R1 done, stow, review the wish list with the user, then R2 goes active on their word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

@@ -1,0 +1,769 @@
+<title>Dance Learning Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a field guide. Sticky section rail on wide screens, one reading column; the pipeline diagram and the hand lab are the two set pieces. */
+:root {
+  --paper: #F3F4F8;
+  --surface: #FFFFFF;
+  --ink: #1A1D2E;
+  --muted: #586079;
+  --line: #D8DCE7;
+  --accent: #3350D6;     /* MediaPipe / the model */
+  --ours: #C92A63;       /* our code, landmark dots */
+  --browser: #0E7F71;    /* what the browser gives us */
+  --ok: #1E8048;
+  --bad: #BE3B23;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --tint-accent: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  --tint-ours: color-mix(in srgb, var(--ours) 9%, var(--surface));
+  --tint-browser: color-mix(in srgb, var(--browser) 10%, var(--surface));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11131B; --surface: #191C28; --ink: #E6E8F1; --muted: #9AA1BA; --line: #2C3043;
+    --accent: #8197FF; --ours: #FF6E9C; --browser: #3EC4AF; --ok: #55C784; --bad: #FF8064;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #11131B; --surface: #191C28; --ink: #E6E8F1; --muted: #9AA1BA; --line: #2C3043;
+  --accent: #8197FF; --ours: #FF6E9C; --browser: #3EC4AF; --ok: #55C784; --bad: #FF8064;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.6;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.shell { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; }
+@media (max-width: 900px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 0; } .rail { display: none; } }
+
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; padding-top: 40px; }
+.rail nav { display: grid; gap: 2px; font-size: 14px; }
+.rail a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-left: 2px solid var(--line); }
+.rail a:hover, .rail a:focus-visible { color: var(--ink); border-left-color: var(--ours); outline: none; }
+.rail .sub { padding-left: 22px; font-size: 13px; }
+
+main { min-width: 0; }
+header.top { padding-block: 40px 28px; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 700; letter-spacing: -0.01em; }
+h1 .chord { font-family: var(--f-mono); font-weight: 500; font-size: .5em; color: var(--ours); vertical-align: middle; margin-left: .4em; white-space: nowrap; }
+h2 { font-size: 1.75rem; font-weight: 700; }
+h3 { font-size: 1.3rem; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 1.08rem; color: var(--muted); max-width: 70ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--f-mono); font-size: 12px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+code { background: color-mix(in srgb, var(--ink) 6%, transparent); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+
+section.block { padding-block: 48px 8px; display: grid; gap: 20px; scroll-margin-top: 16px; }
+.howto { display: flex; flex-wrap: wrap; gap: 10px 24px; font-size: 14px; color: var(--muted); }
+.howto b { color: var(--ink); font-weight: 600; }
+
+/* diagram */
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+.fig svg { display: block; min-width: 900px; width: 100%; height: auto; }
+.fig figcaption { padding: 12px 18px 16px; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); }
+svg text { font-family: var(--f-body); fill: var(--ink); }
+svg .t-head { font-weight: 600; font-size: 14px; }
+svg .t-sub { font-size: 12.5px; fill: var(--muted); }
+svg .t-mono { font-family: var(--f-mono); font-size: 12px; }
+svg .t-lane { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; fill: var(--muted); }
+svg .b-browser { fill: var(--tint-browser); stroke: var(--browser); stroke-width: 1.5; }
+svg .b-model { fill: var(--tint-accent); stroke: var(--accent); stroke-width: 1.5; }
+svg .b-model-inner { fill: var(--surface); stroke: var(--accent); stroke-width: 1; }
+svg .b-model-skip { fill: var(--surface); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; }
+svg .b-ours { fill: var(--tint-ours); stroke: var(--ours); stroke-width: 1.5; }
+svg .b-ours-inner { fill: var(--surface); stroke: var(--ours); stroke-width: 1; }
+svg .arrow { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+svg .arrow-back { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+svg .head { fill: var(--muted); }
+svg .chordtxt { font-family: var(--f-mono); font-size: 13px; fill: var(--ours); font-weight: 500; }
+
+/* concepts */
+.concept { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 28px clamp(18px, 3vw, 32px); display: grid; gap: 18px; scroll-margin-top: 16px; }
+.concept-head { display: grid; gap: 6px; }
+.tag { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; }
+.tag.model { color: var(--accent); } .tag.ours { color: var(--ours); } .tag.browser { color: var(--browser); } .tag.tool { color: var(--muted); }
+.steps { display: grid; gap: 16px; }
+.step { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 16px; }
+@media (max-width: 620px) { .step { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.step > .k { font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.step > .v { display: grid; gap: 10px; min-width: 0; }
+.step ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; max-width: 68ch; }
+.pre { font-family: var(--f-mono); font-size: 13px; line-height: 1.55; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; white-space: pre; max-width: 100%; }
+.pre .c { color: var(--muted); }
+.in-dance { border-left: 3px solid var(--ours); padding: 2px 0 2px 14px; }
+.check { border: 1px dashed var(--line); border-radius: 8px; padding: 12px 16px; background: var(--paper); }
+.check summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; gap: 10px; align-items: baseline; }
+.check summary::-webkit-details-marker { display: none; }
+.check summary::before { content: "Predict"; font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ours); flex: none; }
+.check summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.check .ans { margin-top: 10px; color: var(--ink); display: grid; gap: 8px; }
+.check .reveal { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: auto; flex: none; }
+.check[open] .reveal { display: none; }
+
+table.lm { border-collapse: collapse; font-size: 14px; width: 100%; }
+.tablewrap { overflow-x: auto; }
+table.lm th, table.lm td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.lm th { font-family: var(--f-mono); font-size: 11.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+table.lm td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* hand lab */
+.lab { border: 1px solid var(--ours); border-radius: 10px; background: var(--tint-ours); padding: 18px; display: grid; gap: 14px; }
+.lab-grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .lab-grid { grid-template-columns: minmax(0, 1fr); } }
+.lab svg { width: 100%; max-width: 340px; height: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: block; }
+.lab .bone { stroke: var(--muted); stroke-width: 2.4; stroke-linecap: round; }
+.lab .dot { fill: var(--ours); stroke: var(--surface); stroke-width: 1.5; }
+.lab .dot.wrist { fill: var(--accent); }
+.lab .idx { font-family: var(--f-mono); font-size: 9.5px; fill: var(--muted); }
+.lab .frame { fill: none; stroke: var(--line); stroke-dasharray: 3 4; }
+.controls { display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row .lbl { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); min-width: 64px; }
+button.tg, button.ps { font: 500 14px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button.tg[aria-pressed="true"] { background: var(--ours); border-color: var(--ours); color: var(--surface); }
+button.tg:focus-visible, button.ps:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.ps:hover { border-color: var(--ours); }
+.slider { display: grid; grid-template-columns: 110px minmax(0, 1fr) 54px; gap: 10px; align-items: center; font-size: 14px; }
+.slider output { font-family: var(--f-mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.slider input { width: 100%; accent-color: var(--ours); }
+.rules { display: grid; gap: 8px; }
+.rule { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.rule .name { font-weight: 600; font-size: 14px; }
+.rule .how { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.rule .out { font-family: var(--f-mono); font-size: 15px; letter-spacing: .02em; white-space: nowrap; }
+.rule .out span { padding: 0 2px; border-radius: 3px; }
+.rule .out .good { color: var(--ok); }
+.rule .out .wrong { color: var(--surface); background: var(--bad); }
+.rule .score { grid-column: 1 / -1; font-size: 12.5px; font-family: var(--f-mono); color: var(--muted); }
+.truth { font-family: var(--f-mono); font-size: 14px; }
+.truth b { color: var(--ours); font-weight: 500; }
+
+/* glossary + code + questions */
+dl.gloss { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 0 32px; margin: 0; }
+dl.gloss div { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 2px; }
+dl.gloss dt { font-family: var(--f-mono); font-size: 14px; font-weight: 500; }
+dl.gloss dd { margin: 0; font-size: 14.5px; color: var(--muted); }
+.codemap { display: grid; gap: 22px; }
+.codemap h3 { font-size: 1.05rem; }
+.codemap .group { display: grid; gap: 8px; }
+.codemap ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.codemap li { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 12px; font-size: 14.5px; }
+@media (max-width: 620px) { .codemap li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+.codemap li code { justify-self: start; }
+.status { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+.status.now { color: var(--ok); border: 1px solid var(--ok); }
+.status.soon { color: var(--muted); border: 1px solid var(--line); }
+ol.qs { margin: 0; padding-left: 1.6em; display: grid; gap: 10px; max-width: 72ch; }
+ol.qs li::marker { font-family: var(--f-mono); color: var(--muted); font-size: .9em; }
+ol.qs .lvl { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-left: 6px; }
+footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="shell">
+  <aside class="rail" aria-label="Sections">
+    <nav>
+      <a href="#pipeline">How the pieces connect</a>
+      <a href="#concepts">Concepts in use</a>
+      <a class="sub" href="#mediapipe">MediaPipe hand tracking</a>
+      <a class="sub" href="#chords">Pseudo-chords</a>
+      <a class="sub" href="#camera">Camera pipeline</a>
+      <a class="sub" href="#tooling">Vite, TypeScript, Vitest</a>
+      <a class="sub" href="#later">Coming in R2–R5</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#code">Where in the code</a>
+      <a href="#questions">Suggested questions</a>
+    </nav>
+  </aside>
+
+  <main>
+    <header class="top">
+      <div class="eyebrow">Dance · Learning dashboard · R1 bring-up</div>
+      <h1>How the webcam reads your hand <span class="chord">T0 I1 M1 R0 P0</span></h1>
+      <p class="lede">R1 opens the laptop camera, finds your hands, draws their skeleton, and prints which fingers are up. This page explains what happens underneath each of those steps, so you can judge the code when it lands.</p>
+      <div class="meta">
+        <span class="chip">updated 2026-10-11</span>
+        <span class="chip">TypeScript · Vite 8 · Vitest 5</span>
+        <span class="chip">@mediapipe/tasks-vision 1.1.0</span>
+        <span class="chip">Chrome</span>
+      </div>
+      <div class="howto">
+        <span><b>Start</b> with the pipeline diagram.</span>
+        <span><b>Then</b> open the concept you are curious about.</span>
+        <span><b>Each concept</b> ends with a Predict question. Answer it before you reveal.</span>
+      </div>
+    </header>
+
+    <!-- PIPELINE -->
+    <section class="block" id="pipeline">
+      <h2>How the pieces connect</h2>
+      <p>One trip around this loop happens for every camera frame, about 30 times a second. Colour tells you who owns each step: the browser, the MediaPipe model, or code the R1 branch writes.</p>
+      <figure class="fig" style="margin:0">
+        <svg viewBox="0 0 1040 420" role="img" aria-label="Pipeline: webcam to video element to frame callback to the Gesture Recognizer (palm detector, landmark model, gesture classifier) to the result object to our finger-state code to the canvas overlay and HTML readout, then back to the frame callback for the next frame.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <text class="t-lane" x="20" y="22">EVERY FRAME · ~33 MS BUDGET AT 30 FPS</text>
+
+          <!-- top row -->
+          <rect class="b-browser" x="20" y="40" width="160" height="104" rx="8"/>
+          <text class="t-head" x="34" y="66">Webcam</text>
+          <text class="t-mono" x="34" y="88">getUserMedia()</text>
+          <text class="t-sub" x="34" y="108">→ MediaStream</text>
+          <text class="t-sub" x="34" y="126">~30 fps, not mirrored</text>
+
+          <rect class="b-browser" x="210" y="40" width="160" height="104" rx="8"/>
+          <text class="t-head" x="224" y="66">&lt;video&gt; element</text>
+          <text class="t-sub" x="224" y="88">decodes the stream,</text>
+          <text class="t-sub" x="224" y="106">always holds the</text>
+          <text class="t-sub" x="224" y="124">latest frame</text>
+
+          <rect class="b-browser" x="400" y="40" width="160" height="104" rx="8"/>
+          <text class="t-head" x="414" y="66">Frame callback</text>
+          <text class="t-mono" x="414" y="88">requestVideo-</text>
+          <text class="t-mono" x="414" y="104">FrameCallback</text>
+          <text class="t-sub" x="414" y="126">once per new frame</text>
+
+          <rect class="b-model" x="590" y="34" width="430" height="150" rx="8"/>
+          <text class="t-head" x="604" y="58">Gesture Recognizer</text>
+          <text class="t-mono" x="752" y="58">recognizeForVideo(video, t)</text>
+          <rect class="b-model-skip" x="604" y="72" width="128" height="96" rx="6"/>
+          <text class="t-head" x="614" y="94" style="font-size:13px">Palm detector</text>
+          <text class="t-sub" x="614" y="114">whole frame,</text>
+          <text class="t-sub" x="614" y="131">skipped while</text>
+          <text class="t-sub" x="614" y="148">tracking a hand</text>
+          <rect class="b-model-inner" x="746" y="72" width="128" height="96" rx="6"/>
+          <text class="t-head" x="756" y="94" style="font-size:13px">Landmark model</text>
+          <text class="t-sub" x="756" y="114">on a small crop</text>
+          <text class="t-sub" x="756" y="131">→ 21 points</text>
+          <text class="t-sub" x="756" y="148">+ left/right</text>
+          <rect class="b-model-inner" x="888" y="72" width="118" height="96" rx="6"/>
+          <text class="t-head" x="898" y="94" style="font-size:13px">Classifier</text>
+          <text class="t-sub" x="898" y="114">points → 1 of 8</text>
+          <text class="t-sub" x="898" y="131">canned labels</text>
+          <text class="t-sub" x="898" y="148">"Victory" 0.91</text>
+          <path class="arrow" d="M732 120 H744" marker-end="url(#ah)"/>
+          <path class="arrow" d="M874 120 H886" marker-end="url(#ah)"/>
+          <text class="t-lane" x="604" y="200">RUNS IN WASM · MATH ON GPU (WEBGL) OR CPU</text>
+
+          <path class="arrow" d="M180 92 H208" marker-end="url(#ah)"/>
+          <path class="arrow" d="M370 92 H398" marker-end="url(#ah)"/>
+          <path class="arrow" d="M560 92 H588" marker-end="url(#ah)"/>
+
+          <!-- down -->
+          <path class="arrow" d="M940 184 V246" marker-end="url(#ah)"/>
+
+          <!-- bottom row, right to left -->
+          <rect class="b-model" x="820" y="250" width="200" height="118" rx="8"/>
+          <text class="t-head" x="834" y="274">Result object</text>
+          <text class="t-mono" x="834" y="296">landmarks[h][21]</text>
+          <text class="t-mono" x="834" y="314">worldLandmarks</text>
+          <text class="t-mono" x="834" y="332">handedness</text>
+          <text class="t-mono" x="834" y="350">gestures</text>
+
+          <rect class="b-ours" x="580" y="250" width="210" height="118" rx="8"/>
+          <text class="t-head" x="594" y="274">Hand features</text>
+          <text class="t-sub" x="594" y="296">geometry on the 21 points</text>
+          <text class="chordtxt" x="594" y="320">→ T0 I1 M1 R0 P0</text>
+          <text class="t-sub" x="594" y="342">palm facing camera?</text>
+          <text class="t-sub" x="594" y="358">pure functions, unit-tested</text>
+
+          <rect class="b-ours" x="20" y="250" width="530" height="118" rx="8"/>
+          <text class="t-head" x="34" y="274">Draw</text>
+          <rect class="b-ours-inner" x="34" y="286" width="244" height="70" rx="6"/>
+          <text class="t-head" x="46" y="308" style="font-size:13px">Canvas overlay</text>
+          <text class="t-sub" x="46" y="327">dots + bones on the video,</text>
+          <text class="t-sub" x="46" y="344">flipped to match the mirror</text>
+          <rect class="b-ours-inner" x="292" y="286" width="244" height="70" rx="6"/>
+          <text class="t-head" x="304" y="308" style="font-size:13px">HTML readout</text>
+          <text class="t-sub" x="304" y="327">chord, label, palm facing,</text>
+          <text class="t-sub" x="304" y="344">fps (text is never flipped)</text>
+
+          <path class="arrow" d="M820 309 H792" marker-end="url(#ah)"/>
+          <path class="arrow" d="M580 309 H552" marker-end="url(#ah)"/>
+
+          <!-- loop back -->
+          <path class="arrow-back" d="M285 250 V214 H480 V146" marker-end="url(#ah)"/>
+          <text class="t-sub" x="296" y="208">re-register for the next frame</text>
+
+          <!-- legend -->
+          <rect class="b-browser" x="20" y="392" width="14" height="14" rx="3"/><text class="t-sub" x="42" y="404">browser</text>
+          <rect class="b-model" x="120" y="392" width="14" height="14" rx="3"/><text class="t-sub" x="142" y="404">MediaPipe</text>
+          <rect class="b-ours" x="236" y="392" width="14" height="14" rx="3"/><text class="t-sub" x="258" y="404">Dance code (R1 branch)</text>
+          <rect class="b-model-skip" x="430" y="392" width="14" height="14" rx="3"/><text class="t-sub" x="452" y="404">runs only when no hand is being tracked</text>
+        </svg>
+        <figcaption>Everything left of the Gesture Recognizer is plumbing the browser provides. Everything below it is ours. The model call is synchronous: while it runs, the page does nothing else, so its duration sets the ceiling on fps.</figcaption>
+      </figure>
+    </section>
+
+    <!-- CONCEPTS -->
+    <section class="block" id="concepts">
+      <h2>Concepts in use</h2>
+      <p>Each concept follows the same path: the problem, the naive fix and why it breaks, the actual mechanism, what Dance does with it, and what it costs.</p>
+
+      <!-- 1 MEDIAPIPE -->
+      <article class="concept" id="mediapipe">
+        <div class="concept-head">
+          <span class="tag model">1 · The model</span>
+          <h3>How MediaPipe hand tracking works</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Find the 21 joints of every hand in a 640×480 image, 30 times a second, on a laptop, inside a browser tab, without sending video anywhere.</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Run one large neural network over the whole frame and ask it for every joint directly. That is slow, because the network has to look at every pixel at full size. It is also hard to train, because a hand can appear at any size, angle and position, with fingers in any arrangement.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p><b>Split the job into two easier models, and skip the first one most of the time.</b></p>
+            <ul>
+              <li><b>Palm detector.</b> Scans the whole frame for palms. Palms are rigid and roughly square, so they are far easier to find than a whole hand with floppy fingers. Output: a rotated box around each palm.</li>
+              <li><b>Landmark model.</b> Cuts that box out, rotates it upright, and shrinks it to a small fixed size (about 224×224 pixels). On that tidy crop it predicts 21 points, a "hand is present" score, and a left/right guess.</li>
+              <li><b>Tracking.</b> In video mode, the next frame's crop comes from this frame's 21 points, so the palm detector is skipped. It runs again only when the presence score drops below <code>minTrackingConfidence</code> (default 0.5), or when fewer hands are tracked than <code>numHands</code> asks for.</li>
+              <li><b>Gesture classifier.</b> The Gesture Recognizer adds a third tiny model that turns the 21 points into one of eight canned labels with a score: <code>None</code>, <code>Closed_Fist</code>, <code>Open_Palm</code>, <code>Pointing_Up</code>, <code>Thumb_Down</code>, <code>Thumb_Up</code>, <code>Victory</code>, <code>ILoveYou</code>.</li>
+            </ul>
+            <p><b>What one result contains</b> (per detected hand <code>h</code>):</p>
+            <div class="tablewrap"><table class="lm">
+              <thead><tr><th>Field</th><th>Shape</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td class="n">landmarks[h][i]</td><td class="n">x, y, z</td><td>x and y are fractions of the image width and height, 0 to 1 from the top-left. z is depth relative to the wrist, on roughly the same scale as x; more negative means closer to the camera. z is a rough estimate.</td></tr>
+                <tr><td class="n">worldLandmarks[h][i]</td><td class="n">x, y, z (metres)</td><td>The same 21 points in real-world-ish 3D, centred on the hand. They do not change when you step back from the camera, which makes them good for angles.</td></tr>
+                <tr><td class="n">handedness[h][0]</td><td class="n">"Left" | "Right", score</td><td>The model's guess, which <b>assumes a mirrored selfie image</b>. Browser camera frames are not mirrored (the mirror is only CSS), so the label can come out swapped. The spec tells hands apart by screen side for this reason.</td></tr>
+                <tr><td class="n">gestures[h][0]</td><td class="n">categoryName, score</td><td>The canned label, e.g. <code>Victory</code> at 0.91.</td></tr>
+              </tbody>
+            </table></div>
+            <p><b>Landmark numbering.</b> 0 is the wrist. Each finger then gets four points running from the base to the tip: thumb 1–4, index 5–8, middle 9–12, ring 13–16, pinky 17–20. On the four fingers the names are MCP (the big knuckle), PIP (middle joint), DIP (last joint) and TIP. So index tip = 8, and middle knuckle = 9. The lab in the next section labels all 21.</p>
+            <p><b>Why it runs every frame.</b> Each frame is a new photo. The model remembers nothing between frames except the crop box from tracking, so if you stop calling it, the skeleton stops. Video mode also needs a timestamp that increases on every call: <code>recognizeForVideo(video, performance.now())</code>.</p>
+            <p><b>WASM.</b> MediaPipe is written in C++. It is compiled to WebAssembly, a compact binary format the browser runs at close to native speed. <code>FilesetResolver.forVisionTasks(path)</code> fetches those <code>.wasm</code> files. The package ships a SIMD build and a <code>nosimd</code> fallback for older CPUs. The model weights are a separate <code>.task</code> file, a bundle of the three models, also fetched over HTTP when the page starts.</p>
+            <p><b>GPU vs CPU delegate.</b> The "delegate" decides where the neural-network maths runs. <code>"GPU"</code> turns it into WebGL shader programs, so thousands of multiply-adds run in parallel on the graphics chip. <code>"CPU"</code> runs it in WASM on the processor. GPU is usually faster per frame, but it pays a start-up cost (shaders compile on the first frames) and behaves differently across machines and drivers. CPU is slower but predictable.</p>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R1 uses the Gesture Recognizer as the only vision model (spec §6.1). The canned <code>Open_Palm</code>, <code>Pointing_Up</code> and <code>Victory</code> labels become the three command shapes in R2–R4, because a trained classifier beats hand-written rules for those. Pinch and claw have no canned label, so our own geometry handles them (next section). Set <code>numHands: 2</code>: the default is 1, and the spec says either hand can command.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>On-device:</b> private, no network delay, works offline. In exchange you are limited by the laptop, and the first load downloads several MB of WASM and model.</li>
+            <li><b>Canned labels:</b> free and robust. In exchange the set is fixed at eight. Adding a ninth means training a new classifier, which the spec rules out, so new shapes are geometry rules.</li>
+            <li><b>Tracking shortcut:</b> fast while your hand stays in view. In exchange, a hand that appears suddenly or moves very fast can lose tracking and pay the full palm-detector cost again, which you see as a stutter.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>You set <code>numHands: 2</code> and hold up one hand. Does the palm detector still run on every frame? What would you expect to see on the fps readout compared with <code>numHands: 1</code>?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Very likely yes. Tracking only follows hands the model already has. With one of two slots empty, it keeps running the palm detector to look for the second hand, so the cheap tracking path never fully kicks in. Expect somewhat lower fps with one hand at <code>numHands: 2</code> than at <code>numHands: 1</code>.</p>
+            <p>This is cheap to verify in R1: note fps at each setting with one hand up. If the gap is large, that is a design input for R2 (for example, "one hand at a time" is already a spec rule).</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- 2 CHORDS -->
+      <article class="concept" id="chords">
+        <div class="concept-head">
+          <span class="tag ours">2 · Our geometry</span>
+          <h3>Pseudo-chords: is each finger up or down?</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>The canned label covers eight shapes. R1 also wants a per-finger readout (<code>T0 I1 M1 R0 P0</code>) to debug with, and R2 needs pinch and claw, which no label covers. So we compute finger states ourselves from the 21 points.</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>"A finger is up if its tip is higher on screen than its middle joint": <code>tip.y &lt; pip.y</code>. It works for an upright hand facing the camera. Tilt the hand sideways and "higher on screen" stops meaning "extended". Point a finger at the camera and the tip lands on top of the joint. And the thumb never moves up and down at all.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p>Use measurements that do not care about rotation or size. There are two common families.</p>
+            <ul>
+              <li><b>Distance ratio.</b> An extended finger's tip is far from the wrist; a curled one folds back toward it. Compare <code>dist(wrist, tip)</code> with <code>dist(wrist, pip)</code>. Turning the hand doesn't change a distance, and dividing one distance by another cancels out how big the hand looks. Cheap, works on 2D points.</li>
+              <li><b>Joint angle.</b> At the PIP joint, take the vector to the knuckle and the vector to the tip. Straight finger: about 180°. Curled: well under that. Compute it on <code>worldLandmarks</code> (3D, metres), so a finger pointing at the camera still measures as straight.</li>
+              <li><b>Hysteresis.</b> Use two thresholds: a finger must cross a high line to become "up" and fall below a lower line to become "down". A value hovering near a single line then doesn't flicker.</li>
+            </ul>
+            <p><b>Why the thumb is the hard one.</b> It has different joints (1 CMC, 2 MCP, 3 IP, 4 tip) and moves in a different plane: it swings across the palm instead of curling toward it. A folded thumb's tip stays about as far from the wrist as an open one, so the ratio rule fails. Usual fixes: measure the thumb tip's distance to the pinky knuckle (17) divided by palm width (5 to 17), or use thumb joint angles. Which side the thumb sits on also flips with left vs right hand and palm facing toward vs away.</p>
+            <p><b>Palm facing</b> comes from the same toolbox. Take the cross product of wrist→index knuckle and wrist→pinky knuckle. The sign of its z component says whether the palm or the back of the hand faces the camera, and that sign flips for the other hand.</p>
+            <p><b>Why tolerance matters at dance distance.</b> Step back two metres and your hand shrinks to perhaps 50 pixels tall. The model's jitter of a pixel or two is now a big fraction of the hand. Any threshold written in pixels, or in image fractions, changes meaning as you move. Ratios inside the hand don't. Values near a threshold will still flicker more at a distance, which is the job of R2's hold-to-confirm.</p>
+          </div></div>
+        </div>
+
+        <div class="lab" aria-label="Pseudo-chord lab">
+          <div>
+            <h3 style="font-size:1.1rem">Hand lab: try to break each rule</h3>
+            <p style="font-size:14.5px;color:var(--muted)">A simulated hand with the real 21-landmark layout. Pick which fingers are up, then rotate it, move it away, and add jitter. Three rules read the same points. Red letters are wrong readings.</p>
+          </div>
+          <div class="lab-grid">
+            <svg id="hand" viewBox="0 0 340 320" role="img" aria-label="Simulated hand skeleton with 21 numbered landmarks"></svg>
+            <div class="controls">
+              <div class="row"><span class="lbl">Fingers</span>
+                <button class="tg" id="f-t" aria-pressed="false" data-f="0">Thumb</button>
+                <button class="tg" id="f-i" aria-pressed="true" data-f="1">Index</button>
+                <button class="tg" id="f-m" aria-pressed="true" data-f="2">Middle</button>
+                <button class="tg" id="f-r" aria-pressed="false" data-f="3">Ring</button>
+                <button class="tg" id="f-p" aria-pressed="false" data-f="4">Pinky</button>
+              </div>
+              <div class="row"><span class="lbl">Shapes</span>
+                <button class="ps" data-p="11111">Open palm</button>
+                <button class="ps" data-p="01000">Index up</button>
+                <button class="ps" data-p="01100">V</button>
+                <button class="ps" data-p="00000">Fist</button>
+              </div>
+              <label class="slider" for="s-rot">Rotate hand <input type="range" id="s-rot" min="-180" max="180" step="5" value="0"><output id="o-rot">0°</output></label>
+              <label class="slider" for="s-scale">Step back <input type="range" id="s-scale" min="0" max="100" step="1" value="0"><output id="o-scale">near</output></label>
+              <label class="slider" for="s-jit">Jitter <input type="range" id="s-jit" min="0" max="6" step="0.5" value="0"><output id="o-jit">0 px</output></label>
+              <div class="truth">You are showing <b id="truth">T0 I1 M1 R0 P0</b></div>
+              <div class="rules">
+                <div class="rule"><span class="name">A · Tip above joint</span><span class="out" id="r-a"></span><span class="how"><code>tip.y &lt; pip.y</code>; thumb: tip left of its IP joint</span></div>
+                <div class="rule"><span class="name">B · Fixed pixel distance</span><span class="out" id="r-b"></span><span class="how"><code>dist(wrist, tip) &gt; 150 px</code>; thumb: tip &gt; 95 px from pinky knuckle</span></div>
+                <div class="rule"><span class="name">C · Ratio inside the hand</span><span class="out" id="r-c"></span><span class="how"><code>dist(wrist, tip) / dist(wrist, pip) &gt; 1.0</code>; thumb: tip-to-pinky-knuckle / palm width &gt; 1.2</span><span class="score" id="r-c-vals"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="steps">
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">The R1 readout shows the chord next to MediaPipe's label (roadmap R1 "done means": curling each finger flips its readout correctly). In R2 the same feature code adds pinch distance and claw curl, both measured relative to hand size (spec §5.2). Keep this code pure: it takes 21 points and returns states, with no camera involved, so Vitest can check it against saved landmark sets.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Ratio:</b> simple and fast, but 2D, so it can misread fingers pointing at the camera.</li>
+            <li><b>Angle on world landmarks:</b> handles depth, but it leans on the model's z estimate, its noisiest output.</li>
+            <li><b>Any threshold</b> trades missed shapes against false ones. You tune it by watching the readout, which is exactly why R1 shows it.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Point your index finger straight at the camera, like aiming at it. What will rule C say, and which approach from above would read it correctly?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>In the 2D image the tip lands almost on top of the PIP joint, so <code>dist(wrist, tip)</code> is about the same as <code>dist(wrist, pip)</code>. The ratio sits near 1.0 and the finger reads as down, or flickers.</p>
+            <p>The joint angle computed on <code>worldLandmarks</code> sees a straight finger (about 180°), because those points have real depth. This is a likely surprise in R1 testing, worth noting if it happens.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- 3 CAMERA -->
+      <article class="concept" id="camera">
+        <div class="concept-head">
+          <span class="tag browser">3 · The browser</span>
+          <h3>The camera pipeline: from sensor to overlay</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Get live frames from the webcam, hand each new one to the model exactly once, and draw the skeleton exactly on top of a mirrored video.</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Loop as fast as possible with <code>setInterval</code> or <code>requestAnimationFrame</code>, run the model each time, and draw the landmark coordinates straight onto the canvas. You end up running the model twice on the same frame, and the skeleton appears on the wrong side of your mirrored body.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p><b>1. Open the camera.</b> <code>navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: "user" } })</code> asks permission and resolves to a <code>MediaStream</code>, a live handle on the camera. Browsers only allow this in a <i>secure context</i>: HTTPS, or <code>localhost</code>. That's why the Vite dev server on localhost works, while opening the same page from another device over plain <code>http://192.168…</code> would be refused.</p>
+            <p><b>2. Show it.</b> <code>video.srcObject = stream; video.play()</code>. The video element decodes the stream and always holds the most recent frame. The model reads pixels straight from that element; on the GPU path they are uploaded as a texture.</p>
+            <p><b>3. Pace the loop.</b></p>
+            <ul>
+              <li><code>requestAnimationFrame(cb)</code> fires before every screen repaint: 60 or 120 times a second, whether or not the camera produced a new frame. With a 30 fps camera, half the calls see a frame you already processed.</li>
+              <li><code>video.requestVideoFrameCallback(cb)</code> fires once per <b>new</b> video frame and passes metadata (<code>mediaTime</code>, <code>presentedFrames</code>). No duplicate work. It's a one-shot, so the callback registers itself again at the end. Supported in Chrome, the spec's target.</li>
+            </ul>
+            <p><b>4. Mirror correctly.</b> People expect a selfie view, but camera pixels and landmarks are <i>not</i> mirrored. Pick one of two consistent options:</p>
+            <div class="pre"><span class="c">// Option A: flip both layers with CSS, draw raw coordinates</span>
+video, canvas { transform: scaleX(-1); }
+px = lm.x * canvas.width;        py = lm.y * canvas.height;
+
+<span class="c">// Option B: show the video flipped, flip the maths when drawing</span>
+px = (1 - lm.x) * canvas.width;  py = lm.y * canvas.height;</div>
+            <p>Mixing them (flipped video, unflipped drawing) puts your right hand's skeleton over your left hand. With option A, any text drawn into the canvas also comes out backwards, so readouts belong in HTML on top. Also keep <code>canvas.width/height</code> (its real pixel grid) equal to <code>video.videoWidth/videoHeight</code>. CSS size only stretches the picture; if the two grids differ, the dots drift off the joints.</p>
+            <p><b>5. What fps means, and what limits it.</b> The readout's fps counts frames that made the whole trip (frame → model → draw) per second. Usually computed as a smoothed average of 1 / (time since the last processed frame). The ceiling is whichever is slowest:</p>
+            <ul>
+              <li><b>The camera.</b> Usually 30 fps. In a dim room many webcams drop to 15, because each frame needs a longer exposure. Practice-room lighting matters.</li>
+              <li><b>Inference time.</b> <code>recognizeForVideo</code> blocks the main thread. At 45 ms per call you can't exceed about 22 fps, and the page can't respond to anything else meanwhile.</li>
+              <li><b>Drawing, a busy GPU, heat.</b> A hot laptop slows itself down (thermal throttling). Chrome also throttles background tabs.</li>
+            </ul>
+            <p><b>fps is not latency.</b> fps is how often you get an update. Latency is how old each update is: light hits the sensor, then capture, inference and display, typically tens of milliseconds to around a tenth of a second. R3 cares about latency ("music reacts with no noticeable extra delay").</p>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R1 "done means": mirrored video within a few seconds, skeleton following either hand at about 20+ fps. Expect the R1 branch to use getUserMedia, a video plus canvas stacked in one container, a requestVideoFrameCallback loop, and an fps readout in HTML.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Model on the main thread:</b> simple to write. It blocks the page while it runs, which matters once audio and UI share that thread in R3. The alternative, moving it into a Web Worker, keeps the page responsive but means transferring frames between threads.</li>
+            <li><b>Higher camera resolution:</b> sharper fingertips at a distance, but more pixels to decode and upload every frame. The landmark model works on a small crop anyway, so extra resolution mainly helps the palm detector spot small, far hands.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>The camera delivers 30 fps and each model call takes 45 ms. What will the fps readout show, and what happens to frames that arrive while the model is busy? Does the skeleton fall further and further behind?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>About 22 fps (1000 / 45). Frames that arrive during a call are simply skipped: the video element only keeps the newest one, and the next frame callback fires for whatever frame is presented after you finish.</p>
+            <p>Nothing queues up, so the skeleton does not drift further behind. Each update is at most one frame plus one inference old. That is a good property of "process the latest frame" loops, compared with a queue that grows whenever processing is slower than input.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- 4 TOOLING -->
+      <article class="concept" id="tooling">
+        <div class="concept-head">
+          <span class="tag tool">4 · Tooling</span>
+          <h3>Vite, TypeScript, Vitest and npm scripts</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Browsers run JavaScript, not TypeScript. They also can't resolve an import like <code>"@mediapipe/tasks-vision"</code>, which is a package name, not a URL. And you want to know your finger maths is right without standing in front of a camera.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>Vite</b> (v8 on the R1 branch). In dev, <code>npm run dev</code> starts a local web server on localhost. When the browser asks for a <code>.ts</code> file, Vite strips the types on the fly with a fast Rust-based transformer (it doesn't type-check), rewrites package imports into URLs it serves from <code>node_modules</code>, and pushes code changes to the open tab over a WebSocket (hot module replacement). <code>vite build</code> bundles and minifies everything into <code>dist/</code> for a static host.</li>
+              <li><b>TypeScript</b> (v7, the new natively compiled <code>tsc</code>). It checks types before the code runs, then the types vanish: nothing of them exists at runtime. Types help most at boundaries like the MediaPipe result: the package ships <code>vision.d.ts</code>, so your editor knows <code>result.landmarks[0][8].x</code> is a number. Because Vite never type-checks, the project runs <code>tsc --noEmit</code> separately ("check, don't write files").</li>
+              <li><b>Vitest</b> (v5). A test runner that reuses Vite's transform, so tests are written in TypeScript with no extra setup. It runs in Node, with no browser and no camera, which is why the finger-state functions should be pure: give them a saved array of 21 points, assert <code>T0 I1 M1 R0 P0</code>.</li>
+              <li><b>npm scripts</b> are named shell commands in <code>package.json</code>. <code>npm run &lt;name&gt;</code> runs one with <code>node_modules/.bin</code> on the PATH, which is how <code>vite</code> is found without a global install. <code>npm test</code> is a built-in shortcut for <code>npm run test</code>. <code>package-lock.json</code> records the exact version of every installed package, so a fresh install gets the same versions.</li>
+            </ul>
+            <p>The scripts already in the R1 branch's <code>package.json</code>:</p>
+            <div class="pre">"dev":       "vite"                          <span class="c">// local server + hot reload</span>
+"build":     "tsc --noEmit &amp;&amp; vite build"   <span class="c">// type-check first, then bundle to dist/</span>
+"typecheck": "tsc --noEmit"                  <span class="c">// types only, writes nothing</span>
+"preview":   "vite preview"                  <span class="c">// serve the built dist/ locally</span>
+"test":      "vitest run"                    <span class="c">// run tests once and exit</span></div>
+          </div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Dev and build take different paths</b> (unbundled vs bundled). That makes dev start instantly, but occasionally something works in dev and breaks in the build. Run <code>npm run build</code> before calling a checkpoint done.</li>
+            <li><b>Pure functions plus unit tests</b> catch maths bugs cheaply. They can't tell you whether the camera, model and drawing line up; R1's manual "done means" checks cover that.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>With <code>npm run dev</code> running, you save a <code>.ts</code> file that has a type error (say, passing a string where a number is expected). Does the page break?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Usually not. Vite only strips the types; it never checks them, so the page reloads and runs. JavaScript might then misbehave at runtime. The error shows up in your editor, in <code>npm run typecheck</code>, or when <code>npm run build</code> refuses to continue. That's why "build passes" belongs in a ship report.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- 5 LATER -->
+      <article class="concept" id="later">
+        <div class="concept-head">
+          <span class="tag tool">5 · Preview, not in R1</span>
+          <h3>Coming in R2–R5: turning noisy frames into deliberate controls</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">R2 · Hold to confirm</div><div class="v">
+            <p>Per-frame labels flicker: <code>Victory, Victory, None, Victory, Open_Palm, Victory…</code>. Acting on any single frame would fire commands by accident. <b>Debouncing</b> means acting only on a signal that has stayed stable for a while. The spec's version is a small <b>state machine</b>:</p>
+            <div class="pre">idle ──(shape seen, palm in box)──► arming ──(held 0.6 s)──► fired ──► cooldown 1.0 s ──► idle
+              └──(shape lost longer than a short grace period)──► idle</div>
+            <p>The grace period forgives a single dropped frame. Hysteresis (two thresholds) keeps pinch from flickering between GRABBED and released. The cost is latency: every command arrives at least 0.6 s after you make the shape.</p>
+          </div></div>
+          <div class="step"><div class="k">R4 / R5 · Rate vs position</div><div class="v">
+            <p>Two ways to map a hand tilt onto a value.</p>
+            <ul>
+              <li><b>Position control</b> (the "absolute wiper"): the angle <i>is</i> the value. Quick and exact for small ranges, but the whole range must fit in one wrist sweep.</li>
+              <li><b>Rate control</b> (the "spring-loaded joystick"): the angle sets how fast the value changes. Each frame does <code>value += gain × (angle − centre) × dt</code>. It never runs out of wrist. Because it adds up input over time, it also adds up jitter, so it needs a <b>dead zone</b>: tilts smaller than a few degrees count as zero.</li>
+            </ul>
+            <p>Watch for <code>dt</code> (time since the last frame) in the R4 code. Without it, the knob would move faster on a faster laptop, because fps would change the speed.</p>
+          </div></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- GLOSSARY -->
+    <section class="block" id="glossary">
+      <h2>Glossary</h2>
+      <p>Terms you'll see in R1 diffs and reports.</p>
+      <dl class="gloss">
+        <div><dt>landmark</dt><dd>One of the 21 points on a hand that the model outputs, numbered 0 (wrist) to 20 (pinky tip).</dd></div>
+        <div><dt>normalized coordinates</dt><dd>Positions given as fractions of the image size (0 to 1), not pixels. Multiply by canvas width and height to draw.</dd></div>
+        <div><dt>world landmarks</dt><dd>The same points in metres in 3D, centred on the hand. Useful for angles; unaffected by how far away you stand.</dd></div>
+        <div><dt>handedness</dt><dd>The model's Left/Right guess per hand. It assumes a mirrored image, so treat it with suspicion here.</dd></div>
+        <div><dt>MCP / PIP / DIP / TIP</dt><dd>Knuckle, middle joint, last joint, fingertip. The thumb has CMC, MCP, IP and TIP instead.</dd></div>
+        <div><dt>canned gesture</dt><dd>One of the Gesture Recognizer's eight built-in labels, such as <code>Victory</code>.</dd></div>
+        <div><dt>pseudo-chord</dt><dd>Our five-digit finger readout, Thumb to Pinky, 1 = up. Example: <code>01100</code> is a V.</dd></div>
+        <div><dt>inference</dt><dd>Running a trained model on one input to get its output. One frame in, landmarks out.</dd></div>
+        <div><dt>delegate (GPU / CPU)</dt><dd>Where the model's maths runs: graphics chip through WebGL, or processor through WASM.</dd></div>
+        <div><dt>WASM (WebAssembly)</dt><dd>A binary code format browsers run at close to native speed. How MediaPipe's C++ runs in Chrome.</dd></div>
+        <div><dt>.task file</dt><dd>MediaPipe's model bundle (detector, landmark model, classifier), fetched at start-up.</dd></div>
+        <div><dt>MediaStream</dt><dd>The live camera handle returned by <code>getUserMedia</code>, attached to a video element.</dd></div>
+        <div><dt>secure context</dt><dd>HTTPS or localhost. Required before the browser will open the camera.</dd></div>
+        <div><dt>rVFC</dt><dd><code>requestVideoFrameCallback</code>: run code once for each new video frame.</dd></div>
+        <div><dt>rAF</dt><dd><code>requestAnimationFrame</code>: run code before each screen repaint, regardless of video frames.</dd></div>
+        <div><dt>main thread</dt><dd>The single thread where the page's JavaScript, layout and input handling run. Long work here freezes the page.</dd></div>
+        <div><dt>fps</dt><dd>Frames fully processed per second. The R1 target is about 20 or more.</dd></div>
+        <div><dt>latency</dt><dd>Delay from your movement to the screen (or, later, the music) responding. Not the same as fps.</dd></div>
+        <div><dt>backing store</dt><dd>A canvas's real pixel grid (<code>canvas.width</code>), separate from its CSS display size.</dd></div>
+        <div><dt>HMR</dt><dd>Hot module replacement: Vite swaps changed code into the open page without a full reload.</dd></div>
+        <div><dt>bundle</dt><dd>The handful of optimized files <code>vite build</code> produces from many source files.</dd></div>
+        <div><dt>type erasure</dt><dd>TypeScript types are removed before running; they only exist for checking.</dd></div>
+        <div><dt>fixture</dt><dd>Saved example input for a test, such as a recorded set of 21 landmarks for a V.</dd></div>
+        <div><dt>hysteresis</dt><dd>Separate on and off thresholds, so a value near the line doesn't flicker.</dd></div>
+        <div><dt>debounce / dwell</dt><dd>Act only after a signal has been stable for a set time (0.6 s in R2).</dd></div>
+        <div><dt>dead zone</dt><dd>A small input range treated as zero, so jitter doesn't move a control.</dd></div>
+      </dl>
+    </section>
+
+    <!-- CODE MAP -->
+    <section class="block" id="code">
+      <h2>Where in the code</h2>
+      <p>The R1 code is being written on a separate branch right now, so only <code>package.json</code> exists there. Until it merges, find each piece with the read-only search on the right. Run it from the branch's folder, or from the repo once R1 lands.</p>
+      <div class="codemap">
+        <div class="group">
+          <h3>Plans that define R1</h3>
+          <ul>
+            <li><code>docs/spec.md §4.1</code><span>Landmarks, canned labels, and what the pseudo-chord is for.</span></li>
+            <li><code>docs/spec.md §6.1–6.2</code><span>The pipeline and why it's a browser app.</span></li>
+            <li><code>.agents/roadmap.md → R1</code><span>Scope and "done means": mirrored video, about 20+ fps, chord flips, labels correct.</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>Tooling <span class="status now">exists on R1 branch</span></h3>
+          <ul>
+            <li><code>package.json</code><span>The npm scripts above; pins <code>@mediapipe/tasks-vision</code> 1.1.0.</span></li>
+            <li><code>node_modules/@mediapipe/tasks-vision/vision.d.ts</code><span>The real API types: <code>numHands</code> (default 1), <code>delegate</code>, <code>recognizeForVideo</code>, result fields.</span></li>
+            <li><code>node_modules/@mediapipe/tasks-vision/wasm/</code><span>The WASM builds, including the <code>nosimd</code> fallback.</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>Model setup <span class="status soon">see src/ once R1 lands</span></h3>
+          <ul>
+            <li><code>grep -rn "createFromOptions\|FilesetResolver" src</code><span>Where the recognizer is built. Check the <code>delegate</code>, <code>numHands</code> and <code>runningMode: "VIDEO"</code>, and where the <code>.task</code> and WASM files load from.</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>Camera and frame loop <span class="status soon">see src/ once R1 lands</span></h3>
+          <ul>
+            <li><code>grep -rn "getUserMedia" src</code><span>Camera request: resolution, <code>facingMode</code>, error handling if permission is denied.</span></li>
+            <li><code>grep -rn "requestVideoFrameCallback\|requestAnimationFrame" src</code><span>The loop: does it call <code>recognizeForVideo</code> once per new frame with an increasing timestamp?</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>Overlay and readout <span class="status soon">see src/ once R1 lands</span></h3>
+          <ul>
+            <li><code>grep -rn "scaleX(-1)\|1 - " src</code><span>Which mirroring option it picked, and whether drawing matches it.</span></li>
+            <li><code>grep -rn "videoWidth" src</code><span>Whether the canvas pixel grid is sized to the video.</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>Finger geometry <span class="status soon">see src/ once R1 lands</span></h3>
+          <ul>
+            <li><code>grep -rln "landmark" src --include=*.test.ts</code><span>The pure finger-state and palm-facing functions, plus their fixture tests. Check the thumb rule specifically.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUESTIONS -->
+    <section class="block" id="questions">
+      <h2>Suggested questions</h2>
+      <p>Bring these to <code>claude --agent tutor</code> or ask them about the R1 report. Ordered from basic to deep.</p>
+      <ol class="qs">
+        <li>What exactly is in one landmark: what do x, y and z measure, and in what units?<span class="lvl">basic</span></li>
+        <li>Why does MediaPipe look for the palm first instead of the whole hand?<span class="lvl">basic</span></li>
+        <li>When the video is mirrored with CSS, which coordinates does our code still see, and where would a bug show up?<span class="lvl">basic</span></li>
+        <li>Why use <code>requestVideoFrameCallback</code> here instead of <code>requestAnimationFrame</code>?<span class="lvl">middle</span></li>
+        <li>Which thumb rule did R1 pick, and what does it measure?<span class="lvl">middle</span></li>
+        <li>Is the R1 build using the GPU delegate, and what fps do we get with CPU instead?<span class="lvl">middle</span></li>
+        <li>With <code>numHands: 2</code> and one hand visible, how much extra work happens every frame?<span class="lvl">deep</span></li>
+        <li>The model call blocks the main thread. What would moving it to a Web Worker gain before R3 adds audio, and what would it cost?<span class="lvl">deep</span></li>
+      </ol>
+    </section>
+
+    <footer>Grounded in docs/spec.md v1.2, .agents/roadmap.md R1, and the R1 branch's package.json and installed MediaPipe types (2026-10-11). Built by the tutor agent; the code map will be updated with real file paths once R1 merges.</footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  const svg = document.getElementById('hand');
+  const NS = 'http://www.w3.org/2000/svg';
+  const state = { up: [0, 1, 1, 0, 0], rot: 0, scale: 1, jit: 0 };
+
+  // Local hand frame: wrist at (0,0), y negative = up. Units are px at scale 1.
+  const FINGERS = [
+    null,
+    { mcp: [-30, -95], lens: [38, 26, 22], fan: -8, idx: [5, 6, 7, 8] },
+    { mcp: [-8, -102], lens: [42, 28, 23], fan: 0, idx: [9, 10, 11, 12] },
+    { mcp: [14, -97], lens: [39, 26, 22], fan: 7, idx: [13, 14, 15, 16] },
+    { mcp: [34, -85], lens: [30, 20, 18], fan: 16, idx: [17, 18, 19, 20] },
+  ];
+  const BEND_UP = [0, 8, 14], BEND_DOWN = [70, 170, 230]; // cumulative bend (deg) toward the camera
+  const THUMB_UP = [[-22, -22], [-46, -44], [-62, -64], [-74, -84]];
+  const THUMB_DOWN = [[-22, -22], [-36, -42], [-18, -56], [2, -62]];
+  const BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  const rad = d => d * Math.PI / 180;
+
+  function localPoints() {
+    const p = new Array(21);
+    p[0] = [0, 0];
+    const th = state.up[0] ? THUMB_UP : THUMB_DOWN;
+    for (let i = 0; i < 4; i++) p[1 + i] = th[i].slice();
+    for (let f = 1; f <= 4; f++) {
+      const F = FINGERS[f], bends = state.up[f] ? BEND_UP : BEND_DOWN;
+      const c = Math.cos(rad(F.fan)), s = Math.sin(rad(F.fan));
+      let x = F.mcp[0], y = F.mcp[1];
+      p[F.idx[0]] = [x, y];
+      for (let k = 0; k < 3; k++) {
+        const dyLocal = -F.lens[k] * Math.cos(rad(bends[k])); // orthographic projection of a segment bending toward the camera
+        x += -s * dyLocal; y += c * dyLocal;
+        p[F.idx[k + 1]] = [x, y];
+      }
+    }
+    return p;
+  }
+
+  function screenPoints() {
+    const pivot = [0, -60], cx = 170, cy = 175;
+    const c = Math.cos(rad(state.rot)), s = Math.sin(rad(state.rot));
+    return localPoints().map(([x, y]) => {
+      const dx = x - pivot[0], dy = y - pivot[1];
+      let X = (dx * c - dy * s) * state.scale + cx;
+      let Y = (dx * s + dy * c) * state.scale + cy;
+      if (state.jit > 0) { X += (Math.random() * 2 - 1) * state.jit; Y += (Math.random() * 2 - 1) * state.jit; }
+      return [X, Y];
+    });
+  }
+
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  function rules(p) {
+    const A = [p[4][0] < p[3][0] ? 1 : 0], B = [dist(p[4], p[17]) > 95 ? 1 : 0];
+    const palmW = dist(p[5], p[17]);
+    const tR = dist(p[4], p[17]) / palmW;
+    const C = [tR > 1.2 ? 1 : 0], vals = [tR];
+    for (let f = 1; f <= 4; f++) {
+      const [, pip, , tip] = FINGERS[f].idx;
+      A.push(p[tip][1] < p[pip][1] ? 1 : 0);
+      B.push(dist(p[0], p[tip]) > 150 ? 1 : 0);
+      const r = dist(p[0], p[tip]) / dist(p[0], p[pip]);
+      vals.push(r); C.push(r > 1.0 ? 1 : 0);
+    }
+    return { A, B, C, vals };
+  }
+
+  const LET = ['T', 'I', 'M', 'R', 'P'];
+  function renderRule(el, res) {
+    el.innerHTML = res.map((v, i) => `<span class="${v === state.up[i] ? 'good' : 'wrong'}">${LET[i]}${v}</span>`).join(' ');
+    const wrong = res.filter((v, i) => v !== state.up[i]).length;
+    el.setAttribute('aria-label', wrong ? `${wrong} finger${wrong > 1 ? 's' : ''} read wrong` : 'all fingers read correctly');
+  }
+
+  function el(name, attrs) { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  function draw() {
+    const p = screenPoints();
+    svg.textContent = '';
+    svg.appendChild(el('rect', { class: 'frame', x: 6, y: 6, width: 328, height: 308, rx: 6 }));
+    for (const [a, b] of BONES) svg.appendChild(el('line', { class: 'bone', x1: p[a][0], y1: p[a][1], x2: p[b][0], y2: p[b][1] }));
+    const r = Math.max(2.5, 4.5 * state.scale);
+    p.forEach(([x, y], i) => {
+      svg.appendChild(el('circle', { class: 'dot' + (i === 0 ? ' wrist' : ''), cx: x, cy: y, r }));
+      if (state.scale > 0.6) { const t = el('text', { class: 'idx', x: x + 6, y: y - 5 }); t.textContent = i; svg.appendChild(t); }
+    });
+    const res = rules(p);
+    renderRule(document.getElementById('r-a'), res.A);
+    renderRule(document.getElementById('r-b'), res.B);
+    renderRule(document.getElementById('r-c'), res.C);
+    document.getElementById('r-c-vals').textContent = 'values: ' + res.vals.map((v, i) => LET[i] + ' ' + v.toFixed(2)).join(' · ');
+    document.getElementById('truth').textContent = state.up.map((v, i) => LET[i] + v).join(' ');
+  }
+
+  document.querySelectorAll('button.tg').forEach(b => b.addEventListener('click', () => {
+    const f = +b.dataset.f; state.up[f] = state.up[f] ? 0 : 1; sync(); draw();
+  }));
+  document.querySelectorAll('button.ps').forEach(b => b.addEventListener('click', () => {
+    state.up = b.dataset.p.split('').map(Number); sync(); draw();
+  }));
+  function sync() { document.querySelectorAll('button.tg').forEach(b => b.setAttribute('aria-pressed', state.up[+b.dataset.f] ? 'true' : 'false')); }
+
+  const sRot = document.getElementById('s-rot'), sScale = document.getElementById('s-scale'), sJit = document.getElementById('s-jit');
+  sRot.addEventListener('input', () => { state.rot = +sRot.value; document.getElementById('o-rot').textContent = state.rot + '°'; draw(); });
+  sScale.addEventListener('input', () => {
+    const v = +sScale.value; state.scale = 1 - v * 0.0065; // 1.0 → 0.35
+    document.getElementById('o-scale').textContent = v < 15 ? 'near' : v > 80 ? 'far' : Math.round(state.scale * 100) + '%';
+    draw();
+  });
+  let timer = null;
+  sJit.addEventListener('input', () => {
+    state.jit = +sJit.value; document.getElementById('o-jit').textContent = state.jit + ' px';
+    if (state.jit > 0 && !timer) timer = setInterval(draw, 120);
+    if (state.jit === 0 && timer) { clearInterval(timer); timer = null; }
+    draw();
+  });
+  draw();
+})();
+</script>
