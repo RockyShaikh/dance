@@ -1,6 +1,6 @@
 # Dance — Spec (v1, draft)
 
-*Status: draft for review · revised 2026-10-11 (v1: research reports, knob decisions, setup decisions, loop model · v1.1: above-head zone replaced by an on-screen command box) · Companion docs: [roadmap](../.agents/roadmap.md), [wish list](../.agents/wishlist.md)*
+*Status: draft for review · revised 2026-10-11 (v1: research reports, knob decisions, setup decisions, loop model · v1.1: above-head zone replaced by an on-screen command box · v1.2: box is mouse-editable; per-session calibration is the planned direction) · Companion docs: [roadmap](../.agents/roadmap.md), [wish list](../.agents/wishlist.md)*
 
 A personal project: a tool the user is building for their own practice. Research is cited where it shaped a choice: **[market]** = `.agents/research/market-dance-tools.md` (what other practice tools do), **[workflows]** = `.agents/research/dancer-workflows.md` (how dancers drill). "User" = the user's own words (see `AGENTS.md` → Decisions).
 
@@ -36,7 +36,7 @@ Priorities (user's order):
 
 Principles:
 
-- **Deliberate, not accidental.** A shape only counts if it's held for **at least 0.6 s** with the hand **inside the command box**, a rectangle drawn on the video (default: the right half of the screen) (§4.2). The user's longer-term idea, a zone above the head, waits until testing with real choreography.
+- **Deliberate, not accidental.** A shape only counts if it's held for **at least 0.6 s** with the hand **inside the command box**, a rectangle drawn on the video (default: the right half of the screen) (§4.2). Later, a quick per-session calibration will set the zone to "above this height" (wish list).
 - **Small vocabulary:** three shapes and one "grab," with tap vs hold covering the rest (§4.3). This is a deliberate cut, after the user's "this is getting to way too many features."
 - **Always show what the system sees:** skeleton, the command box, current shape, hold ring, and a "grabbed" state for the knob.
 - **Confirm every command twice:** a huge banner plus a sound. Invisible loop edits confuse people [market].
@@ -64,12 +64,14 @@ We also compute each finger's up/down state as a five-letter **pseudo-chord** (T
 **The command box.** A rectangle drawn on the video. A command shape counts only while the hand's **palm centre** is inside it. Palm centre means the average of the wrist and the four knuckles at the base of the fingers. We use it rather than the wrist because it sits in the middle of the hand and stays steady when fingers move.
 
 - **Default:** the **right half of the frame as you see it** (the video is mirrored, so it's your right side on screen).
-- **Adjustable:** drag to move it, drag a corner to resize it, or pick a preset in settings (right half, left half, **whole frame**).
+- **Clearly visible and mouse-editable:** the box is outlined on the camera view. Click and drag inside it to move it, or drag an edge or corner to resize it. Presets in settings: right half, left half, **whole frame**.
 - The hand model is the only model needed. Nothing has to find your head or body.
 
-User: "don't code that in explicitly for now". The above-head zone waits until we test with real choreography (wish list). The box is the simple stand-in for testing.
+User: "don't code that in explicitly for now". The box is the simple stand-in for testing.
 
-**Choreography that collides with commands** (held poses, open palms) is **not solved now**. It's an Unresolved thread (user). For now the box and the 0.6 s dwell are the only guards. If it bites, the levers are: the above-head zone (wish list), a longer dwell, the optional stillness rule, or a wake pose.
+**Planned direction (wish list, next up after R2): per-session calibration.** At the start of a session you press "calibrate" and raise your hand to the height you want. The system sets the zone to everything above that line: the box's bottom edge becomes your calibrated hand height. It's done by hand each session, with no head or body tracking. If the laptop or camera moves, or someone of a different height uses it, you just recalibrate (or re-drag the box) (user).
+
+**Choreography that collides with commands** (held poses, open palms) is **not solved now**. It's an Unresolved thread (user). For now the box and the 0.6 s dwell are the only guards. If it bites, the levers are: a calibrated above-hand-height zone (wish list), a longer dwell, the optional stillness rule, or a wake pose.
 
 ### 4.3 The gestures
 
@@ -278,7 +280,7 @@ Any command: a full-width banner for ~1 s, e.g.  ⏮ RESTART FROM IN
 
 - Anything past roadmap R5: no YouTube sync, AI choreography agent, saved sessions, or beat detection.
 - No range tuning yet (gestures first).
-- No above-head zone yet; no solving of choreography/command collisions beyond the box and dwell (Unresolved thread).
+- No calibration sequence or above-head zone yet; no solving of choreography/command collisions beyond the box and dwell (Unresolved thread).
 - No pose or step analysis, scoring, or recording of the dancer.
 - Local audio files only (decided): no YouTube, Spotify or Apple Music.
 - No accounts or cloud; no mobile version; no custom ML training.

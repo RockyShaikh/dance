@@ -1,6 +1,6 @@
 # Dance — Roadmap
 
-*Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
+*Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed as next up after R2). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
 Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **All are `proposed` until the user approves.**
 
@@ -44,25 +44,25 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Scope in**
 - A "gesture test bench" view (no music).
-- **Command box:** a rectangle drawn on the video; a shape counts only while the hand's palm centre is inside it. Default: the right half of the mirrored view. Drag or resize it, or pick a preset (right half, left half, whole frame) [spec §4.2]. User: "it just needs to find my hand in some bounding box."
+- **Command box:** a simple rectangle, clearly outlined on the camera view; a shape counts only while the hand's palm centre is inside it. Default: the right half of the mirrored view. **Edit it with the mouse:** click and drag inside to move it, drag an edge or corner to resize it. Presets: right half, left half, whole frame [spec §4.2]. User: "it just needs to find my hand in some bounding box."
 - The three command shapes (open palm, index up, V) with **0.6 s minimum dwell** (ring), palm facing, cooldown, and one hand at a time. Optional stillness rule behind a toggle.
 - **Tap vs hold** (fire on release vs an outer hold ring at ~1.5 s) [spec §4.4].
 - **Clutch-shape detection:** pinch, claw, and the two-hand modifier, shown as "GRABBED / released" states. Nothing is controlled yet.
 - A banner plus sound on fire, a log of fired events with timestamps, and sliders for dwell and pinch thresholds.
 
-**Scope out:** above-head zone and any head/body tracking (wish list), audio, knob rotation and mapping, range tuning, fixing choreography collisions, anything in R3+.
+**Scope out:** the calibration sequence (wish list, next up after R2), above-head zone and any head/body tracking, audio, knob rotation and mapping, range tuning, fixing choreography collisions, anything in R3+.
 
 **Done means**
 - At the distance you test at, each shape fires on at least 9 of 10 deliberate attempts inside the box, as itself, and tap vs hold are told apart correctly.
 - The same shapes made **outside** the box never fire.
-- Moving or resizing the box (or choosing whole frame) changes where shapes count, immediately.
+- The box is clearly visible on the camera view, and you can **move and resize it by mouse click-and-drag**. The new area takes effect immediately, and so does choosing a preset (e.g. whole frame).
 - Holding a shape a long time fires exactly once.
 - Pinch, claw and two-hand grabs show GRABBED/released correctly, or failures are noted.
 - Informational: dance for ~2 minutes with no commands intended and note the false-fire count in the log. This feeds the choreography-collision thread; it isn't a pass/fail gate.
 
 **Status:** proposed
 
-**Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The above-head zone is deferred until testing with real choreography (user); the box is the stand-in.
+**Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The planned zone direction is a per-session calibration ("raise your hand: only above here"). It's wish-listed as next up after R2, not part of R2.
 
 ---
 

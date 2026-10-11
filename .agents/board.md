@@ -13,6 +13,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- P4 — v1.2: R2 box is mouse-editable; per-session calibration = wish list next-up — main — 2026-10-11
 - P3 — v1.1: command zone = on-screen box (palm centre inside box, default right half); pose model removed; above-head → wish list — main — 2026-10-11
 - P2 — spec v1 / roadmap R1–R5 (all proposed) / wishlist revised with research + all user decisions — main — 2026-10-11
 - S2 — dancer workflows done; top pains: walking to screen, re-finding start point; planned shapes collide with choreo/marking; command between attempts → stillness gate; prior art: 2013 Princeton Kinect jukebox (recognition failures) — `.agents/research/dancer-workflows.md` — 2026-10-11
