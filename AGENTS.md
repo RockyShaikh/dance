@@ -13,6 +13,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 
 ## Conventions
 - Roadmap checkpoints are done strictly in order; do not build past the active one.
+- Branches per checkpoint; merge each with `--no-ff` and tag `rN-done`, so any checkpoint can be reverted on its own.
 - Tunable thresholds live in `src/config.ts`. Pure logic modules (e.g. `src/pseudoChord.ts`, `src/palmFacing.ts`) get Vitest tests with landmark fixtures.
 - Features we can't build yet go in `.agents/wishlist.md`; open "is this a problem?" questions and known-but-deferred issues go in its **Unresolved threads** section.
 
@@ -37,6 +38,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-11 — Command-zone direction: a **per-session calibration sequence**. Press "calibrate", raise your hand, and only detect above that height; manual each session, no head tracking; don't worry about the laptop or camera moving. The zone is clearly visible in the camera overlay and editable by mouse click-and-drag. **For now (R2): a simple rectangle bounding box.** Calibration is **R6+** (user: "let's still not worry about it in R2. It's going to be R6+"); on the wish list.
 - 2026-10-11 — Roadmap R1–R5 approved by the user, along with the spec's proposed stack. R1 active.
 - 2026-10-11 — R1 accepted ("looks good to move onto the next step"). Distance stays a non-worry; a later priority is **auto-zooming onto the hand** (wish list).
+- 2026-10-11 — The user started R3 before testing R2 by hand ("I think r2 was pretty trivial"). R3 builds on R2. **Each of R2 and R3 must be individually rollback-able:** separate branches (`r2-gestures`, then the R3 branch based on it); at integration, merge each as its own `--no-ff` merge commit (R2 first, then R3) and tag it, so either can be reverted alone. Tags: `r1-done`.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->
