@@ -52,7 +52,7 @@ Code lives in `src/pseudoChord.ts` and `src/palmFacing.ts` (pure functions of th
 
 ### Left vs right
 
-The page feeds the model the un-mirrored camera frame (only the *display* is mirrored). MediaPipe names hands as if the image were a mirrored selfie, so its "Left" is your right hand on this frame; `src/analyze.ts` swaps the label, controlled by `swapHandedness` in `src/config.ts`. **If "Right hand" appears when you raise your left hand, set `swapHandedness` to `false`.** Palm facing uses this label too, so it would be inverted in the same case.
+The page feeds the model the un-mirrored camera frame (only the *display* is mirrored). On a live check (2026-10-11), MediaPipe's Left/Right label already matched the user's own hand, so `swapHandedness` in `src/config.ts` is `false`. **If "Right hand" appears when you raise your left hand, flip it.** Palm facing uses this label too, so a wrong setting inverts it as well.
 
 ## Dev test mode (no live hand needed)
 

@@ -58,11 +58,12 @@ export const APP = {
     frameRate: 30,
   },
   /**
-   * The webcam frame is fed to the model un-mirrored (we only mirror the display).
-   * MediaPipe assumes a mirrored (selfie) image when it names the hand, so on an
-   * un-mirrored frame its "Left" is the user's right hand and vice versa.
+   * Whether to swap MediaPipe's Left/Right label. The webcam frame is fed to the
+   * model un-mirrored (we only mirror the display). Verified on a live hand
+   * (2026-10-11): the model's label already matches the user's own hand here, so
+   * no swap. Palm-facing depends on this label, so a wrong value inverts it too.
    */
-  swapHandedness: true,
+  swapHandedness: false,
   /** Seconds over which the fps readout is averaged. */
   fpsWindowSec: 1,
 } as const;
