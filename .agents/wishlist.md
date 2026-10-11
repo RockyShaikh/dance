@@ -1,6 +1,6 @@
 # Dance — Wish list and unresolved threads
 
-*Living document · started 2026-10-11 · revised 2026-10-11 (v1: research, knob, command zone, setup, loop model). Anything off-checkpoint goes here, not into current work.*
+*Living document · started 2026-10-11 · revised 2026-10-11 (v1: research, knob, setup, loop model · v1.1: above-head zone moved here; R2 uses an on-screen box). Anything off-checkpoint goes here, not into current work.*
 
 Tags: **later** (a feature for after the roadmap) · **QoL** (quality of life) · **overlooked** (something we hadn't considered) · **unresolved** (a known problem or open "is this a problem?") · **risk** (a future risk) · **bug?** (a suspected bug).
 Sources: [market] = `.agents/research/market-dance-tools.md`, [workflows] = `.agents/research/dancer-workflows.md`, user = the user's own words.
@@ -15,6 +15,7 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Turn a choreography video into a teachable "choreo AI agent"** (user) | later | Large and open-ended; depends on everything else working |
 | **Phone camera plugin:** phone back camera at 1×/2× zoom, phone body tracking (user) | later | Range is deferred ("gestures first"); likely the main fix for distance |
 | **Wearable input** (user) | later | Future modality; would also sidestep choreography collisions |
+| **Above-head command zone:** commands count only when the hand is above your head, found with a body or face tracker (e.g. MediaPipe Pose) (user) | later | User: "don't code that in explicitly for now"; revisit once testing with real choreography. R2 uses an on-screen box instead |
 | **Snap loop start/end to the beat or 8-count** | later | Hides late-landing points [market, workflows]; needs beat detection |
 | **"Loop the last 8 counts"** with one gesture | later | No aiming needed [workflows]; needs beat detection |
 | **Lead-in after restart:** a 3-2-1 countdown, or a tempo-synced "5, 6, 7, 8" | QoL | Restart plays immediately for now (user). Both reports say dancers want time to get into position [market, workflows]; tempo sync needs beat detection |
@@ -47,9 +48,9 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 
 | Thread | Tag | Why parked / what resolves it |
 |---|---|---|
-| **Choreography collides with commands** (hands-up moves, held poses, open palms overhead) | unresolved | User: leave it for now. Zone + 0.6 s dwell first; R2 logs false fires. Levers if needed: longer dwell, stillness rule, wake pose, wearable |
-| **Is the above-head zone tiring, or awkward for tap vs hold** (holding ~1.5 s overhead)? | unresolved | Check feel in R2 |
-| **Range / distance:** gestures first, range later (user) | unresolved | Note the tested distance in R1–R2; fixes later (phone camera, external webcam, lighting, pose-based commands) |
+| **Choreography collides with commands** (held poses, open palms, peace signs) | unresolved | User: leave it for now. Box + 0.6 s dwell first; R2 logs false fires. Future levers: above-head zone, longer dwell, stillness rule, wake pose, wearable |
+| **Does a fixed screen box still work when you move around the room?** As you step sideways or closer, your hand lands somewhere else on screen | unresolved | Fine for testing; the whole-frame option is the escape hatch; the above-head zone would follow you |
+| **Range / distance:** gestures first, range later (user) | unresolved | Note the tested distance in R1–R2; fixes later (phone camera, external webcam, lighting, body-pose commands) |
 | **Can pinch and claw be read reliably** once you're farther away? | risk | Part of the range thread; the two-hand clutch is the most robust option |
 | **Out-of-wrist range:** the knob runs out of tilt (user) | unresolved | The joystick and circling avoid it; R4 compares [spec §5] |
 | **Which knob feels best for nudging the loop start:** joystick vs absolute vs relative vs circling; pinch vs claw vs two-hand | unresolved | R4 experiment (user wants to try all), recorded in Decisions |
@@ -58,7 +59,7 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Tracking drops while the knob is grabbed** | risk | Value freezes, then releases [spec §5.2]; verify in R4 |
 | **How much do you overplay the loop start?** Is it consistent? | unresolved | The nudge handles it in R4; if it's always about the same, automatic pre-roll (wish list) could replace it |
 | **Tap vs hold adds a short delay** (tap fires on release) | unresolved | Probably fine between attempts; check in R2 |
-| **Two vision models every frame** (hands + pose): CPU/GPU load, fans, audio stutter | risk | Watch fps and audio in R2/R3; run pose less often if needed |
+| **Laptop load:** the hand model every frame plus audio (CPU/GPU, fans, stutter) | risk | Watch fps and audio in R2/R3. Adding a body tracker later (above-head zone) would double it |
 | **Mirror behind the laptop:** a reflection could be detected as extra hands or a second body | unresolved | The laptop faces you, so the camera probably won't see the mirror; check once |
 | **Readability** of the screen from where you dance | unresolved | Check in R3 |
 | **Lighting:** dim room, bright window behind you | risk | Test in your real space |

@@ -3,7 +3,7 @@
 A hands-free tool for learning choreography: dancers control the music they practice to (play/pause, restart to a point, loop in/out points, speed) with hand gestures seen by a laptop webcam, instead of fumbling with a phone or laptop mid-practice. Personal project, not a startup; existing tools are studied only to learn from.
 
 ## Stack
-- Proposed (pending roadmap approval): local web app in Chrome; TypeScript + Vite; MediaPipe Hand Landmarker (+ Pose Landmarker for the above-head command zone from R2); canvas overlay; Web Audio / HTMLMediaElement for playback. See `docs/spec.md`.
+- Proposed (pending roadmap approval): local web app in Chrome; TypeScript + Vite; MediaPipe Hand Landmarker; canvas overlay; Web Audio / HTMLMediaElement for playback. See `docs/spec.md`.
 
 ## Commands
 - Install: TBD
@@ -32,6 +32,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-11 — Restart = go to loop start if set, else song start. Audio = local files only (no streaming integration for now).
 - 2026-10-11 — Loop-setting model: let the music play and mark points with a gesture where the playhead is. The knob is a **fine-tune**: you always overplay the start, so you nudge the loop start back a couple of counts. Loop-end precision doesn't matter ("trailing" is fine). The knob is not used to find points from scratch.
 - 2026-10-11 — Repo is public on GitHub; commit project + memory files.
+- 2026-10-11 — **Command zone for now = an on-screen bounding box** (default: right half of the mirrored view, adjustable; whole-frame option). A gesture counts only with the hand inside the box and held ≥ 0.6 s. No pose model or above-head detection in R2. Above-head zone is deferred until testing with real choreography (wish list). Supersedes the above-head line above for current scope.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->

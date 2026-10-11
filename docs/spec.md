@@ -1,6 +1,6 @@
 # Dance — Spec (v1, draft)
 
-*Status: draft for review · revised 2026-10-11 (v1: research reports, knob decisions, command zone, setup decisions, loop model) · Companion docs: [roadmap](../.agents/roadmap.md), [wish list](../.agents/wishlist.md)*
+*Status: draft for review · revised 2026-10-11 (v1: research reports, knob decisions, setup decisions, loop model · v1.1: above-head zone replaced by an on-screen command box) · Companion docs: [roadmap](../.agents/roadmap.md), [wish list](../.agents/wishlist.md)*
 
 A personal project: a tool the user is building for their own practice. Research is cited where it shaped a choice: **[market]** = `.agents/research/market-dance-tools.md` (what other practice tools do), **[workflows]** = `.agents/research/dancer-workflows.md` (how dancers drill). "User" = the user's own words (see `AGENTS.md` → Decisions).
 
@@ -29,16 +29,16 @@ Priorities (user's order):
 ## 3. Interaction model
 
 ```
- dance a chunk ──► stop, raise a hand ABOVE YOUR HEAD, show a shape
+ dance a chunk ──► stop, put a hand in the COMMAND BOX on screen, show a shape
               ──► a ring fills (≥ 0.6 s) ──► sound + full-width banner
               ──► music responds ──► dance again
 ```
 
 Principles:
 
-- **Deliberate, not accidental.** A shape only counts if it's held for **at least 0.6 s** and **above your head**, in the "command zone" (user). You rarely hold a pose up there for that long while dancing (§4.2).
+- **Deliberate, not accidental.** A shape only counts if it's held for **at least 0.6 s** with the hand **inside the command box**, a rectangle drawn on the video (default: the right half of the screen) (§4.2). The user's longer-term idea, a zone above the head, waits until testing with real choreography.
 - **Small vocabulary:** three shapes and one "grab," with tap vs hold covering the rest (§4.3). This is a deliberate cut, after the user's "this is getting to way too many features."
-- **Always show what the system sees:** skeleton, the command-zone line, current shape, hold ring, and a "grabbed" state for the knob.
+- **Always show what the system sees:** skeleton, the command box, current shape, hold ring, and a "grabbed" state for the knob.
 - **Confirm every command twice:** a huge banner plus a sound. Invisible loop edits confuse people [market].
 - **Keyboard parity:** every gesture also has a key and an on-screen button, for setup and debugging [market].
 
@@ -50,30 +50,30 @@ The vision model gives us **landmarks**: 21 points per hand (the wrist plus four
 
 We also compute each finger's up/down state as a five-letter **pseudo-chord** (Thumb, Index, Middle, Ring, Pinky; `1` = up), e.g. `01100` for a peace sign. It's shown on screen in R1 as a debugging aid, and our own rules use it for shapes with no ready-made label (pinch, claw).
 
-### 4.2 What makes a shape count (the user's mechanism)
+### 4.2 What makes a shape count
 
 | Rule | Default | Why |
 |---|---|---|
-| **Hand is in the command zone:** above the top of your head | line drawn on screen | User: "the main gestures are above the head. You really don't hold a crazy pose up there" |
+| **Hand is in the command box** (palm centre inside the rectangle) | right half of the frame; adjustable; "whole frame" option | User: "it just needs to find my hand in some bounding box" |
 | **Shape held for the dwell time** | **0.6 s minimum** (tunable up); a ring fills | User's timer. Same idea as the "N frames in a row" confirmation in hobby gesture projects [market] |
 | Palm faces the camera | checked from landmarks | Cheap extra filter; hands in choreography are often side-on |
 | Cooldown after a command | 1.0 s | One long hold can't fire twice |
 | Only one hand is showing a command shape | otherwise ignore | Avoids conflicts |
 | *Optional:* hand is still during the hold | off by default | Kept as an extra filter if false fires show up [workflows] |
 
-**How we find "above your head".** The hand model only sees hands, so we need a second model to find the head. Options, in plain words:
+**The command box.** A rectangle drawn on the video. A command shape counts only while the hand's **palm centre** is inside it. Palm centre means the average of the wrist and the four knuckles at the base of the fingers. We use it rather than the wrist because it sits in the middle of the hand and stays steady when fingers move.
 
-- **Pose model (recommended):** MediaPipe Pose Landmarker finds 33 body points (nose, eyes, ears, shoulders, wrists, and so on). We take the highest head point, add a small margin, and that's the zone line. It follows you as you move closer or step sideways, and works at body-scale distances, since it's built for full-body fitness video.
-- **Face detector:** a lighter model that draws a box around your face. The zone line sits just above the box. Lighter, but tuned for faces near the camera.
-- **Fixed line:** a horizontal line you drag to your head height once. No extra model, but it's wrong as soon as you move closer or farther. Useful as a debugging stand-in.
+- **Default:** the **right half of the frame as you see it** (the video is mirrored, so it's your right side on screen).
+- **Adjustable:** drag to move it, drag a corner to resize it, or pick a preset in settings (right half, left half, **whole frame**).
+- The hand model is the only model needed. Nothing has to find your head or body.
 
-Both models run together, every frame, on the laptop. R1 stays hands-only. The zone arrives in R2.
+User: "don't code that in explicitly for now". The above-head zone waits until we test with real choreography (wish list). The box is the simple stand-in for testing.
 
-**Choreography that collides with commands** (hands-up moves, held poses, open palms overhead) is **not solved now**. It's an Unresolved thread (user). If it bites, the levers are: a longer dwell, the optional stillness rule, or a wake pose.
+**Choreography that collides with commands** (held poses, open palms) is **not solved now**. It's an Unresolved thread (user). For now the box and the 0.6 s dwell are the only guards. If it bites, the levers are: the above-head zone (wish list), a longer dwell, the optional stillness rule, or a wake pose.
 
 ### 4.3 The gestures
 
-All command shapes must be made **in the command zone** (above your head).
+All command shapes must be made **inside the command box**.
 
 | # | Gesture | Detected by | **Tap** (ring fills once, then drop the hand) | **Hold** (keep holding ~1.5 s) | Roadmap |
 |---|---|---|---|---|---|
@@ -86,7 +86,7 @@ What was removed, and why:
 
 - **Fist ("clear"):** fists track worse than open hands in MediaPipe [market] and are common in choreography [workflows]. "Clear" is now V-hold, or the third V-tap.
 - **Separate IN, OUT and loop-toggle shapes** (V, three fingers, shaka) collapse into one **V cycle**, copied from the Vidami looper pedal ("tap once to set start, again to set end, again to clear") [market].
-- **Horns** (reserved arm gesture) are no longer needed; the command zone does that job.
+- **Horns** (reserved arm gesture) are no longer needed; the box and dwell do that job for now.
 - **Finger counts 1–5** are kept only as a later idea where the count *is* the message ("jump to marker 3") [market]. See the wish list.
 
 Net change: from six command shapes plus two reserved, to **three shapes plus one grab**.
@@ -113,7 +113,7 @@ Cost: a tap fires a fraction of a second later, on release. That's fine between 
 The user's model (decided): you don't hunt for points. **Let the music play and mark where it is with a gesture.** You'll always overplay the start, so the knob is a **fine-tune** for pulling the loop start back a couple of counts. The end doesn't need precision; a few counts of overshoot is fine ("that's just considered trailing", user).
 
 ```
- music playing ──► V-tap above head ──► LOOP START marked (a bit late: you overplayed)
+ music playing ──► V-tap in the box ──► LOOP START marked (a bit late: you overplayed)
                ──► keep dancing/listening ──► V-tap ──► LOOP END marked, looping starts
                ──► (any time a start exists) grab the knob ──► nudge the START back/forward ──► release
                ──► index-tap to hear it from the new start
@@ -131,8 +131,8 @@ Because overplay is predictable, an **automatic pre-roll** (start every new loop
 
 ### 4.7 Feedback (readable from where you dance)
 
-- **Always visible:** a giant status word (PLAYING / PAUSED / LOOP), the loop bar with IN/OUT flags, and the **command-zone line** across the video.
-- **While holding:** a ring around the hand fills, labelled with what will fire ("LOOP: SET IN…"); the hold ring appears outside it. The zone line brightens while your hand is above it.
+- **Always visible:** a giant status word (PLAYING / PAUSED / LOOP), the loop bar with IN/OUT flags, and the **command box** outlined on the video.
+- **While holding:** a ring around the hand fills, labelled with what will fire ("LOOP: SET IN…"); the hold ring appears outside it. The box outline brightens while your hand is inside it.
 - **On fire:** a full-width banner for ~1 s plus a short soft sound, distinct for transport and loop actions. The sound can be turned off.
 - **Knob grabbed:** a dial graphic at the hand, with the value shown huge.
 - **Spoken confirmations** are on the wish list.
@@ -154,7 +154,7 @@ A wrist or forearm only tilts so far, maybe 60–80° each way comfortably (an e
 
 ### 5.2 Clutch: how we know you're grabbing
 
-A grab must **start in the command zone**. While grabbed you may lower the hand (assumed; see §9).
+A grab must **start inside the command box**. While grabbed the hand may leave the box (assumed; see §9). For the two-hand clutch, the steering hand starts in the box and the modifier palm can be anywhere (assumed; the whole-frame option sidesteps this).
 
 | Clutch | How it's measured from landmarks (plain words) | Pros | Cons |
 |---|---|---|---|
@@ -203,30 +203,28 @@ Research note: practice tools and dancers usually use a few fixed speeds (0.5 / 
 
 ```
 ┌──────────┐ frames ┌──────────────────────┐ hand landmarks  ┌───────────────────────────┐
-│  Webcam  │──┬───► │ Gesture Recognizer   │ + shape label ─►│ Hand features: finger     │
-│ (30 fps) │  │     │ (hands)              │                 │ states, palm facing,      │
-└──────────┘  │     └──────────────────────┘                 │ pinch, tilt, palm position│
-              │     ┌──────────────────────┐  head height    │ + "in command zone?"      │
-              └───► │ Pose Landmarker      │────────────────►│                           │
-                    │ (body; R2+)          │                 └─────────┬─────────────────┘
-                    └──────────────────────┘                           │
+│  Webcam  │──────► │ Gesture Recognizer   │ + shape label ─►│ Hand features: finger     │
+│ (30 fps) │        │ (hands)              │                 │ states, palm facing,      │
+└──────────┘        └──────────────────────┘                 │ pinch, tilt, palm centre  │
+                                                             │ + "inside command box?"   │
+                                                             └─────────┬─────────────────┘
                          ┌───────────────────────────────┬─────────────┴───────────┐
                          ▼                               ▼                         │
               ┌──────────────────────┐        ┌──────────────────────┐             │
               │ Command classifier   │        │ Knob                 │             │
-              │ zone, dwell, tap vs  │        │ clutch → motion →    │             │
+              │ box, dwell, tap vs   │        │ clutch → motion →    │             │
               │ hold, cooldown       │        │ mapping              │             │
               └──────────┬───────────┘        └──────────┬───────────┘             │
                          │ commands                      │ nudge / speed value     │
                          ▼                               ▼                         ▼
               ┌──────────────────────────────────────────────┐   ┌──────────────────────────┐
               │ Audio engine: play/pause/seek, loop IN..OUT, │──►│ UI: webcam + skeleton,   │
-              │ speed (pitch preserved)                      │   │ zone line, status, loop  │
+              │ speed (pitch preserved)                      │   │ command box, status, loop│
               └──────────────────────────────────────────────┘   │ bar, rings, dial, banner │
                                                                  └──────────────────────────┘
 ```
 
-- **Gesture Recognizer:** finds hands; gives landmarks and a shape label. **Pose Landmarker:** finds the body, so we know where your head is. Both run on the laptop; video never leaves it.
+- **Gesture Recognizer:** finds hands; gives landmarks and a shape label. It's the only vision model. It runs on the laptop; video never leaves it.
 - **Hand features:** simple geometry on landmarks.
 - **Command classifier:** our rule-based code for §4.2 and §4.4. Rules, not a trained model, so it's easy to understand and tune.
 - **Knob:** §5, three swappable pieces.
@@ -234,16 +232,16 @@ Research note: practice tools and dancers usually use a few fixed speeds (0.5 / 
 
 ### 6.2 Platform: a browser app (recommended)
 
-**A local web app in Chrome:** TypeScript, Vite (a dev server and build tool), MediaPipe Tasks Vision (Gesture Recognizer, Pose Landmarker), the browser camera API, a canvas overlay, and Web Audio. It runs at `localhost`. LoopStep (an open-source practice player) and DanceCoach (browser + MediaPipe) are handy code references [market].
+**A local web app in Chrome:** TypeScript, Vite (a dev server and build tool), MediaPipe Tasks Vision (Gesture Recognizer), the browser camera API, a canvas overlay, and Web Audio. It runs at `localhost`. LoopStep (an open-source practice player) and DanceCoach (browser + MediaPipe) are handy code references [market].
 
 | | **Browser (recommended)** | **Python desktop (OpenCV + MediaPipe)** |
 |---|---|---|
-| Hand + pose tracking | Same MediaPipe models, GPU in browser | Same models; slightly faster to prototype |
+| Hand tracking | Same MediaPipe models, GPU in browser | Same models; slightly faster to prototype |
 | Play / seek / loop | Web Audio is built for this; precise looping possible | Extra libraries; clunkier |
 | Live speed, pitch preserved (R5) | Built-in for basic quality; libraries for better | More plumbing |
 | Huge readable UI | HTML/CSS/canvas, fast to iterate | Crude windows or a GUI toolkit |
 | YouTube sync or phone camera later | Native to the browser | Hard |
-| Downsides | Chrome-first; camera needs `localhost` or HTTPS; two models per frame cost CPU/GPU | Packaging per OS |
+| Downsides | Chrome-first; camera needs `localhost` or HTTPS | Packaging per OS |
 
 Why the browser: the product is mostly audio control plus a big readable UI, which the browser does well, and the vision models are the same either way. No UI framework to start.
 
@@ -257,20 +255,19 @@ The user's call: get gestures working first, debug range afterwards. We note the
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  ⟳ LOOP   ▶ PLAYING                              0:42.3        (0.85×)   │  ← giant status; speed small, optional
 ├──────────────────────────────────────────────────────────────────────────┤
-│                   ✋ ◔  "LOOP: SET OUT…"   ← shape + dwell ring           │
-│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ COMMAND ZONE ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─    │  ← follows your head height
-│                       ( head )                                           │
-│                      (mirrored webcam view + skeleton)                   │
-│                                                                          │
-│        ╭───╮                                                             │
-│        │ ╱ │  KNOB: NUDGE START ◄◄  ← dial appears only while grabbed   │
-│        ╰───╯                                                             │
+│                                    ┏━━━━━━━━ COMMAND BOX ━━━━━━━━━━━━━┓  │  ← default: right half;
+│      (mirrored webcam view         ┃        ✋ ◔  "LOOP: SET OUT…"     ┃  │    drag / resize
+│       + hand skeleton)             ┃        shape + dwell ring        ┃  │
+│                                    ┃                                  ┃  │
+│        ╭───╮                       ┃                                  ┃  │
+│        │ ╱ │  KNOB: NUDGE START ◄◄ ┃  (dial appears while grabbed)    ┃  │
+│        ╰───╯                       ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  │
 │   T0 I1 M1 R0 P0  →  Victory          (debug readout, can be hidden)    │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  ════════█▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓█══════════════════════════   │  ← loop bar, LARGE flags
 │        START 0:31.0        ▲ playhead       END 0:47.5                   │
 ├──────────────────────────────────────────────────────────────────────────┤
-│  above head:  ✋ play/pause   ☝ tap: loop/song start · hold: song start  │  ← cheat sheet
+│  in the box:  ✋ play/pause   ☝ tap: loop/song start · hold: song start  │  ← cheat sheet
 │               ✌ tap: in→out→clear · hold: clear   🤏 grab knob  [keys]   │
 └──────────────────────────────────────────────────────────────────────────┘
 
@@ -281,7 +278,7 @@ Any command: a full-width banner for ~1 s, e.g.  ⏮ RESTART FROM IN
 
 - Anything past roadmap R5: no YouTube sync, AI choreography agent, saved sessions, or beat detection.
 - No range tuning yet (gestures first).
-- No solving of choreography/command collisions beyond the zone and dwell (Unresolved thread).
+- No above-head zone yet; no solving of choreography/command collisions beyond the box and dwell (Unresolved thread).
 - No pose or step analysis, scoring, or recording of the dancer.
 - Local audio files only (decided): no YouTube, Spotify or Apple Music.
 - No accounts or cloud; no mobile version; no custom ML training.
@@ -290,15 +287,15 @@ Any command: a full-width banner for ~1 s, e.g.  ⏮ RESTART FROM IN
 
 Each has a working assumption so work can continue.
 
-1. **Knob grab and the zone:** (a) the grab must start above your head, then you can lower your hand while grabbed; (b) the knob only works while your hand stays above your head; (c) the knob ignores the zone.
-   **Assumption: (a).** (b) is tiring; (c) risks accidental grabs.
+1. **Knob grab and the box:** (a) the grab must start inside the box, then the hand may leave while grabbed; (b) the knob only works while the hand stays inside the box; (c) the knob ignores the box.
+   **Assumption: (a).** (b) cramps the turning motion; (c) risks accidental grabs.
 2. **After nudging the loop start:** (a) only the marker moves; you index-tap to hear it from the new start; (b) on release, playback jumps to the new start automatically so you hear it at once.
    **Assumption: (a)**, since it reuses an existing gesture and never interrupts the music unasked.
 3. **Speed range for R5:** **Assumption: 0.5× to 1.25×**, with a detent at 1.0×.
 
 **Decided (no longer open):** restart goes to the loop start if set, else the song start; local audio files only; loops are marked as the music plays, and the knob only nudges the start.
 
-**Defaults we're assuming unless you object:** index *hold* = song start even with a loop set; the zone line comes from the pose model (a fixed draggable line as a debug stand-in); loop back to start automatically at the end; confirmation sound on, quiet, toggleable; either hand works for commands; laptop screen only; Chrome only.
+**Defaults we're assuming unless you object:** index *hold* = song start even with a loop set; command box = right half of the screen (adjustable; whole-frame option); loop back to start automatically at the end; confirmation sound on, quiet, toggleable; either hand works for commands; laptop screen only; Chrome only.
 
 ## 10. Research sources
 

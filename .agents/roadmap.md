@@ -1,13 +1,13 @@
 # Dance — Roadmap
 
-*Revised 2026-10-11 (v1). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
+*Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
 Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **All are `proposed` until the user approves.**
 
 | # | Checkpoint | Status |
 |---|---|---|
 | R1 | Bring-up: camera, hand skeleton, pseudo-chords | proposed |
-| R2 | Recognize the gesture set (command zone, dwell, tap/hold, clutch shapes) | proposed |
+| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | proposed |
 | R3 | Audio + webcam together; play/pause/restart by gesture | proposed |
 | R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | proposed |
 | R5 | Speed by rotation knob | proposed |
@@ -23,7 +23,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Hand detection with the skeleton (21 landmark dots plus connecting lines) drawn on each hand.
 - A live pseudo-chord readout (`T0 I1 M1 R0 P0`), MediaPipe's shape label, palm-facing state, and fps.
 
-**Scope out:** command zone / pose model, commands, dwell rings, audio, knob, range tuning, anything in R2+.
+**Scope out:** command box, commands, dwell rings, audio, knob, range tuning, anything in R2+.
 
 **Done means**
 - Opening the page and allowing the camera shows your mirrored video within a few seconds.
@@ -40,29 +40,29 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 ## R2 — Recognize the gesture set
 
-**Goal:** turn shapes into deliberate commands, using the user's mechanism: held ≥ 0.6 s and above the head.
+**Goal:** turn shapes into deliberate commands: held ≥ 0.6 s with the hand inside a command box on screen.
 
 **Scope in**
 - A "gesture test bench" view (no music).
-- **Command zone:** add MediaPipe Pose Landmarker to find the head; draw a zone line just above it; command shapes count only above it. A fixed draggable line serves as a debug stand-in [spec §4.2].
+- **Command box:** a rectangle drawn on the video; a shape counts only while the hand's palm centre is inside it. Default: the right half of the mirrored view. Drag or resize it, or pick a preset (right half, left half, whole frame) [spec §4.2]. User: "it just needs to find my hand in some bounding box."
 - The three command shapes (open palm, index up, V) with **0.6 s minimum dwell** (ring), palm facing, cooldown, and one hand at a time. Optional stillness rule behind a toggle.
 - **Tap vs hold** (fire on release vs an outer hold ring at ~1.5 s) [spec §4.4].
 - **Clutch-shape detection:** pinch, claw, and the two-hand modifier, shown as "GRABBED / released" states. Nothing is controlled yet.
 - A banner plus sound on fire, a log of fired events with timestamps, and sliders for dwell and pinch thresholds.
 
-**Scope out:** audio, knob rotation and mapping, range tuning, fixing choreography collisions, anything in R3+.
+**Scope out:** above-head zone and any head/body tracking (wish list), audio, knob rotation and mapping, range tuning, fixing choreography collisions, anything in R3+.
 
 **Done means**
-- At the distance you test at, each shape fires on at least 9 of 10 deliberate attempts above the head, as itself, and tap vs hold are told apart correctly.
-- The same shapes made **below** the zone line never fire.
-- The zone line tracks your head as you step closer, farther, or sideways.
+- At the distance you test at, each shape fires on at least 9 of 10 deliberate attempts inside the box, as itself, and tap vs hold are told apart correctly.
+- The same shapes made **outside** the box never fire.
+- Moving or resizing the box (or choosing whole frame) changes where shapes count, immediately.
 - Holding a shape a long time fires exactly once.
 - Pinch, claw and two-hand grabs show GRABBED/released correctly, or failures are noted.
 - Informational: dance for ~2 minutes with no commands intended and note the false-fire count in the log. This feeds the choreography-collision thread; it isn't a pass/fail gate.
 
 **Status:** proposed
 
-**Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The pose model is added here, not in R1, to keep bring-up minimal.
+**Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The above-head zone is deferred until testing with real choreography (user); the box is the stand-in.
 
 ---
 
@@ -72,7 +72,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Scope in**
 - Load a local audio file (picker or drag-and-drop). Local files only (decided).
-- One screen: webcam + skeleton + zone line, giant status word, timeline with playhead.
+- One screen: webcam + skeleton + command box, giant status word, timeline with playhead.
 - **Open palm** = play/pause. **Index up** (tap or hold) = restart from the top, immediately.
 - Matching on-screen buttons and keys.
 
@@ -80,7 +80,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Done means**
 - An MP3 or WAV loads; its length and a moving playhead show.
-- Open palm (above the head) pauses and resumes from the same spot.
+- Open palm (in the box) pauses and resumes from the same spot.
 - Index up restarts from 0:00 and plays.
 - Music reacts as soon as the ring completes, with no noticeable extra delay.
 - Status and playhead are readable from where you dance.
@@ -99,7 +99,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - **V cycle, marking where the music is right now:** tap 1 = set loop start, tap 2 = set loop end and start looping, tap 3 = clear; **V hold** = clear [spec §4.3, §4.6].
 - **Restart (decided):** index tap = loop start if set, otherwise song start; index hold = song start. Plays immediately [spec §4.5].
 - **Small automatic late-mark fix:** marks are stamped at ring start minus a tunable offset (default 0.15 s) [spec §4.6].
-- **Knob nudge for the loop start only:** grab (in the zone) and turn to move the start marker back or forward, in seconds. The marker moves only; index-tap to hear it [spec §4.6, §9 Q2]. No fine-tune for the loop end, since overshoot is "trailing" (user).
+- **Knob nudge for the loop start only:** grab (starting in the box) and turn to move the start marker back or forward, in seconds. The marker moves only; index-tap to hear it [spec §4.6, §9 Q2]. No fine-tune for the loop end, since overshoot is "trailing" (user).
 - **Knob experiment, all variants switchable in a settings panel** [spec §5.5]: **pinch + tilt + spring-loaded joystick first**; then absolute wiper, relative + ratchet, and circling (Doctor Strange jog); then claw and two-hand clutches.
 - Large START/END flags and a highlighted region on the loop bar; the start time is shown huge while nudging.
 - Keys and buttons for every action, including nudge.
