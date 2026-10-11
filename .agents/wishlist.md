@@ -1,6 +1,6 @@
 # Dance — Wish list and unresolved threads
 
-*Living document · started 2026-10-11 · revised 2026-10-11 (v1: research, knob, setup, loop model · v1.1: above-head zone moved here; R2 uses an on-screen box · v1.2: calibration sequence added as next up after R2). Anything off-checkpoint goes here, not into current work.*
+*Living document · started 2026-10-11 · revised 2026-10-11 (v1: research, knob, setup, loop model · v1.1: above-head zone moved here; R2 uses an on-screen box · v1.2: calibration sequence added, slated R6+). Anything off-checkpoint goes here, not into current work.*
 
 Tags: **next up** (proposed to follow the current checkpoint; needs user approval) · **closed** (resolved or dropped by the user) · **later** (a feature for after the roadmap) · **QoL** (quality of life) · **overlooked** (something we hadn't considered) · **unresolved** (a known problem or open "is this a problem?") · **risk** (a future risk) · **bug?** (a suspected bug).
 Sources: [market] = `.agents/research/market-dance-tools.md`, [workflows] = `.agents/research/dancer-workflows.md`, user = the user's own words.
@@ -15,7 +15,7 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Turn a choreography video into a teachable "choreo AI agent"** (user) | later | Large and open-ended; depends on everything else working |
 | **Phone camera plugin:** phone back camera at 1×/2× zoom, phone body tracking (user) | later | Range is deferred ("gestures first"); likely the main fix for distance |
 | **Wearable input** (user) | later | Future modality; would also sidestep choreography collisions |
-| **NEXT UP AFTER R2: calibration sequence for the command zone.** Press "calibrate", raise your hand to the height you want, and the zone becomes everything above that line (the box's bottom edge = calibrated hand height). Done by hand each session; no head or body tracking (user) | next up | User's intended direction. Kept out of R2, which uses a mouse-editable rectangle; needs the user's approval to become a roadmap checkpoint |
+| **R6+: calibration sequence for the command zone.** Press "calibrate", raise your hand to the height you want, and the zone becomes everything above that line (the box's bottom edge = calibrated hand height). Done by hand each session; no head or body tracking (user) | later | User's intended direction, slated R6+ ("let's still not worry about it in R2. It's going to be R6+"). R2 uses a mouse-editable rectangle |
 | **Automatic above-head zone** found with a body or face tracker (e.g. MediaPipe Pose) | later | Superseded by manual calibration, which needs no extra model; only if calibration proves annoying |
 | **Snap loop start/end to the beat or 8-count** | later | Hides late-landing points [market, workflows]; needs beat detection |
 | **"Loop the last 8 counts"** with one gesture | later | No aiming needed [workflows]; needs beat detection |
@@ -49,7 +49,7 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 
 | Thread | Tag | Why parked / what resolves it |
 |---|---|---|
-| **Choreography collides with commands** (held poses, open palms, peace signs) | unresolved | User: leave it for now. Box + 0.6 s dwell first; R2 logs false fires. Future levers: calibrated above-hand-height zone (next up), longer dwell, stillness rule, wake pose, wearable |
+| **Choreography collides with commands** (held poses, open palms, peace signs) | unresolved | User: leave it for now. Box + 0.6 s dwell first; R2 logs false fires. Future levers: calibrated above-hand-height zone (R6+), longer dwell, stillness rule, wake pose, wearable |
 | **Laptop or camera moves, or a different person's height** | closed | User: don't worry about it. You recalibrate or re-drag the box each session |
 | **Range / distance:** gestures first, range later (user) | unresolved | Note the tested distance in R1–R2; fixes later (phone camera, external webcam, lighting, body-pose commands) |
 | **Can pinch and claw be read reliably** once you're farther away? | risk | Part of the range thread; the two-hand clutch is the most robust option |

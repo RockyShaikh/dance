@@ -1,6 +1,6 @@
 # Dance — Roadmap
 
-*Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed as next up after R2). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
+*Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
 Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **All are `proposed` until the user approves.**
 
@@ -50,7 +50,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - **Clutch-shape detection:** pinch, claw, and the two-hand modifier, shown as "GRABBED / released" states. Nothing is controlled yet.
 - A banner plus sound on fire, a log of fired events with timestamps, and sliders for dwell and pinch thresholds.
 
-**Scope out:** the calibration sequence (wish list, next up after R2), above-head zone and any head/body tracking, audio, knob rotation and mapping, range tuning, fixing choreography collisions, anything in R3+.
+**Scope out:** the calibration sequence (wish list, R6+), above-head zone and any head/body tracking, audio, knob rotation and mapping, range tuning, fixing choreography collisions, anything in R3+.
 
 **Done means**
 - At the distance you test at, each shape fires on at least 9 of 10 deliberate attempts inside the box, as itself, and tap vs hold are told apart correctly.
@@ -62,7 +62,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Status:** proposed
 
-**Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The planned zone direction is a per-session calibration ("raise your hand: only above here"). It's wish-listed as next up after R2, not part of R2.
+**Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The planned zone direction is a per-session calibration ("raise your hand: only above here"). It's wish-listed for R6+ (user), not part of R2.
 
 ---
 

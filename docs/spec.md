@@ -69,7 +69,7 @@ We also compute each finger's up/down state as a five-letter **pseudo-chord** (T
 
 User: "don't code that in explicitly for now". The box is the simple stand-in for testing.
 
-**Planned direction (wish list, next up after R2): per-session calibration.** At the start of a session you press "calibrate" and raise your hand to the height you want. The system sets the zone to everything above that line: the box's bottom edge becomes your calibrated hand height. It's done by hand each session, with no head or body tracking. If the laptop or camera moves, or someone of a different height uses it, you just recalibrate (or re-drag the box) (user).
+**Planned direction (wish list, R6+): per-session calibration.** At the start of a session you press "calibrate" and raise your hand to the height you want. The system sets the zone to everything above that line: the box's bottom edge becomes your calibrated hand height. It's done by hand each session, with no head or body tracking. If the laptop or camera moves, or someone of a different height uses it, you just recalibrate (or re-drag the box) (user).
 
 **Choreography that collides with commands** (held poses, open palms) is **not solved now**. It's an Unresolved thread (user). For now the box and the 0.6 s dwell are the only guards. If it bites, the levers are: a calibrated above-hand-height zone (wish list), a longer dwell, the optional stillness rule, or a wake pose.
 
