@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Dance — hand bring-up</title>
+  </head>
+  <body>
+    <header id="bar">
+      <div id="fps" aria-label="frames per second"><span id="fps-value">--</span><span class="unit"> fps</span></div>
+      <div id="status" role="status">Starting…</div>
+    </header>
+
+    <main id="layout">
+      <section id="stage">
+        <!-- The video and canvas are mirrored together, so landmarks stay aligned. -->
+        <div id="mirror">
+          <video id="video" playsinline muted></video>
+          <img id="still" alt="" hidden />
+          <canvas id="overlay"></canvas>
+        </div>
+        <div id="message" hidden></div>
+      </section>
+
+      <aside id="readout">
+        <article class="hand-card" id="hand-0"></article>
+        <article class="hand-card" id="hand-1"></article>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
