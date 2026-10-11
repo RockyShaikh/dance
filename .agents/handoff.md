@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-R1 bring-up (user: "okay lets start! let's get the r1 brought up"): webcam + hand skeleton overlay + pseudo-chord readout.
+R2: tell gestures apart reliably. Command box (mouse-editable rectangle, default right half), 0.6 s dwell, tap vs hold, clutch-shape detection (pinch/claw/two-hand) on a test bench.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ R1 bring-up (user: "okay lets start! let's get the r1 brought up"): webcam + han
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-User tests R1 on a real hand: `cd .claude/worktrees/agent-a711e219ac20fc31d && npm install && npm run dev` → http://localhost:5173/. Check Left/Right label (`swapHandedness` in src/config.ts), finger chords, labels, fps, distance. If good and the user says so: merge branch `worktree-agent-a711e219ac20fc31d` into main, mark R1 done, stow, review the wish list, R2 active on their word.
+Wait for B2 (ship) and T2 (tutor). On B2: give the user test steps per R2 done-means; merge only on their word. R1 worktree `.claude/worktrees/agent-a711e219ac20fc31d` is merged; ask before removing it. A dev server may still be running from it on :5173.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
