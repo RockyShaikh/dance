@@ -2,15 +2,15 @@
 
 *Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
-Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **All are `proposed` until the user approves.**
+Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 active.
 
 | # | Checkpoint | Status |
 |---|---|---|
-| R1 | Bring-up: camera, hand skeleton, pseudo-chords | proposed |
-| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | proposed |
-| R3 | Audio + webcam together; play/pause/restart by gesture | proposed |
-| R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | proposed |
-| R5 | Speed by rotation knob | proposed |
+| R1 | Bring-up: camera, hand skeleton, pseudo-chords | **active** |
+| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | planned |
+| R3 | Audio + webcam together; play/pause/restart by gesture | planned |
+| R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | planned |
+| R5 | Speed by rotation knob | planned |
 
 ---
 
@@ -32,7 +32,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Open palm, index up and V show the right label.
 - The distance you tested at is noted (informational, not pass/fail).
 
-**Status:** proposed
+**Status:** active (started 2026-10-11)
 
 **Notes:** range is deliberately deferred: "gestures first, range later" (user). See Unresolved threads.
 
@@ -60,7 +60,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Pinch, claw and two-hand grabs show GRABBED/released correctly, or failures are noted.
 - Informational: dance for ~2 minutes with no commands intended and note the false-fire count in the log. This feeds the choreography-collision thread; it isn't a pass/fail gate.
 
-**Status:** proposed
+**Status:** planned
 
 **Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The planned zone direction is a per-session calibration ("raise your hand: only above here"). It's wish-listed for R6+ (user), not part of R2.
 
@@ -85,7 +85,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Music reacts as soon as the ring completes, with no noticeable extra delay.
 - Status and playhead are readable from where you dance.
 
-**Status:** proposed
+**Status:** planned
 
 **Notes:** watch for audio stutter while the hand model runs every frame, and for Bluetooth speaker delay (Unresolved threads).
 
@@ -115,7 +115,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - You've nudged at least 5 loop starts with each mapping and motion (joystick, absolute, relative, circling) and each clutch (pinch, claw, two-hand), and recorded what felt best (and why) in AGENTS.md → Decisions.
 - A nudge can't move the start past the end, or before 0:00.
 
-**Status:** proposed
+**Status:** planned
 
 **Notes**
 - The loop model is the user's: let it play, mark it, then fine-tune only the start, because "you will always overplay at the beginning." It replaces the earlier "rotate to find points" vs "play-pause-set" A/B.
@@ -144,6 +144,6 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Speed holds across loop restarts.
 - You've used it on a few loops and noted which mapping feels right for speed, or whether fixed presets would be better.
 
-**Status:** proposed
+**Status:** planned
 
 **Notes:** the user chose a continuous knob and favours the spring-loaded joystick. Practice tools usually use fixed speeds instead [market, workflows], so presets stay on the wish list as a fallback.
