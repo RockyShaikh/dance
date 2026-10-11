@@ -6,7 +6,6 @@ Updated: 2026-10-11
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
 | B2 | R2 gesture recognition: command box (mouse-editable), dwell/tap/hold, clutch shapes, test bench | ship | worktree (TBD on report) | 2026-10-11 |
-| T2 | Dashboard: R1 code pointers + R2 concepts | tutor | n/a | 2026-10-11 |
 
 ## Waiting on user
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
@@ -14,6 +13,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- T2 — dashboard v2: real R1 code pointers, handedness/palm lesson, R2 concepts + timeline lab — same link — 2026-10-11
 - B1 — R1 built: build + 36 tests pass, fake-camera + still-photo checks OK; real-hand unverified — branch `worktree-agent-a711e219ac20fc31d` (merged to main 6d0fdff after the user's live test + handedness fix 50517b6; worktree kept until the user OKs cleanup), worktree `.claude/worktrees/agent-a711e219ac20fc31d` — 2026-10-11
 - T1 — R1 Learning Dashboard — https://claude.ai/artifact/RQnHUzBeptMZt14sownWyk — 2026-10-11
 - D1 — review doc published (3 tabs, synced to v1.2) — https://claude.ai/code/artifact/57c28193-d565-486b-a796-75bcfb44eaf1 — 2026-10-11
