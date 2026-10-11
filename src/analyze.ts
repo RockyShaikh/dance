@@ -2,7 +2,7 @@ import type { GestureRecognizerResult, NormalizedLandmark } from "@mediapipe/tas
 import type { Vec2 } from "./box";
 import { APP, FEATURES } from "./config";
 import type { Handedness, Point3 } from "./hand";
-import { clawExtension, palmCentre, pinchRatio } from "./handFeatures";
+import { clawExtension, othersReach, palmCentre, pinchRatio } from "./handFeatures";
 import { palmFacingInfo } from "./palmFacing";
 import { pseudoChord, type PseudoChord } from "./pseudoChord";
 
@@ -28,6 +28,8 @@ export interface HandReading {
   pinchRatio: number;
   /** Finger reach: about 1.9 open, 1.3-1.6 claw, 1.0 fist. */
   clawExt: number;
+  /** The same for middle, ring and pinky only (low in a fist). */
+  othersReach: number;
 }
 
 /** Normalized (0..1) landmarks to isotropic pixel space, so geometry is not stretched by the aspect ratio. */
@@ -67,6 +69,7 @@ export function readHand(
     palm: palmCentre(landmarks),
     pinchRatio: pinchRatio(iso),
     clawExt: clawExtension(iso),
+    othersReach: othersReach(iso),
   };
 }
 

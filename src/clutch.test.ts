@@ -3,14 +3,16 @@ import type { Box, Vec2 } from "./box";
 import { PRESETS } from "./box";
 import { initialClutchState, stepClutches, type ClutchHand, type ClutchState, type ClutchView } from "./clutch";
 import { CLUTCH, type ClutchConfig } from "./config";
-import type { Handedness } from "./hand";
+import { LM, type Handedness, type Point3 } from "./hand";
+import { clawExtension, othersReach, palmCentre, pinchRatio } from "./handFeatures";
+import { chord, makeHand, shapes } from "./test/fixtures";
 
 const FRAME = 33;
 const INSIDE: Vec2 = { x: 0.75, y: 0.5 };
 const OUTSIDE: Vec2 = { x: 0.25, y: 0.5 };
 
 function ch(hand: Handedness, o: Partial<ClutchHand> = {}): ClutchHand {
-  return { hand, shape: "None", palm: INSIDE, pinchRatio: 0.9, clawExt: 1.9, ...o };
+  return { hand, shape: "None", palm: INSIDE, pinchRatio: 0.9, clawExt: 1.9, othersReach: 1.9, ...o };
 }
 
 class Bench {
@@ -217,5 +219,89 @@ describe("independence", () => {
     const b = new Bench();
     b.show(200, [ch("Left", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } }), ch("Right", { pinchRatio: 0.05, clawExt: 1.9 })]);
     expect(b.view).toEqual({ pinch: "Right", claw: null, twoHand: true });
+  });
+});
+
+describe("a fist is not a pinch", () => {
+  it("thumb against the index with the other fingers curled does not grab", () => {
+    const b = new Bench();
+    b.show(500, [ch("Right", { pinchRatio: 0.02, othersReach: 1.05, clawExt: 1.05 })]);
+    expect(b.view.pinch).toBeNull();
+  });
+
+  it("the same thumb-to-index touch with the other fingers out is a pinch", () => {
+    const b = new Bench();
+    b.show(200, [ch("Right", { pinchRatio: 0.02, othersReach: 1.8 })]);
+    expect(b.view.pinch).toBe("Right");
+  });
+
+  it("works on real landmark geometry: a fist with its thumb pressed on the index tip never grabs, a pinching open hand does", () => {
+    const W = 1280;
+    const H = 720;
+    const toHand = (pts: Point3[], hand: Handedness): ClutchHand => ({
+      hand,
+      shape: "None",
+      palm: palmCentre(pts.map((p) => ({ x: p.x / W, y: p.y / H }))),
+      pinchRatio: pinchRatio(pts),
+      clawExt: clawExtension(pts),
+      othersReach: othersReach(pts),
+    });
+    const touch = (pts: Point3[]): Point3[] => {
+      const out = pts.map((p) => ({ ...p }));
+      out[LM.THUMB_TIP] = { ...pts[LM.INDEX_TIP] };
+      return out;
+    };
+    // Put the palm inside the right-half box: raw x is mirrored, so draw it at raw x = 400 (display 0.69).
+    const at = { x: 400, y: 360 };
+    const fist = toHand(touch(shapes.fist("Right", { at })), "Right");
+    expect(fist.pinchRatio).toBeLessThan(0.05); // worst case: tips exactly together
+    const a = new Bench();
+    a.show(1000, [fist]);
+    expect(a.view.pinch).toBeNull();
+
+    const pinching = toHand(touch(makeHand({ hand: "Right", fingers: chord("01111"), at })), "Right");
+    const b = new Bench();
+    b.show(200, [pinching]);
+    expect(b.view.pinch).toBe("Right");
+  });
+});
+
+describe("claw vs a relaxed, half-curled hand (real landmark geometry)", () => {
+  const W = 1280;
+  const H = 720;
+  const at = { x: 400, y: 360 };
+  const clawHand = (curl: number): ClutchHand => {
+    const pts = makeHand({ hand: "Right", fingers: chord("11111"), curl, at });
+    return {
+      hand: "Right",
+      shape: "None",
+      palm: palmCentre(pts.map((p) => ({ x: p.x / W, y: p.y / H }))),
+      pinchRatio: pinchRatio(pts),
+      clawExt: clawExtension(pts),
+      othersReach: othersReach(pts),
+    };
+  };
+
+  it("a hand that is half-curled from the start (relaxed) never grabs", () => {
+    const b = new Bench();
+    b.show(3000, [clawHand(0.5)]);
+    expect(b.view.claw).toBeNull();
+  });
+
+  it("an open hand that then curls halfway grabs, and holds while it stays half-curled", () => {
+    const b = new Bench();
+    b.show(200, [clawHand(0)]);
+    b.show(200, [clawHand(0.5)]);
+    expect(b.view.claw).toBe("Right");
+    b.show(3000, [clawHand(0.5)]);
+    expect(b.view.claw).toBe("Right");
+  });
+
+  it("an open hand that relaxes only after a pause does not grab", () => {
+    const b = new Bench();
+    b.show(200, [clawHand(0)]);
+    b.show(CLUTCH.claw.openToClawMs + 500, [clawHand(1)]); // closed to a fist, out of the band
+    b.show(500, [clawHand(0.5)]);
+    expect(b.view.claw).toBeNull();
   });
 });

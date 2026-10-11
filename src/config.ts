@@ -139,6 +139,12 @@ export interface ClutchConfig {
     sliderMax: number;
     /** Released once the gap is above grabRatio * releaseFactor ("must clearly open again"). */
     releaseFactor: number;
+    /**
+     * A fist is not a pinch: its thumb tip lies right against the curled index finger.
+     * To START a pinch, the middle, ring and pinky must be at least this far out
+     * (same finger-reach scale as the claw: open about 1.9, fist about 1.0).
+     */
+    minOthersReach: number;
   };
   claw: {
     /**
@@ -152,7 +158,12 @@ export interface ClutchConfig {
     maxExt: number;
     /** Once grabbed, the range widens by this much each side so a wobble doesn't drop it. */
     stayMargin: number;
-    /** A claw must follow an open hand within this long ("curls in as if grabbing a ball"). */
+    /**
+     * What tells a claw from a relaxed, half-curled hand: the CHANGE. The hand must have
+     * been clearly open (reach >= openExt) within this long before it reached the half-curled
+     * band ("curls in as if grabbing a ball"). A hand that is simply half-curled at rest never
+     * grabs. Real-hand tuning of the numbers is expected.
+     */
     openToClawMs: number;
   };
   twoHand: {
@@ -166,7 +177,7 @@ export interface ClutchConfig {
 }
 
 export const CLUTCH: ClutchConfig = {
-  pinch: { grabRatio: 0.3, sliderMin: 0.1, sliderMax: 0.6, releaseFactor: 1.6 },
+  pinch: { grabRatio: 0.3, sliderMin: 0.1, sliderMax: 0.6, releaseFactor: 1.6, minOthersReach: 1.3 },
   claw: { openExt: 1.75, minExt: 1.25, maxExt: 1.65, stayMargin: 0.08, openToClawMs: 500 },
   twoHand: { modifierSide: "left", modifierShape: "Open_Palm" },
   releaseGraceMs: 300,

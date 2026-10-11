@@ -53,11 +53,23 @@ const FINGER_ENDS = [
  * half-curled "claw" about 1.3 to 1.6, a fist about 1.0. Used for the claw clutch.
  */
 export function clawExtension(lm: readonly Point3[]): number {
+  return meanReach(lm, FINGER_ENDS);
+}
+
+/**
+ * Same measure over middle, ring and pinky only (the fingers that don't take part in a
+ * pinch). Low = they are curled into the palm, as in a fist, which is not a pinch.
+ */
+export function othersReach(lm: readonly Point3[]): number {
+  return meanReach(lm, FINGER_ENDS.slice(1));
+}
+
+function meanReach(lm: readonly Point3[], ends: readonly (readonly [number, number])[]): number {
   const wrist = lm[LM.WRIST];
   let sum = 0;
-  for (const [mcp, tip] of FINGER_ENDS) {
+  for (const [mcp, tip] of ends) {
     const base = dist(lm[mcp], wrist);
     sum += base === 0 ? 0 : dist(lm[tip], wrist) / base;
   }
-  return sum / FINGER_ENDS.length;
+  return sum / ends.length;
 }

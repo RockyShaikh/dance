@@ -432,3 +432,73 @@ describe("view", () => {
     expect(b.view).toMatchObject({ phase: "idle", shape: null, seen: null, blocked: null, progress: 0 });
   });
 });
+
+describe("timing is by clock, not by frame count", () => {
+  function fireTimes(frameMs: number, shape: string, holdMs: number): number[] {
+    let state = INITIAL_STATE;
+    const times: number[] = [];
+    for (let t = frameMs; t <= holdMs; t += frameMs) {
+      const r = stepCommands(state, { t, hands: [hand(shape)], box: PRESETS.right }, COMMANDS);
+      state = r.state;
+      if (r.fired) times.push(r.fired.t);
+    }
+    return times;
+  }
+
+  it("fires at the same moment at 10, 30 and 120 fps", () => {
+    for (const ms of [100, 33, 8]) {
+      const [t] = fireTimes(ms, "Open_Palm", 2000);
+      // the hand first appears on the first frame (t = ms); the dwell is measured from there
+      expect(t - ms).toBeGreaterThanOrEqual(COMMANDS.dwellMs);
+      expect(t - ms).toBeLessThanOrEqual(COMMANDS.dwellMs + ms);
+    }
+  });
+
+  it("the hold fires at the same moment at any frame rate", () => {
+    for (const ms of [100, 33, 8]) {
+      const times = fireTimes(ms, "Victory", 4000);
+      expect(times).toHaveLength(1);
+      expect(times[0] - ms).toBeGreaterThanOrEqual(COMMANDS.holdMs);
+      expect(times[0] - ms).toBeLessThanOrEqual(COMMANDS.holdMs + ms);
+    }
+  });
+});
+
+describe("the hand leaving view (tracking lost) mid-gesture", () => {
+  for (const shape of COMMANDS.shapes) {
+    it(`${shape}: vanishing before the ring is full cancels, nothing fires`, () => {
+      const b = new Bench();
+      b.show(COMMANDS.dwellMs - 200, [hand(shape)]);
+      b.idle(5000);
+      expect(b.fires).toHaveLength(0);
+      expect(b.view.phase).toBe("idle");
+    });
+  }
+
+  for (const shape of COMMANDS.holdShapes) {
+    it(`${shape}: vanishing after the ring is full counts as a release, so a TAP`, () => {
+      const b = new Bench();
+      b.show(COMMANDS.dwellMs + 300, [hand(shape)]);
+      expect(b.fires).toHaveLength(0);
+      b.idle(5000);
+      expect(b.fires).toHaveLength(1);
+      expect(b.fires[0]).toMatchObject({ shape, kind: "tap" });
+    });
+
+    it(`${shape}: vanishing after the hold already fired adds nothing`, () => {
+      const b = new Bench();
+      b.show(effectiveHoldMs(COMMANDS) + 300, [hand(shape)]);
+      b.idle(5000);
+      expect(b.fires).toHaveLength(1);
+      expect(b.fires[0].kind).toBe("hold");
+    });
+  }
+
+  it("coming back after a cancelled dwell starts fresh (the earlier time is not banked)", () => {
+    const b = new Bench();
+    b.show(COMMANDS.dwellMs - 200, [hand("Open_Palm")]);
+    b.idle(500);
+    b.show(COMMANDS.dwellMs - 200, [hand("Open_Palm")]);
+    expect(b.fires).toHaveLength(0);
+  });
+});

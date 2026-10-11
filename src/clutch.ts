@@ -3,6 +3,9 @@
  * modifier, each reported as GRABBED or released. R2 only DETECTS them; nothing
  * is controlled yet. Pure reducers, no DOM, time passed in with every frame.
  *
+ * Pinch is thumb tip to index tip, but not when the other three fingers are curled
+ * into the palm (a fist has its thumb against the index too).
+ *
  * Common rules, from the spec:
  *  - A grab must START inside the command box; once grabbed the hand may leave it.
  *  - If the hand is lost while grabbed, the grab holds for `releaseGraceMs`
@@ -23,6 +26,8 @@ export interface ClutchHand {
   pinchRatio: number;
   /** From `clawExtension`. */
   clawExt: number;
+  /** From `othersReach`: low in a fist, which must not read as a pinch. */
+  othersReach: number;
 }
 
 /** State of a clutch that follows one hand. */
@@ -63,7 +68,8 @@ function stepPinch(prev: HandClutch, t: number, hand: ClutchHand | undefined, bo
   if (!hand) return loseHand(s, t, cfg);
   s.lastSeen = t;
   if (!s.grabbed) {
-    s.grabbed = hand.pinchRatio <= cfg.pinch.grabRatio && contains(box, hand.palm);
+    s.grabbed =
+      hand.pinchRatio <= cfg.pinch.grabRatio && hand.othersReach >= cfg.pinch.minOthersReach && contains(box, hand.palm);
   } else if (hand.pinchRatio >= cfg.pinch.grabRatio * cfg.pinch.releaseFactor) {
     s.grabbed = false;
   }

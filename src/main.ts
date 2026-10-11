@@ -98,7 +98,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     {
       t: ts,
       box: settings.box,
-      hands: hands.map((h) => ({ hand: h.hand, shape: h.shape, palm: h.palm, pinchRatio: h.pinchRatio, clawExt: h.clawExt })),
+      hands: hands.map((h) => ({ hand: h.hand, shape: h.shape, palm: h.palm, pinchRatio: h.pinchRatio, clawExt: h.clawExt, othersReach: h.othersReach })),
     },
     clutchCfg(),
   );

@@ -2,7 +2,7 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R1 (bring-up):** open the webcam, draw a hand skeleton on it, and show a live readout of finger states. There is no audio and there are no commands yet.
+**This is checkpoint R2 (gesture test bench), on top of R1 (bring-up):** the webcam, hand skeleton and finger readouts from R1, plus a command box, dwell rings, tap vs hold, clutch-shape detection, a banner, sound and an event log. There is no audio playback; firing a command only shows and logs it.
 
 ## Install and run
 
@@ -19,7 +19,7 @@ Other scripts:
 
 | Command | What it does |
 |---|---|
-| `npm test` | Unit tests (Vitest) for the finger-state and palm-facing logic |
+| `npm test` | Unit tests (Vitest): finger states, palm facing, command box, command state machine, clutch shapes |
 | `npm run typecheck` | TypeScript check |
 | `npm run build` | Type-check, then production build into `dist/` |
 
@@ -53,6 +53,37 @@ Code lives in `src/pseudoChord.ts` and `src/palmFacing.ts` (pure functions of th
 ### Left vs right
 
 The page feeds the model the un-mirrored camera frame (only the *display* is mirrored). On a live check (2026-10-11), MediaPipe's Left/Right label already matched the user's own hand, so `swapHandedness` in `src/config.ts` is `false`. **If "Right hand" appears when you raise your left hand, flip it.** Palm facing uses this label too, so a wrong setting inverts it as well.
+
+## R2 test bench: what you see and how to use it
+
+**Command box.** The cyan rectangle on the video (default: the right half as you see it). A shape counts only while your **palm centre** (the average of the wrist and the four finger-base knuckles; shown as a diamond, green inside the box, red outside) is inside it. Drag inside to move it, drag an edge or corner to resize it, or pick Right half / Left half / Whole frame. Changes apply immediately and are remembered in the browser.
+
+*Coordinates:* the box is stored in **display (mirrored) normalized** coordinates, 0..1 of the picture as you see it. The camera landmarks are raw (un-mirrored), so the palm centre's x is flipped (`1 - x`) in exactly one function, `palmCentre` in `src/handFeatures.ts`. The box overlay is a separate, un-mirrored canvas, so mouse positions need no flipping.
+
+**Commands** (labels from the Gesture Recognizer): Open palm, Index up (`Pointing_Up`), V (`Victory`). All timing is by the clock (milliseconds), not by frame count, so it does not depend on fps.
+
+| Step | Rule |
+|---|---|
+| Counts | Shape label at least 50% sure, palm facing the camera, palm centre in the box, and only one hand showing a command shape in the box (two: ignored) |
+| Dwell | Hold for the dwell time (slider, default 0.6 s, range 0.6 to 1.2 s); the inner ring fills. Flickers shorter than 120 ms are ignored |
+| Open palm | Fires as soon as the ring is full |
+| Index up, V | **Tap:** drop the hand after the ring filled and it fires on release. **Hold:** keep holding until the outer ring (1.5 s total) fills and it fires. A hold fires once; releasing afterwards adds nothing |
+| Cooldown | 1.0 s after any fire, no new dwell can start |
+| Hand lost or leaves the box | Before the ring is full: cancelled, nothing fires. After it is full (index up, V): counts as a release, so a tap |
+| Stillness (checkbox, off) | If on, the palm centre must stay within 6% of the frame height during the hold, else the dwell restarts |
+
+On fire: a banner, a beep (tap and hold sound different; checkbox), and a timestamped row in the log. The **false-fire test** counts fires for 2 minutes (rows tagged `test`).
+
+**Clutch shapes** (detection only, nothing is controlled): shown as GRABBED / released. Each must *start* in the box; once grabbed the hand may leave it, and a lost hand releases after 0.3 s.
+- **Pinch:** thumb tip to index tip, divided by palm size, below the slider value. It must open to 1.6x that to release. A **fist is not a pinch**: the middle, ring and pinky must be out (finger reach at least 1.3) to start one.
+- **Claw:** the mean finger reach (tip-to-wrist over knuckle-to-wrist, index to pinky: open about 1.9, fist about 1.0) must drop into the half-curled band (1.25 to 1.65) **within 0.5 s of the hand having been open** (1.75 or more). That change is what separates a claw from a relaxed, half-curled hand, which never grabs. It stays grabbed while half-curled. The numbers are first guesses and need tuning on a real hand: the hand card shows the live "finger reach" and "pinch gap".
+- **Two-hand:** the hand on the left of the screen shows an open palm (the modifier) while the other hand's palm centre is in the box. Hands are told apart by screen side, not by the model's left/right label.
+
+All thresholds are in `src/config.ts` (`COMMANDS`, `BOX`, `CLUTCH`).
+
+### Scripted hands (dev only)
+
+`http://localhost:5173/?sim` runs the bench with no camera or model. Script hands from the console, e.g. `__dance.setHands([{ shape: "Victory", palm: { x: 0.75, y: 0.5 } }])` (palm is in display coordinates; options: `hand`, `score`, `away`, `pinch`, `curl`), and `__dance.setHands([])` for none. See `src/sim.ts`. It is not in the production build.
 
 ## Dev test mode (no live hand needed)
 
