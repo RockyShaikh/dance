@@ -5,3 +5,7 @@ dist/
 .env.*
 *.log
 .claude/worktrees/
+# copied from node_modules by scripts/copy-wasm.mjs
+public/wasm/
+# local test media for ?image= / ?video= (not committed)
+public/test/
