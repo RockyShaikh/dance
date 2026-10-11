@@ -2,12 +2,12 @@
 
 *Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
-Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 active.
+Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11; R2 active.
 
 | # | Checkpoint | Status |
 |---|---|---|
-| R1 | Bring-up: camera, hand skeleton, pseudo-chords | **active** |
-| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | planned |
+| R1 | Bring-up: camera, hand skeleton, pseudo-chords | done |
+| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | **active** |
 | R3 | Audio + webcam together; play/pause/restart by gesture | planned |
 | R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | planned |
 | R5 | Speed by rotation knob | planned |
@@ -32,7 +32,9 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Open palm, index up and V show the right label.
 - The distance you tested at is noted (informational, not pass/fail).
 
-**Status:** active (started 2026-10-11)
+**Status:** done (2026-10-11; merged to main 6d0fdff)
+
+**Result (user's live test):** frame rate good (a bit choppy at startup until a hand appears); finger readouts good, thumb decent; open palm / pointing up / victory labels right; Left/Right was flipped and palm-facing inverted. Fixed by `swapHandedness: false`. Detection still works at 3–5 m; tested at ~1 m and 3–5 m.
 
 **Notes:** range is deliberately deferred: "gestures first, range later" (user). See Unresolved threads.
 
@@ -60,7 +62,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Pinch, claw and two-hand grabs show GRABBED/released correctly, or failures are noted.
 - Informational: dance for ~2 minutes with no commands intended and note the false-fire count in the log. This feeds the choreography-collision thread; it isn't a pass/fail gate.
 
-**Status:** planned
+**Status:** active (started 2026-10-11)
 
 **Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The planned zone direction is a per-session calibration ("raise your hand: only above here"). It's wish-listed for R6+ (user), not part of R2.
 

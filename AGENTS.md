@@ -6,13 +6,14 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - Local web app in Chrome; TypeScript + Vite; MediaPipe Hand Landmarker; canvas overlay; Web Audio / HTMLMediaElement for playback. See `docs/spec.md`.
 
 ## Commands
-- Install: TBD
-- Dev: TBD
-- Test: TBD
-- Build: TBD
+- Install: `npm install`
+- Dev: `npm run dev` → http://localhost:5173/ (Chrome; allow the camera)
+- Test: `npm test` (Vitest)
+- Build: `npm run build` (tsc --noEmit + vite build)
 
 ## Conventions
-- Roadmap phases are done strictly in order; do not build past the current roadmap.
+- Roadmap checkpoints are done strictly in order; do not build past the active one.
+- Tunable thresholds live in `src/config.ts`. Pure logic modules (e.g. `src/pseudoChord.ts`, `src/palmFacing.ts`) get Vitest tests with landmark fixtures.
 - Features we can't build yet go in `.agents/wishlist.md`; open "is this a problem?" questions and known-but-deferred issues go in its **Unresolved threads** section.
 
 ## Decisions
@@ -35,9 +36,12 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-11 — **Command zone for now = an on-screen bounding box** (default: right half of the mirrored view, adjustable; whole-frame option). A gesture counts only with the hand inside the box and held ≥ 0.6 s. No pose model or above-head detection in R2. Above-head zone is deferred until testing with real choreography (wish list). Supersedes the above-head line above for current scope.
 - 2026-10-11 — Command-zone direction: a **per-session calibration sequence**. Press "calibrate", raise your hand, and only detect above that height; manual each session, no head tracking; don't worry about the laptop or camera moving. The zone is clearly visible in the camera overlay and editable by mouse click-and-drag. **For now (R2): a simple rectangle bounding box.** Calibration is **R6+** (user: "let's still not worry about it in R2. It's going to be R6+"); on the wish list.
 - 2026-10-11 — Roadmap R1–R5 approved by the user, along with the spec's proposed stack. R1 active.
+- 2026-10-11 — R1 accepted ("looks good to move onto the next step"). Distance stays a non-worry; a later priority is **auto-zooming onto the hand** (wish list).
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->
+- MediaPipe's Left/Right label matches the user's own hand on the un-mirrored frame (`swapHandedness: false`; verified live 2026-10-11). Palm-facing depends on it.
+- Hand detection and labels work at ~1 m and at 3–5 m with the built-in MacBook webcam (user's live test, 2026-10-11).
 - Git repo, default branch `main`, remote https://github.com/RockyShaikh/dance (public). Repo-local git identity: RockyShaikh <91840937+RockyShaikh@users.noreply.github.com> (no global git identity on this machine).
 
 ## Memory files

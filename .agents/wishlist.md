@@ -46,6 +46,7 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Debug toggle**: raw palm score, landmark indices | QoL | Surfaced in R1; data already exposed in dev |
 | **Low-power mode**: 1 hand or lower video resolution if fps is low | QoL | Surfaced in R1; only if real fps disappoints |
 | **CI / pre-commit hook** (tests + typecheck) | overlooked | Surfaced in R1; repo has none |
+| **Auto-zoom onto the hand** (digitally crop or scale up the hand region, like Apple's Center Stage / face tracking) | later | User 2026-10-11: more important than raw distance; distance stays a non-worry for now |
 
 ## Unresolved threads
 
@@ -77,7 +78,8 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Ready-made gesture labels vs our own rules** | unresolved | Labels for the three shapes, rules for pinch and claw; revisit if accuracy is poor |
 | **Porting** to mobile, native, or Python if the browser falls short | risk | Decide only if R1–R3 show limits |
 | **Privacy:** camera always on | unresolved | Video stays on the laptop; say so in the UI |
-| **Left/right label + palm-facing unverified on a real hand** (`swapHandedness` in src/config.ts) | risk | R1 builder couldn't confirm with photos; one live check settles it |
-| **Thumb is the weakest finger read** (tucked thumb read differently on mirrored photo; may be landmark error, not threshold) | risk | Tune `thumb.*` with a real hand; smoothing in R2 |
+| **Left/right label + palm-facing unverified on a real hand** (`swapHandedness` in src/config.ts) | closed | Live check 2026-10-11: labels were flipped; fixed with `swapHandedness: false` |
+| **Thumb is the weakest finger read** (tucked thumb read differently on mirrored photo; may be landmark error, not threshold) | risk | User 2026-10-11: thumb "pretty decent", the four fingers matter most. Tune `thumb.*` only if needed |
 | **Model license** stated as Apache-2.0 from MediaPipe pages, not checked against the model card | unresolved | Confirm before anyone else reuses the repo |
 | **8.4 MB model committed to git history** | risk | Fine for one model; consider Git LFS if more arrive |
+| **Choppy frame rate at startup until a hand appears** | bug? | Seen in R1 live test; smooth once a hand is in view. Minor |
