@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-R4d: the left hand only anchors modes (fist = pause while closed); right fist = play/pause, open palm inert; circling wheel. R5b: hold right thumbs up = 2× while held; left shaka + wheel = 0.05 speed steps, heard live.
+R6: both hands command only inside a top-quarter zone; zoom = run tracking on the cropped zone; handedness from the thumb (palm assumed facing the camera; one hand = right). Plus a finer speed wheel (0.025 steps). Head tracking only if needed.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ R4d: the left hand only anchors modes (fist = pause while closed); right fist = 
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B4d. Then give the user the test link and checklist. The merge chain (r4a → r4b → r4c → r5 → r4d → r5b, each --no-ff + tag) happens on the user's word. Test servers: :5185 (R4c), :5186 (R5).
+Wait for B6. Then give the user the test link and checklist (zoom on/off at distance, L/R labels). The merge chain (r4a → r4b → r4c → r5 → r4d → r5b → r6) happens on the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

@@ -5,9 +5,10 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B6 | R5b amendment (0.025 steps, more travel/tick) on `r5b-speed`; then R6 top-quarter zone + zoom crop + thumb handedness on `r6-zone` | ship | `r5b-speed` (+1), `r6-zone` | 2026-10-12 |
 
 ## Waiting on user
-- Test R4d+R5b at http://localhost:5187/?track=/test/click-track.wav (20-point checklist in chat). Then merge chain r4a → r4b → r4c → r5 → r4d → r5b on the user's word.
+- R4d + R5b tested (2026-10-12): finer speed wheel requested → B6. The R5b worktree `agent-a89f1574c4aaba37e` is detached at b0953ee and still serves :5187.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
