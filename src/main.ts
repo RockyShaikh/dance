@@ -24,7 +24,6 @@ import type { KnobDraw } from "./knobHud";
 import { KnobPanel } from "./knobPanel";
 import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, TARGET_NAMES, loadKnobSettings } from "./knobSettings";
 import { IDLE_SCRUB, stepScrub } from "./scrub";
-import { formatTime } from "./time";
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const still = document.getElementById("still") as HTMLImageElement;
@@ -275,10 +274,8 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec
         palm: lastKnobPalm,
         title: `${CLUTCH_NAMES[knobSettings.clutch]} + ${MOTION_NAMES[knobSettings.motion]} + ${MAPPING_NAMES[knobSettings.mapping]} → ${TARGET_NAMES[target]}`,
         deadZoneDeg: knobSettings.deadZoneDeg,
-        note:
-          value === null
-            ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first`
-            : `${target === "playhead" ? "PLAYHEAD" : target.toUpperCase()} ${formatTime(value)}`,
+        // The huge readout (DOM) already shows the value; here only what is missing.
+        note: value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
       }
     : null;
 }

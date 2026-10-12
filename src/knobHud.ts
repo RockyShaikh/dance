@@ -67,9 +67,9 @@ export function drawKnob(ctx: CanvasRenderingContext2D, k: KnobDraw): void {
   const accent = view.frozen ? WARN : ON;
 
   // The big word, top centre.
-  label(ctx, view.frozen ? "HOLDING: hand lost" : "GRABBED", W / 2, 84 * s, 76 * s, accent);
-  label(ctx, k.title, W / 2, 120 * s, 26 * s, "#fff");
-  if (k.note) label(ctx, k.note, W / 2, 152 * s, 24 * s, WARN);
+  label(ctx, view.frozen ? "HOLDING: hand lost" : "GRABBED", W / 2, 118 * s, 76 * s, accent);
+  label(ctx, k.title, W / 2, 152 * s, 24 * s, "#fff");
+  if (k.note) label(ctx, k.note, W / 2, 184 * s, 24 * s, WARN);
 
   // The dial at the hand.
   const cx = k.palm.x * W;
