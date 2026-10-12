@@ -2,7 +2,19 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R2 (gesture test bench), on top of R1 (bring-up):** the webcam, hand skeleton and finger readouts from R1, plus a command box, dwell rings, tap vs hold, clutch-shape detection, a banner, sound and an event log. There is no audio playback; firing a command only shows and logs it.
+**This is checkpoint R3 (audio + webcam, play/pause/restart by gesture), on top of R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV, and control it hands-free: open palm in the command box = play/pause, index up = restart from 0:00. The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+
+## R3 practice view
+
+- **Load a track:** drag an MP3/WAV onto the page, or click **Open track…**. Local files only.
+- **Status word** (PLAYING / PAUSED / READY), a big **clock**, and a **timeline** with a moving white playhead, readable from across the room.
+- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts from 0:00 and plays. The music reacts on the frame the ring completes. In the practice view index up fires as soon as the ring fills (tap or hold alike); the bench's tap-on-release timing is kept for R4.
+- **Keys and buttons:** `Space` = play/pause, `R` or `Home` = restart, `B` = bench.
+- Chrome lets a hand gesture start audio only after the page has seen one click or key press; if you only dragged a file in, the page asks for one click.
+- Audio engine: `src/audioPlayer.ts` (an `HTMLAudioElement` behind a small interface: why is in its header comment). Gesture/key/button wiring: `src/transport.ts`; DOM: `src/practice.ts`.
+- Test track: `node scripts/make-test-wav.mjs` writes `public/test/click-track.wav` (a 60 s click track with a climbing scale, git-ignored). In dev, `?sim&track=/test/click-track.wav` loads it at startup.
+
+**R2 is described below.** Its test bench is unchanged.
 
 ## Install and run
 
@@ -19,7 +31,7 @@ Other scripts:
 
 | Command | What it does |
 |---|---|
-| `npm test` | Unit tests (Vitest): finger states, palm facing, command box, command state machine, clutch shapes |
+| `npm test` | Unit tests (Vitest): finger states, palm facing, command box, command state machine, clutch shapes, audio player, gesture-to-audio wiring |
 | `npm run typecheck` | TypeScript check |
 | `npm run build` | Type-check, then production build into `dist/` |
 

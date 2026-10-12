@@ -4,14 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:," />
-    <title>Dance — gesture test bench</title>
+    <title>Dance — practice</title>
   </head>
   <body>
     <header id="bar">
       <div id="fps" aria-label="frames per second"><span id="fps-value">--</span><span class="unit"> fps</span></div>
       <div id="status" role="status">Starting…</div>
       <div id="fft-status" aria-live="polite"></div>
+      <button type="button" id="bench-toggle" aria-pressed="false" title="Show the R2 gesture test bench (key B)">Bench</button>
     </header>
+
+    <!-- R3 practice view: the giant status word and the clock, readable from across the room. -->
+    <section id="practice-head" aria-live="polite">
+      <div id="status-word" data-state="empty">LOAD A TRACK</div>
+      <div id="clock"><span id="t-elapsed">0:00.0</span><span id="t-total">/ 0:00</span></div>
+    </section>
 
     <main id="layout">
       <section id="stage">
@@ -82,6 +89,23 @@
 
       </aside>
     </main>
+
+    <footer id="transport">
+      <div id="timeline" role="slider" aria-label="playhead" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" tabindex="-1">
+        <div id="tl-fill"></div>
+        <div id="tl-head"></div>
+      </div>
+      <div id="controls-row">
+        <button type="button" id="btn-open">Open track…</button>
+        <button type="button" id="btn-toggle"><span id="btn-toggle-label">Play</span> <kbd>Space</kbd></button>
+        <button type="button" id="btn-restart">Restart <kbd>R</kbd> <kbd>Home</kbd></button>
+        <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
+        <span id="cheat" class="note">In the box: open palm = play/pause · index up = restart</span>
+      </div>
+      <div id="hint" hidden></div>
+    </footer>
+    <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />
+    <div id="drop-overlay" hidden>Drop an MP3 or WAV to load it</div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

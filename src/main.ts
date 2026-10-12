@@ -9,9 +9,12 @@ import { INITIAL_STATE, stepCommands, type HandObs, type MachineView } from "./c
 import { APP, CLUTCH, COMMANDS, type ClutchConfig, type CommandConfig } from "./config";
 import { drawHands } from "./draw";
 import { drawHud } from "./hud";
+import { createBrowserPlayer } from "./audioPlayer";
+import { Practice } from "./practice";
 import { loadRecognizer } from "./recognizer";
 import { renderHands, setFps, setMessage, setStatus } from "./readout";
 import { loadSettings, saveSettings } from "./settings";
+import { actionForFire, practiceConfig } from "./transport";
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const still = document.getElementById("still") as HTMLImageElement;
@@ -45,12 +48,20 @@ let hands: HandReading[] = [];
 let view: MachineView | null = null;
 let clutchView: ClutchView | null = null;
 
-/** Current thresholds: the config defaults with the slider/toggle settings applied. */
-const commandCfg = (): CommandConfig => ({
-  ...COMMANDS,
-  dwellMs: settings.dwellMs,
-  stillness: { ...COMMANDS.stillness, enabled: settings.stillness },
+// --- R3: the music ------------------------------------------------------------------
+
+const player = createBrowserPlayer();
+const practice = new Practice(player, {
+  announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON", "tap"),
 });
+
+/** Current thresholds: the config defaults with the slider/toggle settings applied. */
+const commandCfg = (): CommandConfig =>
+  practiceConfig({
+    ...COMMANDS,
+    dwellMs: settings.dwellMs,
+    stillness: { ...COMMANDS.stillness, enabled: settings.stillness },
+  });
 const clutchCfg = (): ClutchConfig => ({ ...CLUTCH, pinch: { ...CLUTCH.pinch, grabRatio: settings.pinchGrab } });
 
 function setBox(b: Box): void {
@@ -91,7 +102,14 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   const r = stepCommands(machine, { t: ts, hands: obs, box: settings.box, aspect: width / height }, commandCfg());
   machine = r.state;
   view = r.view;
-  if (r.fired) bench.fire(r.fired);
+  if (r.fired) {
+    // The music reacts on the very frame the ring completes, before any logging or drawing.
+    const action = actionForFire(r.fired);
+    const before = performance.now();
+    const result = action ? practice.perform(action) : null;
+    if (import.meta.env.DEV) recordTiming(r.fired.shape, ts, before, result?.label ?? null);
+    bench.fire(r.fired, result?.label);
+  }
 
   const c = stepClutches(
     clutch,
@@ -114,6 +132,65 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
     Object.assign(dance, { hands, view, clutchView, box: settings.box, log: bench.log, fft: bench.falseFireState(), machine });
   }
+}
+
+/** DEV only: how long from "the ring completed" to "the audio element changed state" (see window.__dance.timings). */
+function recordTiming(shape: string, frameTs: number, before: number, label: string | null): void {
+  const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
+  const list = ((dance.timings as unknown[]) ??= []);
+  list.push({ shape, label, frameTs, calledAt: before, returnedAt: performance.now(), state: player.state, currentTime: player.currentTime });
+}
+
+/** DEV only: ?track=/test/click-track.wav loads a track at startup; every player event is time-stamped. */
+function devAudioHooks(): void {
+  const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
+  const events: unknown[] = [];
+  player.on((e) => events.push({ ...e, at: performance.now(), state: player.state, currentTime: player.currentTime }));
+  Object.assign(dance, { player, practice, audioEvents: events });
+  const track = new URLSearchParams(location.search).get("track");
+  if (track) {
+    void fetch(track)
+      .then((res) => res.blob())
+      .then((blob) => practice.load(new File([blob], track.split("/").pop() ?? "track", { type: blob.type || "audio/wav" })));
+  }
+}
+if (import.meta.env.DEV) devAudioHooks();
+
+// --- The bench toggle: the R2 test bench lives behind a button; the practice view is the default ---
+
+const BENCH_KEY = "dance.r3.bench";
+function setBenchOpen(open: boolean): void {
+  document.body.classList.toggle("bench-open", open);
+  document.getElementById("bench-toggle")!.setAttribute("aria-pressed", String(open));
+  try {
+    localStorage.setItem(BENCH_KEY, open ? "1" : "0");
+  } catch {
+    /* storage unavailable: the choice just won't persist */
+  }
+}
+{
+  let open = false;
+  try {
+    open = localStorage.getItem(BENCH_KEY) === "1";
+  } catch {
+    /* ignore */
+  }
+  setBenchOpen(open);
+  document.getElementById("bench-toggle")!.addEventListener("click", (e) => {
+    setBenchOpen(!document.body.classList.contains("bench-open"));
+    (e.currentTarget as HTMLElement).blur();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "KeyB" && !e.ctrlKey && !e.metaKey && !e.altKey) setBenchOpen(!document.body.classList.contains("bench-open"));
+  });
+}
+
+// The camera picture is as tall as the stage allows (the status word and timeline take the rest of the window).
+{
+  const stage = document.getElementById("stage")!;
+  const fit = () => document.documentElement.style.setProperty("--stage-h", `${stage.clientHeight}px`);
+  new ResizeObserver(fit).observe(stage);
+  fit();
 }
 
 // --- Source and recognizer ---------------------------------------------------------
@@ -160,10 +237,9 @@ async function main(): Promise<void> {
   const recognizer = loaded?.recognizer ?? null;
   let simHands: HandReading[] = [];
   if (sim) {
-    (window as unknown as { __dance: Record<string, unknown> }).__dance = {
-      setHands: (specs: Parameters<typeof sim.simReading>[0][]) => {
-        simHands = specs.map((s) => sim.simReading(s));
-      },
+    const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
+    dance.setHands = (specs: Parameters<typeof sim.simReading>[0][]) => {
+      simHands = specs.map((s) => sim.simReading(s));
     };
   }
 
