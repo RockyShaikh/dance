@@ -3,6 +3,7 @@ import { LOOP } from "./config";
 import { NO_LOOP, type LoopState } from "./loop";
 import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
+import { formatRate } from "./speed";
 import { drawOverview } from "./waveDraw";
 import { decodePeaks, type Peaks } from "./waveform";
 import { formatTime, playheadFraction, runNudge, runTransport, statusWord, type TransportAction, type TransportOptions, type TransportResult } from "./transport";
@@ -34,6 +35,7 @@ export interface PracticeHooks {
 
 export class Practice {
   private readonly statusEl = el("status-word");
+  private readonly rateEl = el("speed-badge");
   private readonly elapsedEl = el("t-elapsed");
   private readonly totalEl = el("t-total");
   private readonly head = el("tl-head");
@@ -94,6 +96,9 @@ export class Practice {
     this.bindButton("btn-setstart", "setStart");
     this.bindButton("btn-setend", "setEnd");
     this.bindButton("btn-clear", "clearLoop");
+    this.bindButton("btn-speed", "speedToggle");
+    this.bindButton("btn-slower", "speedDown");
+    this.bindButton("btn-faster", "speedUp");
     for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-nudge]")) {
       btn.addEventListener("click", () => {
         this.nudgeStart(Number(btn.dataset.nudge));
@@ -274,6 +279,14 @@ export class Practice {
           return "setEnd";
         case "KeyC":
           return "clearLoop";
+        case "KeyT":
+          return "speedToggle"; // R5: 2x <-> 1x
+        case "Minus":
+        case "NumpadSubtract":
+          return "speedDown"; // R5: the next preset down
+        case "Equal":
+        case "NumpadAdd":
+          return "speedUp";
         default:
           return null;
       }
@@ -291,7 +304,8 @@ export class Practice {
       const action = keyAction(e);
       if (!action) return;
       e.preventDefault();
-      if (e.repeat) return; // holding a key must not toggle over and over
+      // Holding a key must not toggle over and over; for the speed steps, holding is a run of single steps, which is fine.
+      if (e.repeat && action !== "speedUp" && action !== "speedDown") return;
       this.blurFocus();
       this.hooks.announce(this.perform(action).label, "key");
     });
@@ -359,6 +373,13 @@ export class Practice {
     this.setText("elapsed", this.elapsedEl, formatTime(p.currentTime));
     this.setText("total", this.totalEl, `/ ${formatTime(p.duration, false)}`);
     this.setText("toggle", this.toggleLabel, state === "playing" ? "Pause" : "Play");
+    // R5: the speed, huge, whenever it is not 1x.
+    const fast = Math.abs(p.rate - 1) > 1e-9;
+    if (this.rateEl.hidden === fast) this.rateEl.hidden = !fast;
+    if (fast) {
+      this.setText("rate", this.rateEl, formatRate(p.rate));
+      this.rateEl.dataset.slow = p.rate < 1 ? "1" : "0";
+    }
     this.setText("track", this.trackName, state === "empty" && !this.fileName ? "No track loaded. Drop an MP3 or WAV anywhere, or click Open track." : this.fileName);
     const f = playheadFraction(p.currentTime, p.duration);
     const pct = `${(f * 100).toFixed(2)}%`;

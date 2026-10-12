@@ -2,7 +2,15 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R4c (the steering wheel: left-hand modes, snappy steering, waveform), on top of R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+**This is checkpoint R5 (speed: right-hand thumbs up toggles 2x / 1x), on top of R4c (the steering wheel: left-hand modes, snappy steering, waveform), R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+
+## R5: speed (2x and 1x)
+
+Not a knob (user: "just speeding up and slowing down the entire track and just letting it play"). The **right-hand thumbs up** toggles the whole track between **2x and 1x** and the music just keeps playing (pitch preserved: `preservesPitch` on the audio element). From any other speed (a slowed one) the toggle goes back to 1x. It fires once, when its ring fills, like every command. Keys: **`T`** toggles, **`-`** and **`=`** step through 0.5, 0.75, 1, 1.5 and 2. The speed is shown huge next to the status word whenever it is not 1x (amber faster, blue slower). A new track starts at 1x.
+
+- The thumbs up shows the back of the fingers, so the "palm must face the camera" rule does not apply to it (`COMMANDS.palmFacingExempt`). It is armed on the right hand only (`rightOnlyShapes`): a left thumbs up does nothing and does not cool the right hand down. While the wheel is held the right hand's commands are blocked as before.
+- The loop wrap and the scrub work at any speed (tested at 2x, in the unit tests and in the sim: `scripts/e2e/speed.mjs`). A gesture mark's late-mark offset (0.15 s of real time) is scaled by the speed.
+- Code: `src/speed.ts` (pure), `AudioPlayer.setRate`, the `speedToggle` / `speedUp` / `speedDown` actions in `src/transport.ts`; `SPEED` and `COMMANDS` in `src/config.ts`.
 
 ## R4c: the steering wheel
 

@@ -221,7 +221,7 @@ All variants stay in the experiment (user). Because clutch, motion and mapping a
 Per use:
 
 - **Nudging the loop start (R4):** the joystick moves the loop-start marker back or forward (more tilt = faster), shown huge on the loop bar. The music keeps doing what it was doing. Gain is low, since the job is "a couple of counts," i.e. a few seconds at most.
-- **Speed (R5):** music playing; the joystick nudges speed up or down live, pitch preserved (time-stretching [workflows: TempoWatch]). Centre holds the current speed. A "click" (detent) at 1.0× makes normal speed easy to find. The on-screen % is optional and small (user).
+- **Speed (R5), superseded by the user after knob testing:** "I just meant literally speeding up and slowing down the entire track and just letting it play. I would like to just go to 2x speed and then un-2x speed." So speed is **not** a knob: the right-hand thumbs up toggles the whole track between 2x and 1x (pitch preserved), keys `T` (toggle) and `-` / `=` (0.5, 0.75, 1, 1.5, 2), and the speed is shown big when it isn't 1x. The knob text that follows is the original plan, kept for the record. Original: music playing; the joystick nudges speed up or down live, pitch preserved (time-stretching [workflows: TempoWatch]). Centre holds the current speed. A "click" (detent) at 1.0× makes normal speed easy to find. The on-screen % is optional and small (user).
 
 Research note: practice tools and dancers usually use a few fixed speeds (0.5 / 0.75 / 0.9 / 1.0) [market, workflows]. Fixed presets stay on the wish list as a fallback if the knob doesn't feel right.
 
