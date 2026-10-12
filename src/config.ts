@@ -390,7 +390,7 @@ export const WAVE = {
 } as const;
 
 /**
- * R5/R5b: playback speed. Two gestures (user: "the instagram hold to speed up", and fine 0.05 steps for slowing down
+ * R5/R5b: playback speed. Two gestures (user: "the instagram hold to speed up", and fine 0.025 steps for slowing down
  * to learn the dance, where hearing it matters more than seeing it):
  *  - hold the right thumbs up: `fast` (2x) while held, the previous speed on release (holdSpeed.ts);
  *  - a left shaka + the right hand on the wheel: the wheel steps the speed by `step` every `stepDeg` of turn,
@@ -401,9 +401,9 @@ export const SPEED = {
   normal: 1,
   min: 0.5,
   max: 1,
-  step: 0.05,
-  /** Degrees of wheel turn (circling or tilt) per 0.05 step: deliberate, about a tenth of a circle. 36 degrees = ten steps (0.5 to 1.0) per full circle. */
-  stepDeg: 36,
+  step: 0.025,
+  /** Degrees of wheel turn (circling or tilt) per 0.025 step: a fifth of a circle (R5b amendment: fine and deliberate). 20 steps * 72 degrees = 1440 degrees = 4 full turns for 0.5 to 1.0. */
+  stepDeg: 72,
   /** The thumbs up must be held this long to arm the 2x (short: it engages at once when armed). */
   holdArmMs: 300,
   /** ...and 2x ends when the shape has been gone this long. */

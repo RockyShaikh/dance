@@ -25,7 +25,7 @@ export type TransportAction =
   | "clearLoop"
   /** R5: the whole track between 2x and 1x (anything else back to 1x); the music just carries on. */
   | "speedToggle"
-  /** R5b: keys `=` and `-`: one 0.05 step up / down, kept to 0.5..1.0. */
+  /** R5b: keys `=` and `-`: one 0.025 step up / down, kept to 0.5..1.0. */
   | "speedUp"
   | "speedDown"
   /** R5b: key `0`: back to 1x. */

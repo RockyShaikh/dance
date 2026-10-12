@@ -6,7 +6,7 @@ import { attachBoxEditor } from "./boxEditor";
 import { CameraError, openCamera, openImage, openVideoFile, type FrameSource } from "./camera";
 import { initialClutchState, stepClutches, twoHandRoles, type ClutchView } from "./clutch";
 import { chordAgrees, type MachineView } from "./commands";
-import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
+import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, SPEED, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
 import { drawHands } from "./draw";
 import type { Handedness } from "./hand";
 import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
@@ -82,7 +82,7 @@ let steerAudio = IDLE_STEER_AUDIO;
 
 /** R5b: the right thumbs up held = 2x (and back on release). */
 let hold = IDLE_HOLD;
-/** R5b: degrees turned in speed mode that have not made a whole 0.05 step yet. */
+/** R5b: degrees turned in speed mode that have not made a whole 0.025 step yet. */
 let speedAccum = 0;
 
 /** Audible scrub of the playhead. */
@@ -365,14 +365,15 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
         title: `${CLUTCH_NAMES[knobSettings.clutch]} + ${MOTION_NAMES[knobSettings.motion]} + ${MAPPING_NAMES[knobSettings.mapping]} → ${speedMode ? "Speed" : TARGET_NAMES[target]}`,
         deadZoneDeg: knobSettings.deadZoneDeg,
         // The huge readout (DOM) already shows the value; here only what is missing.
-        note: speedMode ? `Speed ${formatRate(player.rate)}  ·  clockwise = faster  ·  0.5 to 1×` : value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
+        note: speedMode ? `Speed ${formatRate(player.rate)}  ·  clockwise = faster  ·  steps of ${SPEED.step}` : value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
         modes: mode ? { active: mode, pending: steer.pending } : null,
         zoom,
+        speed: speedMode ? { rate: player.rate } : null,
       }
     : null;
 }
 
-/** R5b: the speed mode's turn: every `SPEED.stepDeg` of turn is one 0.05 step (clockwise = faster); stuck at an end, the leftover turn is dropped so reversing is not delayed. */
+/** R5b: the speed mode's turn: every `SPEED.stepDeg` of turn is one 0.025 step (clockwise = faster); stuck at an end, the leftover turn is dropped so reversing is not delayed. */
 function stepSpeedWheel(turnDeg: number): void {
   const w = wheelSteps(speedAccum, turnDeg, player.rate);
   speedAccum = w.accumDeg;

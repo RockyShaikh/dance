@@ -1,9 +1,9 @@
 /**
  * R5b: playback speed as pure functions. Two ways to change it:
  *  - HOLD the right thumbs up: 2x while held, back to the previous speed on release (holdSpeed.ts);
- *  - FINE speed: a left shaka puts the steering wheel in speed mode, and the wheel steps the speed in 0.05
+ *  - FINE speed: a left shaka puts the steering wheel in speed mode, and the wheel steps the speed in 0.025
  *    increments between 0.5x and 1.0x while the music keeps playing (so you hear it). 1.0 is a natural stop.
- * The keys `-` / `=` step the same 0.05, `0` resets to 1x, `T` still toggles 2x / 1x. The audio engine applies the
+ * The keys `-` / `=` step the same 0.025, `0` resets to 1x, `T` still toggles 2x / 1x. The audio engine applies the
  * rate with the pitch preserved (audioPlayer.ts).
  */
 import { SPEED } from "./config";
@@ -15,11 +15,11 @@ export function toggleSpeed(rate: number): number {
 
 const EPS = 1e-9;
 
-/** One 0.05 step up (dir +1) or down (-1) from `rate` to the next grid line (0.50, 0.55, ... 1.00) in that direction, kept to 0.5..1.0 (it stops at the ends; a faster rate than 1 comes back to 1). */
+/** One 0.025 step up (dir +1) or down (-1) from `rate` to the next grid line (0.500, 0.525, ... 1.000) in that direction, kept to 0.5..1.0 (it stops at the ends; a faster rate than 1 comes back to 1). */
 export function stepSpeed(rate: number, dir: 1 | -1): number {
   const cells = rate / SPEED.step;
   const next = dir > 0 ? Math.floor(cells + EPS) + 1 : Math.ceil(cells - EPS) - 1;
-  return Number(Math.min(SPEED.max, Math.max(SPEED.min, next * SPEED.step)).toFixed(2));
+  return Number(Math.min(SPEED.max, Math.max(SPEED.min, next * SPEED.step)).toFixed(3));
 }
 
 /**
@@ -35,7 +35,7 @@ export function wheelSteps(accumDeg: number, turnDeg: number, rate: number, step
   return { steps, accumDeg: total - steps * stepDeg || 0 };
 }
 
-/** "2×", "0.75×", "1×". */
+/** "2×", "0.75×", "0.975×", "1×". */
 export function formatRate(rate: number): string {
-  return `${Number(rate.toFixed(2))}×`;
+  return `${Number(rate.toFixed(3))}×`;
 }

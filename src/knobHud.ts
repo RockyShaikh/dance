@@ -1,5 +1,5 @@
 import type { Vec2 } from "./box";
-import { KNOB } from "./config";
+import { KNOB, SPEED } from "./config";
 import type { KnobView } from "./knob";
 import type { SteerMode, SteerShape } from "./steerMode";
 import { drawZoom, type ZoomDraw } from "./waveDraw";
@@ -29,6 +29,8 @@ export interface KnobDraw {
   modes?: { active: SteerMode; pending: SteerShape | null } | null;
   /** R4c: the zoomed waveform around what is being steered. */
   zoom?: ZoomDraw | null;
+  /** R5b: speed mode only: the current playback rate, drawn on a strip with a tick for every speed step. */
+  speed?: { rate: number } | null;
 }
 
 /** The five left-hand modes as chips: what each shape does, with the one in force lit. */
@@ -99,6 +101,46 @@ function drawChips(ctx: CanvasRenderingContext2D, modes: { active: SteerMode; pe
   });
 }
 
+/**
+ * R5b amendment: the speed strip. One tick per `SPEED.step` between `SPEED.min` and `SPEED.max` (a taller one every
+ * fourth step, i.e. every 0.1), with the current rate as a marker, so the 0.025 steps can be seen.
+ */
+export function drawSpeedStrip(ctx: CanvasRenderingContext2D, rate: number, cx: number, y: number, s: number): void {
+  const n = Math.round((SPEED.max - SPEED.min) / SPEED.step);
+  const w = 640 * s;
+  const x0 = cx - w / 2;
+  const at = (i: number) => x0 + (w * i) / n;
+  const cur = Math.min(n, Math.max(0, (rate - SPEED.min) / SPEED.step));
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.beginPath();
+  ctx.roundRect(x0 - 28 * s, y - 40 * s, w + 56 * s, 96 * s, 12 * s);
+  ctx.fill();
+  ctx.lineCap = "round";
+  for (let i = 0; i <= n; i++) {
+    const major = i % 4 === 0;
+    ctx.lineWidth = (major ? 4 : 3) * s;
+    ctx.strokeStyle = i <= cur + 1e-6 ? ON : "rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.moveTo(at(i), y + (major ? -4 : 6) * s);
+    ctx.lineTo(at(i), y + 28 * s);
+    ctx.stroke();
+    if (major) {
+      ctx.font = `700 ${16 * s}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText(String(Number((SPEED.min + i * SPEED.step).toFixed(1))), at(i), y + 50 * s);
+    }
+  }
+  const mx = x0 + (w * cur) / n;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.moveTo(mx, y + 2 * s);
+  ctx.lineTo(mx - 10 * s, y - 18 * s);
+  ctx.lineTo(mx + 10 * s, y - 18 * s);
+  ctx.closePath();
+  ctx.fill();
+}
+
 export function drawKnob(ctx: CanvasRenderingContext2D, k: KnobDraw): void {
   const { width: W, height: H } = ctx.canvas;
   const s = W / 1280;
@@ -111,6 +153,7 @@ export function drawKnob(ctx: CanvasRenderingContext2D, k: KnobDraw): void {
   if (k.note) label(ctx, k.note, W / 2, 184 * s, 24 * s, WARN);
   if (k.modes) drawChips(ctx, k.modes, W / 2, 222 * s, s);
   if (k.zoom) drawZoom(ctx, k.zoom);
+  if (k.speed) drawSpeedStrip(ctx, k.speed.rate, W / 2, 292 * s, s);
 
   // The dial at the hand.
   const cx = k.palm.x * W;

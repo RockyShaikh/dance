@@ -74,14 +74,15 @@ describe("speed (R5)", () => {
     expect(player.currentTime).toBe(2);
   });
 
-  it("R5b: - and = step 0.05 within 0.5 to 1.0 and stop at the ends; 0 resets to 1x; the toggle still goes back to normal", () => {
+  it("R5b: - and = step 0.025 within 0.5 to 1.0 and stop at the ends; 0 resets to 1x; the toggle still goes back to normal", () => {
     const { player } = loadedPlayer();
     const seen: number[] = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 22; i++) {
       runTransport(player, NO_LOOP, "speedDown");
       seen.push(player.rate);
     }
-    expect(seen).toEqual([0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.5, 0.5]);
+    expect(seen.slice(0, 4)).toEqual([0.975, 0.95, 0.925, 0.9]);
+    expect(seen.slice(18)).toEqual([0.525, 0.5, 0.5, 0.5]);
     expect(runTransport(player, NO_LOOP, "speedDown")).toEqual({ label: "SPEED 0.5×", changed: false, loop: NO_LOOP });
     expect(runTransport(player, NO_LOOP, "speedToggle").label).toBe("SPEED 1×");
     runTransport(player, NO_LOOP, "speedDown");
@@ -104,7 +105,7 @@ describe("speed (R5)", () => {
   it("at a slowed speed time passes at that speed (0.5x: a second of real time is half a second of music), pitch kept", async () => {
     const { player, media } = loadedPlayer();
     await player.play();
-    for (let i = 0; i < 10; i++) runTransport(player, NO_LOOP, "speedDown");
+    for (let i = 0; i < 20; i++) runTransport(player, NO_LOOP, "speedDown");
     expect(player.rate).toBe(0.5);
     expect(media.preservesPitch).toBe(true);
     media.advance(2);

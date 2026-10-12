@@ -1,4 +1,4 @@
-// Sim end-to-end for R5b: hold the right thumbs up = 2x (and back), the left shaka + circling wheel = 0.05 speed steps,
+// Sim end-to-end for R5b: hold the right thumbs up = 2x (and back), the left shaka + circling wheel = 0.025 speed steps,
 // the keys, and the loop wrap and the scrub at slowed speeds.
 // Needs the dev server (`npx vite --port 5187`) and a test track (`node scripts/make-test-wav.mjs 120`).
 //
@@ -97,22 +97,22 @@ await ev(`await T.show([], 800); await T.show([T.thumb({ away: true })], 700)`);
 check("right thumbs up with the back of the hand to the camera: arms", (await ev(`return T.rate()`)) === 2);
 await ev(`await T.show([], 600)`);
 
-console.log("\n== 3. Left shaka + circling wheel: 0.05 steps, the music keeps playing");
+console.log("\n== 3. Left shaka + circling wheel: 0.025 steps, 72 degrees each, the music keeps playing");
 await fresh();
 await ev(`__dance.player.seek(40); await __dance.player.play(); await T.sleep(200)`);
 await ev(`await T.atStart(T.shaka(), 600)`);
 check("shaka + right hand in its box: grabbed, mode speed, still playing at 1x", (await ev(`return JSON.stringify([!!__dance.knob.grabbed, __dance.steer.mode, T.state(), T.rate()])`)) === '[true,"speed","playing",1]');
 await ev(`T.calls.length = 0; T.rec = []`);
-await ev(`await T.circle(T.shaka(), { dir: -1, rev: 0.5, ms: 2600, rec: T.rec })`); // 1.3 turns counter-clockwise
+await ev(`await T.circle(T.shaka(), { dir: -1, rev: 1, ms: 4900, rec: T.rec })`); // 4.9 turns counter-clockwise
 await ev(`await T.show([T.shaka(), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 300)`);
 const rec = JSON.parse(await ev(`return JSON.stringify(T.rec)`));
 const seq = [...new Set(rec.map((r) => r.rate))];
-const diffs = seq.slice(1).map((v, i) => Math.round((seq[i] - v) * 100));
-check("counter-clockwise: the speed stepped down in exact 0.05 steps, one at a time", diffs.length >= 6 && diffs.every((d) => d === 5), `sequence ${seq.join(" ")}`);
+const diffs = seq.slice(1).map((v, i) => Math.round((seq[i] - v) * 1000));
+check("counter-clockwise: the speed stepped down in exact 0.025 steps, one at a time (20 of them)", diffs.length === 20 && diffs.every((d) => d === 25), `sequence ${seq.join(" ")}`);
 const first = rec.find((r) => r.rate < 1);
-check("the first step came after about 36 degrees of turning plus the direction latency (not at once, not late)", first && Math.abs(first.trueDeg) >= 36 && Math.abs(first.trueDeg) <= 110, `first step at ${first ? Math.abs(first.trueDeg).toFixed(0) : "-"} deg of travel`);
+check("the first step came after about 72 degrees of turning plus the direction latency (not at once, not late)", first && Math.abs(first.trueDeg) >= 72 && Math.abs(first.trueDeg) <= 72 + 110, `first step at ${first ? Math.abs(first.trueDeg).toFixed(0) : "-"} deg of travel`);
 const perStep = rec.filter((r) => r.rate <= 0.5)[0];
-check("a full circle covers about the whole range (about 360 degrees from 1.0 to 0.5, plus latency)", perStep && Math.abs(perStep.trueDeg) <= 360 + 120, `0.5x reached at ${perStep ? Math.abs(perStep.trueDeg).toFixed(0) : "-"} deg`);
+check("the whole range takes about four circles (1440 degrees from 1.0 to 0.5, plus latency)", perStep && Math.abs(perStep.trueDeg) >= 1440 && Math.abs(perStep.trueDeg) <= 1440 + 120, `0.5x reached at ${perStep ? Math.abs(perStep.trueDeg).toFixed(0) : "-"} deg`);
 check("clamped at 0.5x", (await ev(`return T.rate()`)) === 0.5, `rate ${await ev(`return T.rate()`)}`);
 check("the music kept PLAYING through all of it: no seek, no pause, no play call", (await ev(`return T.state()`)) === "playing" && (await ev(`return T.calls.length`)) === 0, `calls ${await ev(`return JSON.stringify(T.calls.map((c) => c.m))`)}`);
 check("pitch kept at 0.5x", (await ev(`const m = __dance.player.media; return m.preservesPitch === true && m.playbackRate === 0.5`)));
@@ -120,9 +120,9 @@ check("the speed is shown (modest badge), no ring fired", (await ev(`return T.ba
 await shot("02-speed-mode-hud");
 const bsize = await ev(`const b = document.getElementById('speed-badge').getBoundingClientRect(); return Math.round(b.height)`);
 check("the badge is modest (under 70 px tall at this window)", bsize < 70, `${bsize} px`);
-await ev(`T.rec = []; await T.circle(T.shaka(), { dir: 1, rev: 0.5, ms: 3200, rec: T.rec, startDeg: 180 - 0.5 * 2.6 * 360 })`);
+await ev(`T.rec = []; await T.circle(T.shaka(), { dir: 1, rev: 1, ms: 4900, rec: T.rec, startDeg: 180 - 4.9 * 360 })`);
 await ev(`await T.show([T.shaka(), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 300)`);
-check("clockwise 1.6 turns: back up to 1.0x and stays there (a natural stop)", (await ev(`return T.rate()`)) === 1);
+check("clockwise 4.9 turns: back up to 1.0x and stays there (a natural stop)", (await ev(`return T.rate()`)) === 1);
 const held = await ev(`const r = T.rate(); await T.show([T.shaka(), T.right(0)], 1500); return r === T.rate()`);
 check("hand held still in speed mode: no change", held);
 check("one grab, music never stopped, no command fired", (await ev(`return T.state()`)) === "playing" && (await ev(`return T.fires()`)) === 0);
@@ -137,14 +137,14 @@ await ev(`await T.show([T.left('Thumb_Up', { curl: 1 }), T.right(0, { palm: { x:
 await ev(`await T.circle(T.left('Thumb_Up', { curl: 1 }), { dir: -1, rev: 0.5, ms: 2000 })`);
 check("during a grab, a left thumbs up is never read as the speed mode, and the speed is untouched", (await ev(`return __dance.steer.mode`)) !== "speed" && (await ev(`return T.rate()`)) === 1);
 
-console.log("\n== 5. Keys: - and = step 0.05 within 0.5..1.0, 0 resets, T toggles");
+console.log("\n== 5. Keys: - and = step 0.025 within 0.5..1.0, 0 resets, T toggles");
 await fresh();
 const down = [];
-for (let i = 0; i < 11; i++) {
+for (let i = 0; i < 21; i++) {
   await ev(`T.key('Minus')`);
   down.push(await ev(`return T.rate()`));
 }
-check("- steps down by 0.05 and stops at 0.5", JSON.stringify(down) === JSON.stringify([0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.5]), down.join(" "));
+check("- steps down by 0.025 and stops at 0.5", JSON.stringify(down) === JSON.stringify([...Array.from({ length: 20 }, (_, i) => 1 - 0.025 * (i + 1)), 0.5].map((x) => Number(x.toFixed(3)))), down.join(" "));
 check("modest badge reads 0.5×", (await ev(`return T.badge()`)) === "0.5×");
 await ev(`T.key('Digit0')`);
 check("0 resets to 1x, badge gone", (await ev(`return T.rate()`)) === 1 && (await ev(`return T.badge()`)) === null);
@@ -155,7 +155,7 @@ check("T: 2x", (await ev(`return T.rate()`)) === 2);
 await ev(`T.key('KeyT')`);
 check("T again: 1x", (await ev(`return T.rate()`)) === 1);
 await ev(`for (let i = 0; i < 4; i++) T.key('Minus'); for (let i = 0; i < 2; i++) T.key('Equal')`);
-check("- x4 then = x2 lands on 0.9 exactly (no float drift)", (await ev(`return T.rate()`)) === 0.9);
+check("- x4 then = x2 lands on 0.95 exactly (no float drift)", (await ev(`return T.rate()`)) === 0.95);
 
 console.log("\n== 6. The loop wrap and the scrub at slowed speeds");
 await fresh();

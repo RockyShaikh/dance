@@ -284,7 +284,7 @@ export class Practice {
           return "speedToggle"; // 2x <-> 1x
         case "Minus":
         case "NumpadSubtract":
-          return "speedDown"; // R5b: one 0.05 step down (0.5 to 1.0)
+          return "speedDown"; // R5b: one 0.025 step down (0.5 to 1.0)
         case "Equal":
         case "NumpadAdd":
           return "speedUp";

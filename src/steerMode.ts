@@ -4,7 +4,7 @@
  *
  *   open palm = the playhead (the music is left as it is)   fist  = the playhead, and pause while the fist is closed
  *   V         = loop START                                  index = loop END
- *   shaka     = the playback SPEED (R5b: thumb and pinky out, the other three curled; the wheel steps it by 0.05)
+ *   shaka     = the playback SPEED (R5b: thumb and pinky out, the other three curled; the wheel steps it by 0.025)
  *
  * (What the music does is steerAudio.ts: the left hand never starts playback by itself.)
  *

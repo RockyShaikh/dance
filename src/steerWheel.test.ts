@@ -564,7 +564,7 @@ describe("snappy: stopping the rotation stops the movement", () => {
   });
 });
 
-describe("R5b: the left shaka puts the wheel in speed mode (0.05 steps, the music keeps playing)", () => {
+describe("R5b: the left shaka puts the wheel in speed mode (0.025 steps, the music keeps playing)", () => {
   const stepDeg = SPEED.stepDeg;
   const startSpeed = (w: Wheel) => {
     w.show(300, { left: PALM, tilt: 0 });
@@ -578,16 +578,16 @@ describe("R5b: the left shaka puts the wheel in speed mode (0.05 steps, the musi
     expect(w.steer.mode).toBe("speed");
   });
 
-  it("clockwise turns speed up, counter-clockwise slow down, one 0.05 step per stepDeg, and 1.0 is a stop", () => {
+  it("clockwise turns speed up, counter-clockwise slow down, one 0.025 step per stepDeg, and 1.0 is a stop", () => {
     const w = new Wheel(true, 30);
     startSpeed(w);
     expect(w.player.rate).toBe(1);
     w.turn(1000, 0, -(stepDeg * 3 + 4), SHAKA);
     w.show(250, { left: SHAKA, tilt: -(stepDeg * 3 + 4) });
-    expect(w.player.rate).toBeCloseTo(0.85, 6); // three steps down
+    expect(w.player.rate).toBeCloseTo(0.925, 6); // three steps down
     w.turn(1000, -(stepDeg * 3 + 4), -30, SHAKA);
     w.show(250, { left: SHAKA, tilt: -30 });
-    expect(w.player.rate).toBeCloseTo(0.95, 6); // two steps up
+    expect(w.player.rate).toBeCloseTo(0.975, 6); // two steps up
     w.turn(1500, -30, 4 * stepDeg, SHAKA);
     w.show(250, { left: SHAKA, tilt: 4 * stepDeg });
     expect(w.player.rate).toBe(1); // clamped at 1.0, however far it is turned
@@ -602,27 +602,29 @@ describe("R5b: the left shaka puts the wheel in speed mode (0.05 steps, the musi
     w.show(250, { left: SHAKA, tilt: -4 * stepDeg });
     w.show(500, { left: SHAKA, tilt: -4 * stepDeg });
     expect(w.playing).toBe(true);
-    expect(w.player.rate).toBeCloseTo(0.8, 6);
+    expect(w.player.rate).toBeCloseTo(0.9, 6);
     expect(w.media.calls).toEqual([]);
     expect(w.seekCount).toBe(seeks);
   });
 
-  it("a full circle of the wheel covers the whole range: 0.5 to 1.0, stopping at 0.5 and leaving it at once when reversed (no wound-up travel)", () => {
+  it("the whole range (0.5 to 1.0) is four full circles: it stops at 0.5 and leaves it at once when reversed (no wound-up travel)", () => {
     const w = new Wheel(true, 30);
     startSpeed(w);
-    w.turn(1500, 0, -120, SHAKA);
-    w.show(250, { left: SHAKA, tilt: -120 });
-    w.turn(1500, -120, -240, SHAKA);
-    w.show(250, { left: SHAKA, tilt: -240 });
-    w.turn(1500, -240, -372, SHAKA);
-    w.show(250, { left: SHAKA, tilt: -372 });
+    let tilt = 0;
+    const rot = (to: number) => {
+      w.turn(1500, tilt, to, SHAKA);
+      w.show(250, { left: SHAKA, tilt: to });
+      tilt = to;
+    };
+    for (let i = 1; i <= 8; i++) rot(-90 * i); // two turns: about 0.75
+    expect(w.player.rate).toBeGreaterThanOrEqual(0.75 - 1e-9); // 10 steps (a little direction latency may cost one)
+    expect(w.player.rate).toBeLessThanOrEqual(0.775 + 1e-9);
+    for (let i = 9; i <= 17; i++) rot(-90 * i); // four turns and a bit: 0.5
     expect(w.player.rate).toBeCloseTo(0.5, 6);
-    w.turn(1500, -372, -480, SHAKA);
-    w.show(250, { left: SHAKA, tilt: -480 }); // further: nothing
+    rot(tilt - 150); // further: nothing
     expect(w.player.rate).toBeCloseTo(0.5, 6);
-    w.turn(500, -480, -480 + stepDeg + 2, SHAKA);
-    w.show(250, { left: SHAKA, tilt: -480 + stepDeg + 2 }); // back one step's worth: up at once
-    expect(w.player.rate).toBeCloseTo(0.55, 6);
+    rot(tilt + stepDeg + 2); // back one step's worth: up at once
+    expect(w.player.rate).toBeCloseTo(0.525, 6);
   });
 
   it("a shaka held still changes nothing; so does a hand that only jitters", () => {
