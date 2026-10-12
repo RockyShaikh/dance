@@ -146,6 +146,17 @@ User: "scrubbing is very important. We should really get the second hand involve
 - While the knob is grabbed, the steering hand's own commands are blocked (a claw can read as an open palm).
 - Known collision to test by hand: the claw starts from an open hand, and an open palm held 0.6 s in the right box toggles play/pause. Curl the hand within about half a second.
 
+### 4.6c The steering wheel (decided with the user after knob testing, R4c; this refines 4.6b)
+
+User, after testing the knob: the **steering wheel** felt more consistent than the claw ("the claw would sometimes slip"), but not as snappy ("when you would sort of stop rotating, there'd be a lag"); and "you should also be able to change between playing and pausing while holding", so "left open palm means play head, but if the left hand is clenched in a fist, it means pause as well". "The peace sign for loop start and then index for loop end is good."
+
+- **Grab:** left open palm up with the right hand in its box; the right hand tilts like a wheel. Claw and pinch stay switchable.
+- **The left hand's shape picks the mode, live, without releasing:** open palm = playhead with the music **playing**; fist = playhead with the music **paused** (snippets; stays exactly where you stop); V = loop **START**; index = loop **END**. Palm <-> fist toggles play / pause. A new shape must hold ~120 ms before the mode switches, so a flicker of the weakest-tracked shape (the fist) cannot toggle play / pause; a left hand that shows none of the four shapes freezes the wheel immediately and lets go after 0.3 s.
+- **Marks** (left V = IN, left index = OUT at the playhead) work when the right hand is **not** steering, as in 4.6b. While steering, they select the target and nothing fires. No behaviour depends on hold time.
+- **Snappy:** stopping the rotation stops the movement. The default mapping is relative (position-style) with a small hold-off and acceleration; the joystick (rate) stays selectable but keeps moving as long as the hand is tilted away from centre, which reads as lag.
+- **Skipping:** while playing, the music is re-seeked only when the hand has moved it by more than a small threshold; the latest position wins and seeks are never stacked.
+- **Waveform:** the track is decoded once to peaks and drawn on the timeline; while steering, a large zoomed view (a few seconds either side) shows what is being steered, with the loop poles and the playhead.
+
 ### 4.7 Feedback (readable from where you dance)
 
 - **Always visible:** a giant status word (PLAYING / PAUSED / LOOP), the loop bar with IN/OUT flags, and the **command box** outlined on the video.

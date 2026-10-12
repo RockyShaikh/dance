@@ -2,7 +2,28 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R4b (the two-hand scheme and the knob: scrub the playhead, mark IN/OUT), on top of R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+**This is checkpoint R4c (the steering wheel: left-hand modes, snappy steering, waveform), on top of R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+
+## R4c: the steering wheel
+
+The default grab is now the **two-hand steering wheel**: hold the **left open palm** up with the **right hand in its box**, then tilt the right hand like a wheel. While you hold it, the **left hand's shape picks what the wheel moves, live, without letting go**:
+
+| Left hand while steering | What the right hand's tilt moves |
+|---|---|
+| **Open palm** | the **playhead**, music **playing** (audible; it plays on from where you stop) |
+| **Fist** | the **playhead**, music **paused** (snippets as it moves; it stays exactly where you stop) |
+| **V** | loop **START** |
+| **Index up** | loop **END** (same clamps: 0.5 s apart, inside the track) |
+
+- Palm -> fist pauses and fist -> palm resumes, mid-grab. A new left shape must hold ~120 ms (`STEER.modeDebounceMs`) before the mode changes, so a flicker cannot toggle play / pause. The fist is the model's weakest shape, so a left hand whose label is not one of the others counts as a fist when its fingers are curled in (`STEER.fistMaxReach`). A hand showing none of the four shapes freezes the wheel at once and lets go after 0.3 s.
+- A grab starts with the palm (palm = playing, so a grab with the music paused starts it). The top of the picture shows four chips (palm / fist / V / index) with the one in force lit.
+- **Marks are unchanged when the right hand is not steering:** left V sets IN, left index sets OUT, at the playhead. While steering, V / index select the target instead and no mark fires. No gesture depends on how long it is held.
+- **Snappy:** the default mapping is now **relative** (the value follows the turn and stops when you stop), with a 1 degree hold-off so a still hand does not creep and pointer-style acceleration (`KNOB.relative`): a slow turn is fine (about 30 ms a degree), a fast flick travels far (up to 10x), which also takes the place of re-grabbing when the wrist runs out. The joystick is still selectable.
+- **Why it lagged, and the numbers** (sim at 30 fps, identical scripted hand motion, medians of 3 runs, `scripts/e2e/lag.mjs`; R4b before -> R4c after): the claw and the two-hand clutch share the whole pipeline, so the mapping was the difference. The joystick keeps moving the value for as long as the hand stays tilted off centre (it was still moving when the 1.5 s hold ended, on both clutches: by design, and it reads as lag). On the relative mapping, "rotation stops" -> "playhead stops" was 474 ms paused (claw 456) and the last seek 305 ms later while playing; now 110 ms (claw 113; most of it is the 70 ms snippet tail plus one camera frame) and 59 ms. Stopping by changing the left hand's shape used to keep moving for 308 ms (5 seeks: the clutch's 0.3 s release grace) against 26 ms for the claw's uncurl; now the wheel is frozen at once (1 seek, 104 ms, no further movement). Playing, a slow steady turn (30 degrees in 3 s) made 15 seeks a second of 89 ms each; now 3.3 a second of 125 ms (a fast flick: 21 seeks -> 12).
+- **Less skipping while playing:** the music keeps playing and is only re-seeked once the hand has moved it by 0.1 s (`SCRUB.moveThresholdSec`); the latest position always wins, no seek is stacked on one still in flight, and a small leftover offset is applied once the hand has been still for 120 ms. Paused snippets play while the hand moves and for 70 ms after.
+- **Waveform:** the loaded track is decoded once (`decodeAudioData`) to min / max peaks (`src/waveform.ts`, pure and tested) and drawn on the timeline with the loop region, flags and playhead. While steering, a **large zoomed waveform** (3 s either side) fills the bottom of the picture, centred on what is being steered, with START / END poles, the playhead and second ticks.
+- Claw and pinch stay in the Knob panel (with the target selector). The saved knob choice key changed (`dance.r4c.knob`), so the new default applies once.
+- Dev: `?sim&simfps=30` processes simulated frames at a camera's rate; `scripts/e2e/lag.mjs` measures "rotation stops" to "playhead stops" and the seek traffic (`node scripts/e2e/lag.mjs`, with the dev server on :5178 and `node scripts/make-test-wav.mjs 120`).
 
 ## R4b: two hands, scrub, mark IN / OUT
 
@@ -13,13 +34,13 @@ Every gesture fires once, when its ring fills (~0.6 s); nothing depends on how l
 | **Open palm** | play / pause | play / pause |
 | **Index up** | back to START (0:00 if none), plays | **set OUT (END)** at the playhead and start looping |
 | **V** | clear the loop | **set IN (START)** at the playhead (again = move IN) |
-| **Claw grab + tilt** | **scrub the playhead** (default); the grab must start in the right-hand box | not a grab |
+| **Claw grab + tilt** | **scrub the playhead** (claw selected in the Knob panel; since R4c the default grab is the two-hand wheel above); the grab must start in the right-hand box | not a grab |
 
 - **OUT** at or before IN + 0.5 s is ignored with a message; **IN** is refused if it would land within 0.5 s of OUT. The V-cycle is key / button only now (`V`, Mark).
 - **Late-mark offset (0.15 s)** applies only when marking while playing and not scrubbing. While paused, while scrubbing, and for 2.5 s after a scrub (`LOOP.exactAfterScrubMs`) the mark is the exact playhead.
 - **Scrub (audible):** while grabbed the playhead is seeked live, at most 20 times a second (`SCRUB.maxSeeksPerSec`). Playing: the music keeps playing from the new spot. Paused: each seek plays a ~160 ms snippet (`SCRUB.snippetMs`) and it stays paused on release. Tilt clockwise = later, counter-clockwise = earlier.
-- **The knob** (docs/spec.md section 5) is three swappable pure pieces: **clutch** (claw, pinch, two-hand) -> **motion** (tilt, circling) -> **mapping** (joystick, absolute, relative + ratchet, jog), whose output is a delta in seconds for a **target**: the playhead (default), loop START or loop END. Pick all of them live in the collapsible **Knob** panel under the transport; the choice is saved in localStorage. Defaults: claw + tilt + joystick, playhead. Gain and dead-zone sliders; "flip direction".
-- **Two-hand clutch** keeps its R2 meaning (left open palm up = modifier, right hand steers). The left hand is then the modifier, so **the left-hand marks are switched off** while it is selected (the panel says so).
+- **The knob** (docs/spec.md section 5) is three swappable pure pieces: **clutch** (claw, pinch, two-hand) -> **motion** (tilt, circling) -> **mapping** (joystick, absolute, relative + ratchet, jog), whose output is a delta in seconds for a **target**: the playhead (default), loop START or loop END. Pick all of them live in the collapsible **Knob** panel under the transport; the choice is saved in localStorage. Defaults (R4b): claw + tilt + joystick, playhead; (R4c): two-hand + tilt + relative. Gain and dead-zone sliders; "flip direction".
+- **Two-hand clutch** (the default since R4c, see above): left open palm up = grab, right hand steers. Superseded wording from R4b: the left-hand marks are no longer switched off; they work whenever the right hand is not steering.
 - **While grabbed** the steering (right) hand's commands are blocked (a claw can read as an open palm or a V), and for 0.5 s after. The left hand still works with claw or pinch. If tracking drops the value freezes and the grab releases after 0.3 s.
 - **Feedback:** a big GRABBED word with a dial at the hand (tilt needle against the grab angle, dead zone shaded; circling: turns), and the target's time huge on the picture (PLAYHEAD / LOOP START / LOOP END) with "+1.4 s since grab".
 - **Experiment log** (in the Knob panel): the tally counts loop edits per variant automatically; "Felt best" / "Not great" and a note are saved per variant; **Copy results** puts a text summary on the clipboard.
