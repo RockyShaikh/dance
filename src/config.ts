@@ -259,8 +259,27 @@ export interface KnobConfig {
     secPerDeg: number;
   };
   relative: {
-    /** Seconds of START per degree turned since the grab (no end to the range: re-grab to keep going). */
+    /**
+     * Seconds of value per degree turned, at a slow turn (no end to the range: re-grab, or flick, to keep going).
+     * Fine control lives here: a degree of tilt is about 30 ms.
+     */
     secPerDeg: number;
+    /**
+     * Jitter guard: the value follows the hand only once the tilt has moved more than this (degrees) from
+     * the last place it followed to, so a hand held still stays exactly where it is (no creeping, no snippets).
+     */
+    holdDeg: number;
+    /**
+     * Pointer-style acceleration (R4c): a fast turn moves the value farther per degree than a slow one, so one
+     * wrist sweep can cross a song and a slow turn still lands within milliseconds. The factor is 1 at or below
+     * `slowDegPerSec`, rising to `maxBoost` at `fastDegPerSec`. It only scales a movement that is happening, so
+     * stopping the turn stops the value at once whatever the boost was.
+     */
+    slowDegPerSec: number;
+    fastDegPerSec: number;
+    maxBoost: number;
+    /** Weight of the newest frame in the turn-speed average that picks the boost (1 = no averaging). */
+    speedSmoothing: number;
   };
   jog: {
     /** Seconds of START per full circle of the hand. */
@@ -271,34 +290,82 @@ export interface KnobConfig {
 }
 
 export const KNOB: KnobConfig = {
-  defaults: { clutch: "claw", motion: "tilt", mapping: "joystick", target: "playhead", gain: 1, deadZoneDeg: 12, invert: false },
+  // R4c: the two-hand steering wheel (left hand up, right hand tilts) with a position-style mapping, so that
+  // stopping the rotation stops the music's movement at once (the joystick keeps moving until you return to centre).
+  defaults: { clutch: "twoHand", motion: "tilt", mapping: "relative", target: "playhead", gain: 1, deadZoneDeg: 12, invert: false },
   targetScale: { playhead: 1.5, start: 1, end: 1 },
   steeringHand: "Right",
   gainMin: 0.25,
   gainMax: 3,
   deadZoneMinDeg: 3,
   deadZoneMaxDeg: 30,
-  tilt: { smoothing: 0.5 },
+  tilt: { smoothing: 0.8 },
   circling: { windowMs: 1000, minRadius: 0.035, warmupMs: 300 },
   joystick: { fullTiltDeg: 60, maxRateSecPerSec: 3, curve: 1.5 },
   absolute: { worldRangeDeg: 70, secPerDeg: 0.06 },
-  relative: { secPerDeg: 0.06 },
+  relative: { secPerDeg: 0.03, holdDeg: 1, slowDegPerSec: 40, fastDegPerSec: 200, maxBoost: 10, speedSmoothing: 0.8 },
   jog: { secPerTurn: 2 },
   maxDtSec: 0.1,
 };
 
 /**
- * R4b: audible scrub of the playhead (the knob's default target). While grabbed the playhead is
- * seeked live so the music follows. Seeks are rate-limited so the audio element does not stutter.
+ * R4b/R4c: audible scrub of the playhead (the knob's default target). While grabbed the music follows the
+ * hand through seeks. The seek policy (scrub.ts) is what keeps the audio from skipping: playing, the music
+ * keeps playing and is re-seeked only once the hand has moved it by more than a small threshold; the latest
+ * position always wins, and a seek that is still in flight is never stacked on.
  */
 export interface ScrubConfig {
   /** At most this many seeks per second. */
   maxSeeksPerSec: number;
-  /** Paused scrub: each seek plays this much audio (a short snippet), then pauses again. */
+  /** Playing: the hand's offset must reach this (seconds) before the music is re-seeked. More = fewer seeks, less skipping. */
+  moveThresholdSec: number;
+  /** After the hand stops, an offset of at least `settleMinSec` is still applied once the hand has been still this long. */
+  settleMs: number;
+  settleMinSec: number;
+  /** A seek that has not finished after this long no longer blocks the next one. */
+  staleSeekMs: number;
+  /** Paused scrub: audio plays while the hand moves and for this long after the last movement, then pauses exactly at the position. */
   snippetMs: number;
 }
 
 export const SCRUB: ScrubConfig = {
   maxSeeksPerSec: 20,
-  snippetMs: 160,
+  moveThresholdSec: 0.1,
+  settleMs: 120,
+  settleMinSec: 0.01,
+  staleSeekMs: 250,
+  snippetMs: 70,
 };
+
+/**
+ * R4c: the two-hand steering wheel. The left hand's shape picks what the right hand's tilt moves, live,
+ * while the grab continues:
+ *   open palm = the playhead with the music PLAYING; fist = the playhead with the music PAUSED;
+ *   V = loop START; index finger up = loop END.
+ * A grab begins with the left open palm (and the right hand in its box). Marks (left V / index) work as
+ * before when the right hand is not steering.
+ */
+export const STEER = {
+  /** A different left-hand shape must hold this long (ms) before the mode changes: a flicker must not toggle play / pause. */
+  modeDebounceMs: 120,
+  /**
+   * The fist is the model's weakest shape, so a hand whose label is none of the other three counts as a fist
+   * when its four fingers are curled in: reach (tip-to-wrist over knuckle-to-wrist, averaged) at or below this.
+   * Measured on real hands in R2: a fist is about 1.0 (the hand-made test fixture's fist is a looser 1.21),
+   * a pointing index about 1.3, a claw 1.25 to 1.65, an open hand about 1.9.
+   */
+  fistMaxReach: 1.15,
+  /** The model's confidence a label needs to count (the fist's bar is lower: it is weakly scored). */
+  minShapeScore: 0.5,
+  minFistScore: 0.3,
+} as const;
+
+/** R4c: the waveform. Peaks are computed once per track; drawing only reads them. */
+export const WAVE = {
+  /** Decode at this sample rate (peaks need no more, and memory stays small). */
+  decodeRate: 22050,
+  /** Samples per peak bin (about 1.5 ms): the zoomed view reads these directly. */
+  binSamples: 32,
+  /** The zoomed steering view shows this many seconds either side of what is being steered. */
+  zoomHalfWindowSec: 3,
+} as const;

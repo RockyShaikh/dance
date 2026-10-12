@@ -11,6 +11,9 @@
  *    a world range, so a sweep can run out (the grab point is "where the marker was when you grabbed").
  *  - relative + ratchet: the value follows how far you have turned since you grabbed, with no end to
  *    the range; to go further, release, turn back with an open hand, and re-grab (the screwdriver).
+ *    R4c: the steering default. Stopping the turn stops the value at once (the joystick keeps going until
+ *    you return to centre, which reads as lag). A small hold-off keeps a still hand still, and a fast
+ *    turn is boosted (pointer-style acceleration) so one sweep can cross a song while a slow turn is fine.
  *  - jog (for circling): each full circle moves the value a fixed amount.
  *
  * `gain` scales every mapping; `invert` flips the direction.
@@ -28,12 +31,18 @@ export interface MappingState {
   kind: MappingKind;
   /** Where the angle was at the grab: the joystick's centre. */
   centre: number;
-  /** The angle on the previous frame: the other mappings move by the change since then. */
+  /**
+   * The angle on the previous frame: the other mappings move by the change since then. For `relative`
+   * it is the last angle the value followed to (the hold-off keeps it put while the hand only jitters).
+   */
   prev: number;
+  /** `relative`: the angle on the previous frame, and the turn speed (degrees per second, averaged) the boost reads. */
+  last: number;
+  speed: number;
 }
 
 export function startMapping(kind: MappingKind, angle: number): MappingState {
-  return { kind, centre: angle, prev: angle };
+  return { kind, centre: angle, prev: angle, last: angle, speed: 0 };
 }
 
 /**
@@ -41,7 +50,7 @@ export function startMapping(kind: MappingKind, angle: number): MappingState {
  * (a position-style mapping would otherwise leap to wherever the hand reappeared).
  */
 export function rebaseMapping(s: MappingState, angle: number): MappingState {
-  return { ...s, prev: angle };
+  return { ...s, prev: angle, last: angle, speed: 0 };
 }
 
 const clamp = (x: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, x));
@@ -64,9 +73,17 @@ export function absoluteTilt(angle: number, cfg: KnobConfig): number {
   return clamp(angle, -cfg.absolute.worldRangeDeg, cfg.absolute.worldRangeDeg);
 }
 
+/** The boost for a turn of `degPerSec`: 1 up to the slow speed, `maxBoost` from the fast speed, linear between. */
+export function turnBoost(degPerSec: number, cfg: KnobConfig): number {
+  const r = cfg.relative;
+  const f = Math.min(1, Math.max(0, (Math.abs(degPerSec) - r.slowDegPerSec) / Math.max(1e-6, r.fastDegPerSec - r.slowDegPerSec)));
+  return 1 + (r.maxBoost - 1) * f;
+}
+
 /** One frame: how many seconds to move the value, and the next state. `dtSec` is the (capped) time since the last frame. */
 export function stepMapping(s: MappingState, angle: number, dtSec: number, p: MappingParams, cfg: KnobConfig): { state: MappingState; deltaSec: number } {
   let delta = 0;
+  let next: MappingState = { ...s, prev: angle, last: angle };
   switch (s.kind) {
     case "joystick":
       delta = joystickRate(angle - s.centre, p.deadZoneDeg, cfg) * dtSec;
@@ -74,13 +91,23 @@ export function stepMapping(s: MappingState, angle: number, dtSec: number, p: Ma
     case "absolute":
       delta = (absoluteTilt(angle, cfg) - absoluteTilt(s.prev, cfg)) * cfg.absolute.secPerDeg;
       break;
-    case "relative":
-      delta = (angle - s.prev) * cfg.relative.secPerDeg;
+    case "relative": {
+      const r = cfg.relative;
+      const inst = dtSec > 0 ? Math.abs(angle - s.last) / dtSec : 0;
+      const speed = dtSec > 0 ? r.speedSmoothing * inst + (1 - r.speedSmoothing) * s.speed : s.speed;
+      const turned = angle - s.prev;
+      if (Math.abs(turned) <= r.holdDeg) {
+        next = { ...s, last: angle, speed }; // jitter: the value stays where it is, and so does the reference
+      } else {
+        delta = turned * r.secPerDeg * turnBoost(speed, cfg);
+        next = { ...s, prev: angle, last: angle, speed };
+      }
       break;
+    }
     case "jog":
       delta = ((angle - s.prev) / 360) * cfg.jog.secPerTurn;
       break;
   }
   delta *= p.gain * (p.invert ? -1 : 1);
-  return { state: { ...s, prev: angle }, deltaSec: delta === 0 ? 0 : delta };
+  return { state: next, deltaSec: delta === 0 ? 0 : delta };
 }

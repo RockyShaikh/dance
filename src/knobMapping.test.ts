@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KNOB } from "./config";
-import { absoluteTilt, joystickRate, rebaseMapping, startMapping, stepMapping, type MappingParams, type MappingState } from "./knobMapping";
+import { absoluteTilt, joystickRate, rebaseMapping, startMapping, stepMapping, turnBoost, type MappingParams, type MappingState } from "./knobMapping";
 
 const P: MappingParams = { gain: 1, deadZoneDeg: 12, invert: false };
 const DT = 1 / 30;
@@ -91,24 +91,78 @@ describe("absolute (wiper)", () => {
   });
 });
 
+/** Turns the hand at a steady `degPerSec` from `from` to `to`, frame by frame, and returns the total movement and the end state. */
+function turn(s: MappingState, from: number, to: number, degPerSec: number, p: MappingParams = P): { state: MappingState; total: number } {
+  let state = s;
+  let total = 0;
+  const frames = Math.max(1, Math.round(Math.abs(to - from) / degPerSec / DT));
+  for (let i = 1; i <= frames; i++) {
+    const r = stepMapping(state, from + ((to - from) * i) / frames, DT, p, KNOB);
+    state = r.state;
+    total += r.deltaSec;
+  }
+  return { state, total };
+}
+
 describe("relative + ratchet", () => {
-  it("follows how far you turned since the grab, with no limit", () => {
-    const r = hold(startMapping("relative", 0), 150, 1);
-    expect(r.total).toBeCloseTo(150 * KNOB.relative.secPerDeg, 6);
+  const R = KNOB.relative;
+
+  it("follows how far you turned since the grab, with no limit (a slow turn: 1x, within the hold-off)", () => {
+    const r = turn(startMapping("relative", 0), 0, 150, R.slowDegPerSec * 0.5);
+    expect(r.total).toBeLessThanOrEqual(150 * R.secPerDeg + 1e-9);
+    expect(r.total).toBeGreaterThan((150 - R.holdDeg - 0.01) * R.secPerDeg);
   });
 
   it("ratchet: let go, turn back, re-grab, and the value carries on from where it was (no jump at the re-grab)", () => {
-    // First grab at 0 degrees, turn to 60.
-    let g = hold(startMapping("relative", 0), 60, 1);
+    let g = turn(startMapping("relative", 0), 0, 60, R.slowDegPerSec * 0.5);
     const first = g.total;
-    expect(first).toBeCloseTo(60 * KNOB.relative.secPerDeg, 6);
+    expect(first).toBeGreaterThan((60 - R.holdDeg - 0.01) * R.secPerDeg);
     // Released. The hand returns to 0 with an open hand (the pipeline isn't stepping the mapping), then re-grabs.
     g = { state: startMapping("relative", 0), total: first };
     // The re-grab frame itself moves nothing...
     expect(stepMapping(g.state, 0, DT, P, KNOB).deltaSec).toBe(0);
     // ...and a second turn of 60 adds to the first.
-    g = hold(g.state, 60, 1);
-    expect(first + g.total).toBeCloseTo(120 * KNOB.relative.secPerDeg, 6);
+    const second = turn(g.state, 0, 60, R.slowDegPerSec * 0.5).total;
+    expect(first + second).toBeGreaterThan(2 * (60 - R.holdDeg - 0.01) * R.secPerDeg);
+  });
+
+  it("STOPPING THE TURN STOPS THE VALUE AT ONCE, however fast the turn was (the joystick keeps going)", () => {
+    for (const speed of [20, 100, 400]) {
+      const turned = turn(startMapping("relative", 0), 0, 50, speed);
+      const next = stepMapping(turned.state, 50, DT, P, KNOB);
+      expect(next.deltaSec).toBe(0);
+      // ...and it stays stopped while the hand is held there.
+      expect(hold(next.state, 50, 2).total).toBe(0);
+    }
+    // The joystick, by contrast, is still moving a second later.
+    expect(hold(startMapping("joystick", 0), 40, 1).total).toBeGreaterThan(1);
+  });
+
+  it("a hand held still does not creep: jitter inside the hold-off moves nothing", () => {
+    let s = startMapping("relative", 10);
+    let total = 0;
+    for (let i = 0; i < 90; i++) {
+      const r = stepMapping(s, 10 + (i % 2 === 0 ? 0.8 : -0.8) * R.holdDeg, DT, P, KNOB);
+      s = r.state;
+      total += r.deltaSec;
+    }
+    expect(total).toBe(0);
+  });
+
+  it("a fast turn is boosted, a slow one is not: one flick crosses far more than the same turn done slowly", () => {
+    const slow = turn(startMapping("relative", 0), 0, 60, R.slowDegPerSec * 0.5).total;
+    const fast = turn(startMapping("relative", 0), 0, 60, R.fastDegPerSec * 1.5).total;
+    expect(fast / slow).toBeGreaterThan(R.maxBoost * 0.5);
+    expect(fast / slow).toBeLessThanOrEqual(R.maxBoost + 0.01);
+    expect(turnBoost(R.slowDegPerSec * 0.9, KNOB)).toBe(1);
+    expect(turnBoost(R.fastDegPerSec * 3, KNOB)).toBe(R.maxBoost);
+    expect(turnBoost(-(R.slowDegPerSec + R.fastDegPerSec) / 2, KNOB)).toBeGreaterThan(1);
+  });
+
+  it("direction follows the turn: clockwise later, counter-clockwise earlier, and invert flips it", () => {
+    expect(turn(startMapping("relative", 0), 0, 30, 20).total).toBeGreaterThan(0);
+    expect(turn(startMapping("relative", 0), 0, -30, 20).total).toBeLessThan(0);
+    expect(turn(startMapping("relative", 0), 0, 30, 20, { ...P, invert: true }).total).toBeLessThan(0);
   });
 });
 
