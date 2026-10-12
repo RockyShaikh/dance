@@ -70,6 +70,12 @@ export interface StepInput {
   box: Box;
   /** Frame width / height, to measure the stillness drift in equal units. Default 16:9. */
   aspect?: number;
+  /**
+   * R4b: the knob is grabbed, so no command may fire (the two-hand modifier is an open palm, and a
+   * claw can read as one). The machine drops to idle WITHOUT firing (an armed tap is discarded), and
+   * stays blocked for `suppressCooldownMs` after the grab ends.
+   */
+  suppress?: boolean;
 }
 
 /** What the UI shows: the ring progress, the state, and why a hand isn't counting. */
@@ -128,6 +134,11 @@ function drift(a: Vec2, b: Vec2, aspect: number): number {
 export function stepCommands(prev: MachineState, input: StepInput, cfg: CommandConfig): StepResult {
   const { t, box } = input;
   const aspect = input.aspect ?? 16 / 9;
+  if (input.suppress) {
+    const idle: MachineState = { ...INITIAL_STATE, cooldownUntil: Math.max(prev.cooldownUntil, t + cfg.suppressCooldownMs) };
+    const none: Evaluation = { hand: null, blocked: null };
+    return { state: idle, fired: null, view: makeView(idle, t, null, none, { ...input, hands: [] }, cfg) };
+  }
   const ev = evaluateHands(input.hands, box, cfg);
   const seenShape = ev.hand?.shape ?? null;
   const s: MachineState = { ...prev };

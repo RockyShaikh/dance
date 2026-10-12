@@ -2,7 +2,7 @@ import type { GestureRecognizerResult, NormalizedLandmark } from "@mediapipe/tas
 import type { Vec2 } from "./box";
 import { APP, FEATURES } from "./config";
 import type { Handedness, Point3 } from "./hand";
-import { clawExtension, othersReach, palmCentre, pinchRatio } from "./handFeatures";
+import { clawExtension, othersReach, palmCentre, pinchRatio, tiltDeg } from "./handFeatures";
 import { palmFacingInfo } from "./palmFacing";
 import { pseudoChord, type PseudoChord } from "./pseudoChord";
 
@@ -30,6 +30,8 @@ export interface HandReading {
   clawExt: number;
   /** The same for middle, ring and pinky only (low in a fist). */
   othersReach: number;
+  /** R4b knob: the wrist-to-middle-knuckle needle against straight up, degrees, clockwise positive as the user sees the mirrored picture. */
+  tiltDeg: number;
 }
 
 /** Normalized (0..1) landmarks to isotropic pixel space, so geometry is not stretched by the aspect ratio. */
@@ -70,6 +72,7 @@ export function readHand(
     pinchRatio: pinchRatio(iso),
     clawExt: clawExtension(iso),
     othersReach: othersReach(iso),
+    tiltDeg: tiltDeg(iso),
   };
 }
 

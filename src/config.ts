@@ -83,6 +83,8 @@ export interface CommandConfig {
   dwellMaxMs: number;
   /** After anything fires, no new dwell may start for this long. */
   cooldownMs: number;
+  /** R4b: how long commands stay blocked after a knob grab ends (a grab suppresses them; see `StepInput.suppress`). */
+  suppressCooldownMs: number;
   /**
    * A shape that vanishes for less than this (a dropped or flickering frame)
    * still counts as held. A longer gap is a release.
@@ -105,6 +107,7 @@ export const COMMANDS: CommandConfig = {
   dwellMinMs: 600,
   dwellMaxMs: 1200,
   cooldownMs: 1000,
+  suppressCooldownMs: 500,
   dropoutGraceMs: 120,
   minShapeScore: 0.5,
   requirePalmFacing: true,
@@ -199,3 +202,74 @@ export const LOOP = {
   /** How long the huge START time stays up after a nudge. */
   nudgeReadoutMs: 1800,
 } as const;
+
+/**
+ * R4b: the knob (docs/spec.md section 5). Three separate, swappable pieces:
+ *   CLUTCH (am I grabbing?) -> MOTION (what am I turning?) -> MAPPING (how turning moves the value).
+ * R4b's value is the loop START, in seconds of music. Angles are in degrees, display-clockwise
+ * positive (as the user sees the mirrored picture). Clockwise = later, counter-clockwise = earlier.
+ */
+export type ClutchKind = "claw" | "pinch" | "twoHand";
+export type MotionKind = "tilt" | "circling";
+export type MappingKind = "joystick" | "absolute" | "relative" | "jog";
+
+export interface KnobConfig {
+  /** What the settings panel starts with (the user's choice: claw as the default grab). */
+  defaults: { clutch: ClutchKind; motion: MotionKind; mapping: MappingKind; gain: number; deadZoneDeg: number; invert: boolean };
+  /** Panel slider ranges. `gain` multiplies every mapping; the dead zone is the joystick's. */
+  gainMin: number;
+  gainMax: number;
+  deadZoneMinDeg: number;
+  deadZoneMaxDeg: number;
+  tilt: {
+    /** Weight of the newest sample in a running average (1 = no smoothing). Landmarks jitter by a degree or two. */
+    smoothing: number;
+  };
+  circling: {
+    /** The circle's centre is the average palm position over this long ("a ~1 s running average"). */
+    windowMs: number;
+    /** The palm must be at least this far from that centre (as a fraction of the frame HEIGHT) to count as circling. */
+    minRadius: number;
+    /** Nothing is measured until the window holds at least this much history. */
+    warmupMs: number;
+  };
+  joystick: {
+    /** Tilt (away from where you grabbed) at which the rate is at its maximum. */
+    fullTiltDeg: number;
+    /** Maximum nudge speed, seconds of music per second. Low: the job is "a couple of counts". */
+    maxRateSecPerSec: number;
+    /** 1 = linear; above 1 gives finer control near the centre. */
+    curve: number;
+  };
+  absolute: {
+    /** The wiper's world range: tilt is clamped to +-this from straight up, so a sweep can run out. */
+    worldRangeDeg: number;
+    /** Seconds of START per degree of tilt. */
+    secPerDeg: number;
+  };
+  relative: {
+    /** Seconds of START per degree turned since the grab (no end to the range: re-grab to keep going). */
+    secPerDeg: number;
+  };
+  jog: {
+    /** Seconds of START per full circle of the hand. */
+    secPerTurn: number;
+  };
+  /** A frame gap longer than this counts as this long, so a stall can't make a jump. */
+  maxDtSec: number;
+}
+
+export const KNOB: KnobConfig = {
+  defaults: { clutch: "claw", motion: "tilt", mapping: "joystick", gain: 1, deadZoneDeg: 12, invert: false },
+  gainMin: 0.25,
+  gainMax: 3,
+  deadZoneMinDeg: 3,
+  deadZoneMaxDeg: 30,
+  tilt: { smoothing: 0.5 },
+  circling: { windowMs: 1000, minRadius: 0.035, warmupMs: 300 },
+  joystick: { fullTiltDeg: 60, maxRateSecPerSec: 3, curve: 1.5 },
+  absolute: { worldRangeDeg: 70, secPerDeg: 0.06 },
+  relative: { secPerDeg: 0.06 },
+  jog: { secPerTurn: 2 },
+  maxDtSec: 0.1,
+};

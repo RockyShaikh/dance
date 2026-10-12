@@ -105,6 +105,19 @@ function loseHand(s: HandClutch, t: number, cfg: ClutchConfig): HandClutch {
 }
 
 /**
+ * Which of exactly two hands is the modifier and which steers, by screen side (never the model's
+ * left/right label). Null unless two hands are in view. R4b's knob uses this to find the steering hand.
+ */
+export function twoHandRoles<H extends { palm: Vec2 }>(hands: readonly H[], cfg: ClutchConfig): { modifier: H; steering: H } | null {
+  if (hands.length !== 2) return null;
+  const [a, b] = hands;
+  // Display x grows to the right as the user sees it.
+  const leftMost = a.palm.x <= b.palm.x ? a : b;
+  const rightMost = leftMost === a ? b : a;
+  return cfg.twoHand.modifierSide === "left" ? { modifier: leftMost, steering: rightMost } : { modifier: rightMost, steering: leftMost };
+}
+
+/**
  * Two-hand: the hand on the modifier side of the screen holds an open palm up while
  * the other hand (the "steering" hand) is present. Hands are told apart by screen
  * side, not by the model's left/right label (which can flip). To start, the steering
@@ -114,15 +127,10 @@ function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly Cl
   const s = { ...prev };
   let present = false;
   let startOk = false;
-  if (hands.length === 2) {
-    const [a, b] = hands;
-    // Display x grows to the right as the user sees it.
-    const leftMost = a.palm.x <= b.palm.x ? a : b;
-    const rightMost = leftMost === a ? b : a;
-    const modifier = cfg.twoHand.modifierSide === "left" ? leftMost : rightMost;
-    const steering = modifier === leftMost ? rightMost : leftMost;
-    present = modifier.shape === cfg.twoHand.modifierShape;
-    startOk = present && contains(box, steering.palm);
+  const roles = twoHandRoles(hands, cfg);
+  if (roles) {
+    present = roles.modifier.shape === cfg.twoHand.modifierShape;
+    startOk = present && contains(box, roles.steering.palm);
   }
   if (!s.grabbed) {
     s.grabbed = startOk;
