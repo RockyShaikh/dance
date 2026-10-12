@@ -7,6 +7,7 @@ import type { AudioPlayer, PlayerState } from "./audioPlayer";
 import type { HandFire } from "./handCommands";
 import { clearLoop, isLooping, loopStep, nudgeEnd, nudgeStart, restartTarget, setEnd, setStart, type LoopState } from "./loop";
 import { formatTime } from "./time";
+import { SPEED } from "./config";
 import { formatRate, stepSpeed, toggleSpeed } from "./speed";
 
 export { formatTime };
@@ -24,9 +25,13 @@ export type TransportAction =
   | "clearLoop"
   /** R5: the whole track between 2x and 1x (anything else back to 1x); the music just carries on. */
   | "speedToggle"
-  /** R5: keys `=` and `-`: the next preset up / down (0.5, 0.75, 1, 1.5, 2). */
+  /** R5b: keys `=` and `-`: one 0.05 step up / down, kept to 0.5..1.0. */
   | "speedUp"
-  | "speedDown";
+  | "speedDown"
+  /** R5b: key `0`: back to 1x. */
+  | "speedReset"
+  /** R5b: set the speed to `TransportOptions.rate` (the thumbs-up hold sets 2x and puts the old speed back). */
+  | "speedSet";
 
 /**
  * Which action a fired command is. Every command fires once, when its ring fills. R4b's two-hand scheme:
@@ -35,14 +40,13 @@ export type TransportAction =
  *  - LEFT hand = marks: V = set IN (START) at the playhead, index up = set OUT (END) at the playhead and
  *    loop. The left hand never plays or pauses by a command (its fist only pauses while steering: steerAudio.ts).
  * The V key / Mark button still cycle START, END, clear (`loopStep`); no gesture does.
- * R5: the RIGHT hand's thumbs up toggles the speed (2x <-> 1x).
+ * R5b: the right thumbs up is not a command: holding it is a state (holdSpeed.ts), not an action that fires.
  */
 export function actionForFire(ev: Pick<HandFire, "shape" | "hand">): TransportAction | null {
   if (ev.hand === "Right") {
     if (ev.shape === "Closed_Fist") return "toggle";
     if (ev.shape === "Pointing_Up") return "restart";
     if (ev.shape === "Victory") return "clearLoop";
-    if (ev.shape === "Thumb_Up") return "speedToggle";
     return null;
   }
   if (ev.shape === "Victory") return "setStart";
@@ -67,6 +71,8 @@ export interface TransportOptions {
    * buttons leave it out and mark the playhead as it is right now.
    */
   markAt?: number;
+  /** `speedSet` only: the speed to set. */
+  rate?: number;
 }
 
 /** Runs one action. The player's state has already changed when this returns (the audio call is synchronous). */
@@ -87,8 +93,17 @@ export function runTransport(player: AudioPlayer, loop: LoopState, action: Trans
     }
     case "speedToggle":
     case "speedUp":
-    case "speedDown": {
-      const next = action === "speedToggle" ? toggleSpeed(player.rate) : stepSpeed(player.rate, action === "speedUp" ? 1 : -1);
+    case "speedDown":
+    case "speedReset":
+    case "speedSet": {
+      const next =
+        action === "speedToggle"
+          ? toggleSpeed(player.rate)
+          : action === "speedReset"
+            ? SPEED.normal
+            : action === "speedSet"
+              ? (opts.rate ?? player.rate)
+              : stepSpeed(player.rate, action === "speedUp" ? 1 : -1);
       if (next === player.rate) return { label: `SPEED ${formatRate(next)}`, changed: false, loop };
       return { label: `SPEED ${formatRate(player.setRate(next))}`, changed: true, loop };
     }

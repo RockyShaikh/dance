@@ -47,18 +47,13 @@ describe("each fire says which hand made it", () => {
   });
 });
 
-describe("R5: the thumbs up is a right-hand command", () => {
-  it("the right thumbs up fires, with palm facing not required", () => {
+describe("R5b: the thumbs up is not a command (holding it is a state: holdSpeed.ts)", () => {
+  it("a thumbs up, either hand, never fires and never cools anything down", () => {
     const b = new Bench();
-    b.show(900, [obs("Right", "Thumb_Up", R, { palmFacing: false })]);
-    expect(b.fires).toMatchObject([{ hand: "Right", shape: "Thumb_Up" }]);
-  });
-
-  it("the LEFT thumbs up is not armed: it never fires and never cools the right hand down", () => {
-    const b = new Bench();
-    b.show(2000, [obs("Left", "Thumb_Up")]);
+    b.show(2000, [obs("Right", "Thumb_Up"), obs("Left", "Thumb_Up")]);
     expect(b.fires).toEqual([]);
     expect(b.views.Left.shape).toBeNull();
+    expect(b.views.Right.shape).toBeNull();
     // a right-hand command right away is not blocked by a cooldown
     b.show(900, [obs("Right", "Pointing_Up")]);
     expect(b.fires).toMatchObject([{ hand: "Right", shape: "Pointing_Up" }]);

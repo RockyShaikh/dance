@@ -40,8 +40,8 @@ describe("actionForFire (two hands)", () => {
     expect(actionForFire({ hand: "Right", shape: "ILoveYou" })).toBeNull();
     expect(actionForFire({ hand: "Right", shape: "None" })).toBeNull();
   });
-  it("R5: the right thumbs up toggles the speed; the left thumbs up does nothing", () => {
-    expect(actionForFire({ hand: "Right", shape: "Thumb_Up" })).toBe("speedToggle");
+  it("R5b: the thumbs up fires no action (holding it is a state: holdSpeed.ts)", () => {
+    expect(actionForFire({ hand: "Right", shape: "Thumb_Up" })).toBeNull();
     expect(actionForFire({ hand: "Left", shape: "Thumb_Up" })).toBeNull();
   });
 });
@@ -74,23 +74,41 @@ describe("speed (R5)", () => {
     expect(player.currentTime).toBe(2);
   });
 
-  it("from a slowed speed the toggle goes back to normal; - and = step through the presets and stop at the ends", () => {
+  it("R5b: - and = step 0.05 within 0.5 to 1.0 and stop at the ends; 0 resets to 1x; the toggle still goes back to normal", () => {
     const { player } = loadedPlayer();
     const seen: number[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 12; i++) {
       runTransport(player, NO_LOOP, "speedDown");
       seen.push(player.rate);
     }
-    expect(seen).toEqual([0.75, 0.5, 0.5, 0.5]);
-    const done = runTransport(player, NO_LOOP, "speedDown");
-    expect(done).toEqual({ label: "SPEED 0.5×", changed: false, loop: NO_LOOP });
+    expect(seen).toEqual([0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.5, 0.5]);
+    expect(runTransport(player, NO_LOOP, "speedDown")).toEqual({ label: "SPEED 0.5×", changed: false, loop: NO_LOOP });
     expect(runTransport(player, NO_LOOP, "speedToggle").label).toBe("SPEED 1×");
-    const up: number[] = [];
-    for (let i = 0; i < 4; i++) {
-      runTransport(player, NO_LOOP, "speedUp");
-      up.push(player.rate);
-    }
-    expect(up).toEqual([1.5, 2, 2, 2]);
+    runTransport(player, NO_LOOP, "speedDown");
+    expect(runTransport(player, NO_LOOP, "speedReset")).toMatchObject({ label: "SPEED 1×", changed: true });
+    expect(player.rate).toBe(1);
+    expect(runTransport(player, NO_LOOP, "speedUp")).toMatchObject({ label: "SPEED 1×", changed: false }); // 1.0 is a natural stop
+    expect(player.rate).toBe(1);
+  });
+
+  it("R5b: speedSet puts the speed at exactly the asked value (the thumbs-up hold's 2x and its restore)", () => {
+    const { player } = loadedPlayer();
+    runTransport(player, NO_LOOP, "speedDown");
+    runTransport(player, NO_LOOP, "speedDown"); // 0.9
+    runTransport(player, NO_LOOP, "speedSet", { rate: 2 });
+    expect(player.rate).toBe(2);
+    runTransport(player, NO_LOOP, "speedSet", { rate: 0.9 });
+    expect(player.rate).toBe(0.9);
+  });
+
+  it("at a slowed speed time passes at that speed (0.5x: a second of real time is half a second of music), pitch kept", async () => {
+    const { player, media } = loadedPlayer();
+    await player.play();
+    for (let i = 0; i < 10; i++) runTransport(player, NO_LOOP, "speedDown");
+    expect(player.rate).toBe(0.5);
+    expect(media.preservesPitch).toBe(true);
+    media.advance(2);
+    expect(player.currentTime).toBe(1);
   });
 
   it("a new track starts at 1x again", () => {
