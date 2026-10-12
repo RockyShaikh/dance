@@ -8,6 +8,9 @@
   --off: #ff5d6c;
   --warn: #ffb020;
   --accent: #5cc8ff;
+  --loop: #ffd23f;
+  --flag-start: #38e08c;
+  --flag-end: #ff5d6c;
 }
 
 * {
@@ -547,6 +550,10 @@ button.small {
   color: var(--accent);
 }
 
+#status-word[data-state="loop"] {
+  color: var(--loop);
+}
+
 #clock {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
@@ -569,6 +576,8 @@ button.small {
 
 #timeline {
   position: relative;
+  /* the room above the bar is for the START / END flag labels */
+  margin-top: clamp(40px, 6.5vh, 64px);
   height: clamp(28px, 5vh, 56px);
   background: #232a33;
   border-radius: 8px;
@@ -626,7 +635,7 @@ kbd {
 }
 
 #cheat {
-  margin-left: auto;
+  margin-top: 8px;
   font-size: 15px;
 }
 
@@ -653,6 +662,119 @@ kbd {
   border: 6px dashed var(--accent);
   color: var(--accent);
   pointer-events: none;
+}
+
+/* --- R4a: loop region, flags, nudge readout --------------------------------------------- */
+
+#loop-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 210, 63, 0.42);
+  border-top: 4px solid var(--loop);
+  border-bottom: 4px solid var(--loop);
+}
+
+/* A flag: a thick pole through the bar, with a big label above it pointing outward. */
+.flag {
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  width: 0;
+  --c: var(--flag-start);
+}
+
+#flag-end {
+  --c: var(--flag-end);
+}
+
+.flag::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 10px;
+  background: var(--c);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.flag-label {
+  position: absolute;
+  bottom: 100%;
+  white-space: nowrap;
+  padding: 2px 12px 3px;
+  border-radius: 6px;
+  background: var(--c);
+  color: #08120c;
+  font-size: clamp(20px, 4vh, 40px);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.flag[data-side="left"] .flag-label {
+  right: -5px;
+}
+
+.flag[data-side="right"] .flag-label {
+  left: -5px;
+}
+
+#flag-end .flag-label {
+  color: #200508;
+}
+
+/* The playhead stays on top of the flags. */
+#tl-head {
+  z-index: 2;
+}
+
+/* START time, huge, over the picture while nudging. */
+#nudge-readout {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8%;
+  text-align: center;
+  line-height: 1;
+  pointer-events: none;
+  padding: 16px 0 12px;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+#nudge-title {
+  font-size: clamp(20px, 4vh, 40px);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--flag-start);
+}
+
+#nudge-time {
+  font-size: clamp(72px, 22vh, 220px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+#nudge-sub {
+  font-size: clamp(20px, 4vh, 40px);
+  font-weight: 800;
+  color: var(--dim);
+}
+
+#nudge-readout[data-limit="1"] #nudge-sub {
+  color: var(--warn);
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 2px solid #2b323c;
 }
 
 @media (max-width: 1000px) {

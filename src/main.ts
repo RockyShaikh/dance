@@ -14,7 +14,8 @@ import { Practice } from "./practice";
 import { loadRecognizer } from "./recognizer";
 import { renderHands, setFps, setMessage, setStatus } from "./readout";
 import { loadSettings, saveSettings } from "./settings";
-import { actionForFire, practiceConfig } from "./transport";
+import { markTime, trackRingStart, type RingStamp } from "./loop";
+import { actionForFire } from "./transport";
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const still = document.getElementById("still") as HTMLImageElement;
@@ -56,12 +57,14 @@ const practice = new Practice(player, {
 });
 
 /** Current thresholds: the config defaults with the slider/toggle settings applied. */
-const commandCfg = (): CommandConfig =>
-  practiceConfig({
-    ...COMMANDS,
-    dwellMs: settings.dwellMs,
-    stillness: { ...COMMANDS.stillness, enabled: settings.stillness },
-  });
+const commandCfg = (): CommandConfig => ({
+  ...COMMANDS,
+  dwellMs: settings.dwellMs,
+  stillness: { ...COMMANDS.stillness, enabled: settings.stillness },
+});
+
+/** Where the music was when the current ring started (null when no shape is being held): gesture marks are stamped there. */
+let ringStamp: RingStamp | null = null;
 const clutchCfg = (): ClutchConfig => ({ ...CLUTCH, pinch: { ...CLUTCH.pinch, grabRatio: settings.pinchGrab } });
 
 function setBox(b: Box): void {
@@ -106,10 +109,14 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     // The music reacts on the very frame the ring completes, before any logging or drawing.
     const action = actionForFire(r.fired);
     const before = performance.now();
-    const result = action ? practice.perform(action) : null;
-    if (import.meta.env.DEV) recordTiming(r.fired.shape, ts, before, result?.label ?? null);
+    // A loop mark lands where the music was when the ring started, minus the late-mark offset.
+    const markAt = markTime(ringStamp?.playhead ?? player.currentTime, player.duration);
+    const result = action ? practice.perform(action, { markAt }) : null;
+    if (import.meta.env.DEV) recordTiming(r.fired.shape, ts, before, result?.label ?? null, markAt);
     bench.fire(r.fired, result?.label);
   }
+  // After the fire (a tap fires on release, when the machine has already gone idle).
+  ringStamp = trackRingStart(ringStamp, machine.shape, machine.since, player.currentTime);
 
   const c = stepClutches(
     clutch,
@@ -135,10 +142,10 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
 }
 
 /** DEV only: how long from "the ring completed" to "the audio element changed state" (see window.__dance.timings). */
-function recordTiming(shape: string, frameTs: number, before: number, label: string | null): void {
+function recordTiming(shape: string, frameTs: number, before: number, label: string | null, markAt: number): void {
   const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
   const list = ((dance.timings as unknown[]) ??= []);
-  list.push({ shape, label, frameTs, calledAt: before, returnedAt: performance.now(), state: player.state, currentTime: player.currentTime });
+  list.push({ shape, label, frameTs, calledAt: before, returnedAt: performance.now(), state: player.state, currentTime: player.currentTime, markAt });
 }
 
 /** DEV only: ?track=/test/click-track.wav loads a track at startup; every player event is time-stamped. */
