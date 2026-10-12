@@ -167,8 +167,24 @@ export class Bench {
     pill("clutch-two", v.twoHand, null);
   }
 
-  /** A command fired: banner, sound, log, and the false-fire count. */
-  fire(ev: FireEvent): void {
+  /** The full-width banner, for ~1 s. R3 also uses it for key and button actions. */
+  showBanner(main: string, sub: string, kind: "tap" | "hold"): void {
+    this.bannerMain.textContent = main;
+    this.bannerSub.textContent = sub;
+    this.banner.dataset.kind = kind;
+    this.banner.hidden = false;
+    this.banner.classList.remove("flash");
+    void this.banner.offsetWidth; // restart the CSS animation
+    this.banner.classList.add("flash");
+    window.clearTimeout(this.bannerTimer);
+    this.bannerTimer = window.setTimeout(() => (this.banner.hidden = true), BANNER_MS);
+  }
+
+  /**
+   * A command fired: banner, sound, log, and the false-fire count. `label` replaces the
+   * banner's big text (R3 shows what the music did, e.g. "PAUSE", instead of the shape).
+   */
+  fire(ev: FireEvent, label?: string): void {
     const entry: LogEntry = { at: Date.now(), shape: ev.shape, kind: ev.kind, test: this.fft.running };
     const prev = this.log[0];
     this.log.unshift(entry);
@@ -185,15 +201,7 @@ export class Bench {
     this.logList.prepend(li);
     while (this.logList.children.length > LOG_MAX) this.logList.lastElementChild?.remove();
 
-    this.bannerMain.textContent = prettyShape(ev.shape).toUpperCase();
-    this.bannerSub.textContent = ev.kind === "tap" ? "TAP" : "HOLD";
-    this.banner.dataset.kind = ev.kind;
-    this.banner.hidden = false;
-    this.banner.classList.remove("flash");
-    void this.banner.offsetWidth; // restart the CSS animation
-    this.banner.classList.add("flash");
-    window.clearTimeout(this.bannerTimer);
-    this.bannerTimer = window.setTimeout(() => (this.banner.hidden = true), BANNER_MS);
+    this.showBanner(label ?? prettyShape(ev.shape).toUpperCase(), ev.kind === "tap" ? "TAP" : "HOLD", ev.kind);
 
     if (this.settings.sound) beep(ev.kind);
     this.renderFalseFire();

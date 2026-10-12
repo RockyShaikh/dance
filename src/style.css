@@ -113,7 +113,8 @@ body {
 #still {
   display: block;
   max-width: 100%;
-  max-height: calc(100vh - 80px);
+  /* --stage-h is the stage's own height, kept up to date by main.ts (the practice view has bars above and below it). */
+  max-height: var(--stage-h, calc(100vh - 80px));
 }
 
 #overlay,
@@ -195,6 +196,11 @@ body {
 }
 
 /* --- Side column ------------------------------------------------------------------ */
+
+/* The R2 test bench is behind the Bench button. */
+body:not(.bench-open) #side {
+  display: none;
+}
 
 #side {
   width: 440px;
@@ -472,6 +478,181 @@ button.small {
   margin-left: auto;
   color: var(--dim);
   font-size: 12px;
+}
+
+/* --- R3 practice view ---------------------------------------------------------------- */
+
+#bar {
+  padding: 4px 20px;
+}
+
+#fps {
+  font-size: 18px;
+  min-width: 90px;
+}
+
+#fps .unit {
+  font-size: 13px;
+}
+
+#status {
+  font-size: 14px;
+}
+
+#fft-status {
+  font-size: 14px;
+}
+
+#bench-toggle {
+  margin-left: auto;
+  padding: 3px 12px;
+}
+
+#fft-status:not(:empty) + #bench-toggle {
+  margin-left: 16px;
+}
+
+#bench-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  color: #04202e;
+  border-color: var(--accent);
+}
+
+/* Giant status word and clock: legible from several metres. */
+#practice-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 20px;
+  line-height: 1;
+}
+
+#status-word {
+  font-size: clamp(56px, 13vh, 150px);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: var(--dim);
+}
+
+#status-word[data-state="playing"] {
+  color: var(--on);
+}
+
+#status-word[data-state="paused"] {
+  color: var(--warn);
+}
+
+#status-word[data-state="ready"] {
+  color: var(--accent);
+}
+
+#clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#t-elapsed {
+  font-size: clamp(48px, 11vh, 130px);
+}
+
+#t-total {
+  font-size: clamp(24px, 5vh, 60px);
+  color: var(--dim);
+  margin-left: 0.3em;
+}
+
+#transport {
+  padding: 8px 20px 14px;
+}
+
+#timeline {
+  position: relative;
+  height: clamp(28px, 5vh, 56px);
+  background: #232a33;
+  border-radius: 8px;
+  overflow: visible;
+}
+
+#tl-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: #2f6f8f;
+  border-radius: 8px 0 0 8px;
+}
+
+/* The playhead: a thick bright bar that overshoots the track, so it reads from afar. */
+#tl-head {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: 0;
+  width: 10px;
+  margin-left: -5px;
+  background: #fff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+#controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+#controls-row button {
+  font-size: 16px;
+  padding: 8px 16px;
+}
+
+kbd {
+  font: inherit;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #0d0f12;
+  border: 1px solid #3a4350;
+  color: var(--dim);
+  margin-left: 4px;
+}
+
+#track-name {
+  font-size: 15px;
+  color: var(--text);
+}
+
+#cheat {
+  margin-left: auto;
+  font-size: 15px;
+}
+
+#hint {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #523600;
+  color: #ffd98a;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+#drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(32px, 6vw, 72px);
+  font-weight: 800;
+  background: rgba(13, 15, 18, 0.85);
+  border: 6px dashed var(--accent);
+  color: var(--accent);
+  pointer-events: none;
 }
 
 @media (max-width: 1000px) {

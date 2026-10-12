@@ -182,3 +182,15 @@ export const CLUTCH: ClutchConfig = {
   twoHand: { modifierSide: "left", modifierShape: "Open_Palm" },
   releaseGraceMs: 300,
 };
+
+/**
+ * R3: practice-view overrides for the command classifier.
+ *
+ * Index up has a hold action in the R2 bench (tap fires on RELEASE, hold fires later), because
+ * R4 gives them different jobs (loop start vs song start). In R3 both restart from 0:00, and the
+ * music must react the moment the ring completes, so Pointing_Up has no hold action here and
+ * fires when the first ring fills, like Open_Palm. R4 puts it back.
+ */
+export const PRACTICE = {
+  holdShapes: ["Victory"] as readonly string[],
+} as const;
