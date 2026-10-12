@@ -8,6 +8,7 @@ Updated: 2026-10-11
 | B4c | R4c steering redesign (left-shape modes, lag fix, waveform) on `r4c-steer`, then R5 2× toggle on `r5-speed` | ship | branches `r4c-steer` → `r5-speed` | 2026-10-12 |
 
 ## Waiting on user
+- R4c hand test at http://localhost:5185/?track=/test/click-track.wav (read-only test checkout `.claude/worktrees/test-r4c` on `r4c-steer`; remove after testing, with the user's OK). The builder is still on R5.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
