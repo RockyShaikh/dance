@@ -104,6 +104,7 @@ export class Practice {
       this.needClick = false;
       this.updateHint();
     };
+    window.addEventListener("resize", () => this.last.delete("loop")); // flag labels are placed by measuring
     document.addEventListener("pointerdown", clear);
     document.addEventListener("keydown", clear);
 
@@ -301,19 +302,17 @@ export class Practice {
       this.regionEl.hidden = !(showStart && showEnd);
       if (showStart) {
         this.flagStart.style.left = pct(start as number);
-        // The label points outward, unless there is no room on that side.
-        this.flagStart.dataset.side = (start as number) / duration > 0.18 ? "left" : "right";
         this.flagStartTime.textContent = formatTime(start as number);
       }
       if (showEnd) {
         this.flagEnd.style.left = pct(end as number);
-        this.flagEnd.dataset.side = (end as number) / duration < 0.82 ? "right" : "left";
         this.flagEndTime.textContent = formatTime(end as number);
       }
       if (showStart && showEnd) {
         this.regionEl.style.left = pct(start as number);
         this.regionEl.style.width = pct((end as number) - (start as number));
       }
+      this.layoutFlags();
     }
 
     const nudging = start !== null && performance.now() < this.nudgeUntil;
@@ -322,6 +321,31 @@ export class Practice {
       this.setText("nudge-time", this.nudgeTime, formatTime(start as number));
       this.setText("nudge-sub", this.nudgeSub, this.nudgeNote);
       this.nudgeEl.dataset.limit = this.nudgeNote.includes("LIMIT") ? "1" : "0";
+    }
+  }
+
+  /**
+   * START's label points left of its pole and END's points right, so they never meet. Near an edge
+   * of the bar a label is slid back inside; if the two still touch (a very short loop at an edge),
+   * END's label goes up a row.
+   */
+  private layoutFlags(): void {
+    const [s, e] = [this.flagStart, this.flagEnd].map((f) => f.firstElementChild as HTMLElement);
+    s.style.transform = "";
+    e.style.transform = "";
+    const bar = this.timeline.getBoundingClientRect();
+    if (!this.flagStart.hidden) {
+      const r = s.getBoundingClientRect();
+      if (r.left < bar.left) s.style.transform = `translateX(${bar.left - r.left}px)`;
+    }
+    if (!this.flagEnd.hidden) {
+      const r = e.getBoundingClientRect();
+      if (r.right > bar.right) e.style.transform = `translateX(${bar.right - r.right}px)`;
+    }
+    if (!this.flagStart.hidden && !this.flagEnd.hidden) {
+      const a = s.getBoundingClientRect();
+      const b = e.getBoundingClientRect();
+      if (a.right > b.left && b.right > a.left) e.style.transform = `${e.style.transform} translateY(-105%)`;
     }
   }
 

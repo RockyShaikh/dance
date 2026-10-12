@@ -715,11 +715,12 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-.flag[data-side="left"] .flag-label {
+/* START's label sits left of its pole, END's right of its pole (practice.ts slides them back in at the edges). */
+#flag-start .flag-label {
   right: -5px;
 }
 
-.flag[data-side="right"] .flag-label {
+#flag-end .flag-label {
   left: -5px;
 }
 
