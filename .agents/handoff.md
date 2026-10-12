@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-R3: load a local track; open palm = play/pause, index up = restart; webcam + status + timeline on one screen. Built on top of R2 (not yet hand-tested). The user wants R2 and R3 individually rollback-able.
+R4 (split): R4a = loops marked as music plays, restart to loop start, keyboard nudge; then R4b = knob nudge variants (claw default). Each gets its own branch, merge and tag.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ R3: load a local track; open palm = play/pause, index up = restart; webcam + sta
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-The user asked to confirm the R4 plan in brief bullets before starting. On confirmation: mark R4 active, dispatch ship(s) per the confirmed split, and resume T3 (dashboard).
+Wait for B4a. Then give the user R4a test steps. Dispatch R4b (branch `r4b-knob` off `r4a-loops`) once R4a lands, which can be before the user tests it. Merge each only on the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

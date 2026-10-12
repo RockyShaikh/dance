@@ -5,13 +5,13 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B4a | R4a: V-cycle loops, late-mark fix, restart to loop start, keyboard nudge, loop visuals | ship | branch `r4a-loops` (worktree TBD) | 2026-10-12 |
+| T3 | Dashboard: R2/R3 code on main + R4 preview (resumed) | tutor | n/a | 2026-10-12 |
 
 ## Waiting on user
-- Confirm the R4 plan (brief bullets sent in chat) before R4 starts.
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
-- T3 — dashboard R2/R3 update stopped mid-work (session limit). Resume later.
 
 ## Done (last 10)
 - R3 — accepted ("it seems to be working"), merged --no-ff, tag `r3-done` — 2026-10-12
