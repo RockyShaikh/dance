@@ -41,18 +41,21 @@ const prelude = `
   { const pl = __dance.player; for (const m of ['seek', 'play', 'pause']) { const o = pl[m].bind(pl); pl[m] = (...a) => { T.calls.push({ t: performance.now(), m, a: a[0] }); return o(...a); }; } }
 `;
 
-async function fresh() {
+// R4d: circling + jog is the default wheel; this script exercises the tilt wheel (still selectable), so it picks it (hands.mjs covers circling).
+async function fresh(tilt = true) {
   await p.goto(URL);
   await ev(`localStorage.clear()`);
   await p.goto(URL);
   await ev(`await new Promise(r=>setTimeout(r,1500))`);
   await ev(prelude);
+  if (tilt) await ev(`T.set('knob-motion', 'tilt'); T.set('knob-mapping', 'relative')`);
 }
 
 // -------------------------------------------------------------------------------------------------
 console.log("\n== 1. Defaults and the waveform");
-await fresh();
-check("defaults: two-hand + tilt + relative -> playhead", (await ev(`return ['knob-clutch','knob-motion','knob-mapping','knob-target'].map(i=>document.getElementById(i).value).join('+')`)) === "twoHand+tilt+relative+playhead");
+await fresh(false);
+check("defaults (R4d): two-hand + circling + jog -> playhead", (await ev(`return ['knob-clutch','knob-motion','knob-mapping','knob-target'].map(i=>document.getElementById(i).value).join('+')`)) === "twoHand+circling+jog+playhead");
+await ev(`T.set('knob-motion', 'tilt'); T.set('knob-mapping', 'relative')`);
 await ev(`await T.sleep(1500)`);
 const wave = await ev(`const pk = __dance.practice.waveform; const c = document.getElementById('tl-wave'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let lit = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) lit++; return JSON.stringify({ bins: pk ? pk.min.length : 0, binMs: pk ? +(pk.binSec * 1000).toFixed(2) : 0, duration: pk ? +pk.duration.toFixed(2) : 0, w: c.width, h: c.height, lit })`);
 const wj = JSON.parse(wave);
@@ -63,12 +66,11 @@ await ev(`await T.sleep(300)`);
 await shot("01-timeline-waveform-loop");
 
 // -------------------------------------------------------------------------------------------------
-console.log("\n== 2. Grab with the left palm: playing; palm <-> fist toggles without releasing");
+console.log("\n== 2. Grab with the left palm (music playing): palm <-> fist pauses and resumes without releasing");
 await fresh();
-await ev(`__dance.practice.perform('setStart',{markAt:20}); __dance.practice.perform('setEnd',{markAt:40}); __dance.player.seek(30); await T.sleep(500);`);
-check("paused before", (await ev(`return T.state()`)) === "ready" || (await ev(`return T.state()`)) === "paused");
+await ev(`__dance.practice.perform('setStart',{markAt:20}); __dance.practice.perform('setEnd',{markAt:40}); __dance.player.seek(30); await __dance.player.play(); await T.sleep(300);`);
 await ev(`await T.show([T.left('Open_Palm'), T.right(0)], 500)`);
-check("left palm + right hand in its box: GRABBED, mode play, music playing", (await ev(`return JSON.stringify([T.grabbed(), T.mode(), T.state()])`)) === '[true,"play","playing"]');
+check("left palm + right hand in its box: GRABBED, mode palm, music still playing (R4d: left leaves it as it was)", (await ev(`return JSON.stringify([T.grabbed(), T.mode(), T.state()])`)) === '[true,"palm","playing"]');
 const zoomPx = await ev(`const c = document.getElementById('hud'); const y0 = Math.floor(c.height * 0.62); const d = c.getContext('2d').getImageData(0, y0, c.width, Math.floor(c.height * 0.34)).data; let lit = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 200) lit++; return lit`);
 check("the zoomed waveform is drawn on the HUD while steering (and the big readout steps aside)", zoomPx > 20000 && (await ev(`return document.getElementById('nudge-readout').hidden`)), `${zoomPx} opaque pixels in the band`);
 await shot("02-palm-grabbed-playing-zoom");
@@ -77,7 +79,7 @@ for (let i = 0; i < 3; i++) {
   const a = await ev(`return JSON.stringify([T.grabbed(), T.mode(), T.state()])`);
   await ev(`await T.show([T.left('Open_Palm'), T.right(0)], 400)`);
   const b = await ev(`return JSON.stringify([T.grabbed(), T.mode(), T.state()])`);
-  check(`toggle ${i + 1}: fist pauses, palm resumes, still grabbed`, a === '[true,"pause","paused"]' && b === '[true,"play","playing"]', `${a} then ${b}`);
+  check(`toggle ${i + 1}: fist pauses, palm resumes, still grabbed`, a === '[true,"fist","paused"]' && b === '[true,"palm","playing"]', `${a} then ${b}`);
 }
 const edges = await ev(`return JSON.stringify(T.edges)`);
 check("through all of that: ONE grab, no release", JSON.parse(edges).grabs === 1 && JSON.parse(edges).releases === 0, edges);
@@ -138,7 +140,7 @@ check("while steering, V / index held for seconds fire nothing (they select the 
 
 console.log("\n== 6. Debounce: a flickering left hand does not toggle play / pause or let go");
 await fresh();
-await ev(`__dance.player.seek(30); await T.show([T.left('Open_Palm'), T.right(0)], 500); T.calls.length = 0`);
+await ev(`__dance.player.seek(30); await __dance.player.play(); await T.show([T.left('Open_Palm'), T.right(0)], 500); T.calls.length = 0`);
 await ev(`for (let i = 0; i < 12; i++) { await T.show([T.left('Closed_Fist', { curl: 1 }), T.right(0)], 50); await T.show([T.left('Open_Palm'), T.right(0)], 350); }`);
 const pauses = await ev(`return T.calls.filter((c) => c.m === 'pause').length`);
 check("12 flickers of fist (about 2 frames) in a held palm: no pause", pauses === 0 && (await ev(`return T.state()`)) === "playing", `pause calls: ${pauses}`);
