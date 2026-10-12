@@ -4,28 +4,82 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:," />
-    <title>Dance — hand bring-up</title>
+    <title>Dance — gesture test bench</title>
   </head>
   <body>
     <header id="bar">
       <div id="fps" aria-label="frames per second"><span id="fps-value">--</span><span class="unit"> fps</span></div>
       <div id="status" role="status">Starting…</div>
+      <div id="fft-status" aria-live="polite"></div>
     </header>
 
     <main id="layout">
       <section id="stage">
-        <!-- The video and canvas are mirrored together, so landmarks stay aligned. -->
-        <div id="mirror">
-          <video id="video" playsinline muted></video>
-          <img id="still" alt="" hidden />
-          <canvas id="overlay"></canvas>
+        <div id="frame">
+          <!-- The video and skeleton canvas are mirrored together, so landmarks stay aligned. -->
+          <div id="mirror">
+            <video id="video" playsinline muted></video>
+            <img id="still" alt="" hidden />
+            <canvas id="overlay"></canvas>
+          </div>
+          <!-- The HUD (command box, rings) is NOT mirrored: it is drawn and mouse-edited in display coordinates. -->
+          <canvas id="hud" aria-label="command box: drag to move, drag an edge or corner to resize"></canvas>
+          <div id="banner" hidden aria-live="assertive"><div id="banner-main"></div><div id="banner-sub"></div></div>
         </div>
         <div id="message" hidden></div>
       </section>
 
-      <aside id="readout">
-        <article class="hand-card" id="hand-0"></article>
-        <article class="hand-card" id="hand-1"></article>
+      <aside id="side">
+        <section class="panel" id="cmd-panel">
+          <h2>Command</h2>
+          <div class="kv"><span class="k">Seeing</span><span id="cmd-seen" class="v">—</span></div>
+          <div class="kv"><span class="k">State</span><span id="cmd-state" class="v">idle</span></div>
+          <div class="kv"><span class="k">Not counting because</span><span id="cmd-blocked" class="v">—</span></div>
+        </section>
+
+        <section class="panel" id="log-panel">
+          <h2>Fired events <button type="button" id="log-clear" class="small">Clear</button></h2>
+          <ol id="log" aria-live="polite"></ol>
+        </section>
+
+        <section id="hands">
+          <article class="hand-card" id="hand-0"></article>
+          <article class="hand-card" id="hand-1"></article>
+        </section>
+
+        <section class="panel" id="clutch-panel">
+          <h2>Clutch shapes <span class="note">detection only: nothing is controlled yet</span></h2>
+          <div class="kv"><span class="k">Pinch</span><span id="clutch-pinch" class="pill">released</span></div>
+          <div class="kv"><span class="k">Claw</span><span id="clutch-claw" class="pill">released</span></div>
+          <div class="kv"><span class="k">Two-hand</span><span id="clutch-two" class="pill">released</span></div>
+        </section>
+
+        <section class="panel" id="controls">
+          <h2>Command box</h2>
+          <div class="presets">
+            <button type="button" data-preset="right">Right half</button>
+            <button type="button" data-preset="left">Left half</button>
+            <button type="button" data-preset="whole">Whole frame</button>
+          </div>
+          <div id="box-readout" class="note">drag the box on the video to move it; drag an edge or corner to resize</div>
+
+          <h2>Tuning</h2>
+          <label class="slider">
+            <span>Dwell <b id="dwell-value"></b></span>
+            <input id="dwell" type="range" />
+          </label>
+          <label class="slider">
+            <span>Pinch grab below <b id="pinch-value"></b><span class="note"> · live <span id="pinch-live">—</span></span></span>
+            <input id="pinch" type="range" />
+          </label>
+          <label class="check"><input id="sound" type="checkbox" /> Sound on fire</label>
+          <label class="check"><input id="stillness" type="checkbox" /> Stillness rule (hand must stay put while holding)</label>
+
+          <h2>False-fire test</h2>
+          <button type="button" id="fft-button">Start 2-minute test</button>
+          <div class="note">Dance with no commands intended; the fires counted here are false fires.</div>
+        </section>
+
       </aside>
     </main>
 

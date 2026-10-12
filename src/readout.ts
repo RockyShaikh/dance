@@ -1,4 +1,6 @@
 import type { HandReading } from "./analyze";
+import { contains, type Box } from "./box";
+import { prettyShape } from "./hud";
 import { CHORD_ORDER } from "./pseudoChord";
 
 function el(id: string): HTMLElement {
@@ -12,35 +14,35 @@ const fpsValue = el("fps-value");
 const statusEl = el("status");
 const messageEl = el("message");
 
-/** Shape labels are shown as words: Open_Palm -> Open palm. */
-function prettyShape(label: string): string {
-  const s = label.replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-}
-
 function chordHtml(h: HandReading): string {
   return CHORD_ORDER.map((k) => `<span class="f${h.chord[k] ? 1 : 0}">${k}${h.chord[k] ? 1 : 0}</span>`).join(" ");
 }
 
-function renderCard(card: HTMLElement, h: HandReading | undefined): void {
+function renderCard(card: HTMLElement, h: HandReading | undefined, box: Box): void {
   if (!h) {
     card.classList.add("empty");
     card.innerHTML = `<div class="hand-title">No hand</div>`;
     return;
   }
   card.classList.remove("empty");
+  const inBox = contains(box, h.palm);
   card.innerHTML = `
     <div class="hand-title">${h.hand} hand<span class="sub">${Math.round(h.handScore * 100)}%</span></div>
     <div class="chord">${chordHtml(h)}</div>
     <div class="row"><span class="label">Shape</span>${prettyShape(h.shape)}
       <span class="score">${Math.round(h.shapeScore * 100)}%</span></div>
-    <div class="row"><span class="label">Palm facing camera</span>
-      <span class="${h.palmFacing ? "yes" : "no"}">${h.palmFacing ? "YES" : "NO"}</span></div>`;
+    <div class="row two">
+      <div><span class="label">Palm facing camera</span>
+        <span class="${h.palmFacing ? "yes" : "no"}">${h.palmFacing ? "YES" : "NO"}</span></div>
+      <div><span class="label">Palm centre in box</span>
+        <span class="${inBox ? "yes" : "no"}">${inBox ? "YES" : "NO"}</span></div>
+    </div>
+    <div class="row tiny"><span class="score">pinch gap ${h.pinchRatio.toFixed(2)} · finger reach ${h.clawExt.toFixed(2)}</span></div>`;
 }
 
-export function renderHands(hands: readonly HandReading[]): void {
-  renderCard(cards[0], hands[0]);
-  renderCard(cards[1], hands[1]);
+export function renderHands(hands: readonly HandReading[], box: Box): void {
+  renderCard(cards[0], hands[0], box);
+  renderCard(cards[1], hands[1], box);
 }
 
 export function setFps(fps: number | null): void {

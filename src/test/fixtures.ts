@@ -52,8 +52,9 @@ const BEND_CURLED = [30, 100, 170];
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-function finger(def: FingerDef, extended: boolean): V3[] {
-  const bends = extended ? BEND_STRAIGHT : BEND_CURLED;
+function finger(def: FingerDef, extended: boolean, curl?: number): V3[] {
+  // `curl` (0 = straight, 1 = fully curled) overrides the extended flag, for half-curled "claw" fingers.
+  const bends = curl !== undefined ? BEND_CURLED.map((b) => b * curl) : extended ? BEND_STRAIGHT : BEND_CURLED;
   const s = rad(def.splayDeg);
   const pts: V3[] = [];
   let [x, v, w] = def.mcp;
@@ -77,6 +78,8 @@ export interface HandSpec {
   yawDeg?: number;
   /** Rotation in the image plane, degrees. */
   rollDeg?: number;
+  /** Curl all four fingers by this fraction (0 = straight, 1 = fist), ignoring `fingers` for them. */
+  curl?: number;
   /** Size relative to the 100-unit hand. */
   scale?: number;
   /** Where the wrist lands in the image. */
@@ -84,11 +87,11 @@ export interface HandSpec {
 }
 
 export function makeHand(spec: HandSpec): Point3[] {
-  const { hand, fingers, yawDeg = 0, rollDeg = 0, scale = 3, at = { x: 640, y: 560 } } = spec;
+  const { hand, fingers, curl, yawDeg = 0, rollDeg = 0, scale = 3, at = { x: 640, y: 560 } } = spec;
 
   const local: V3[] = [WRIST, THUMB_CMC, ...(fingers.T ? THUMB_OUT : THUMB_TUCKED)];
   for (const k of ["I", "M", "R", "P"] as const) {
-    local.push(...finger(FINGER_DEFS[k], fingers[k]));
+    local.push(...finger(FINGER_DEFS[k], fingers[k], curl));
   }
 
   const yaw = rad(yawDeg);
