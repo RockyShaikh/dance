@@ -137,3 +137,4 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Thumb_Up flicker over 150 ms drops 2× momentarily** | risk | Surfaced in R5b |
 | **Hold-to-2× overwrites any key speed change made during the boost** | overlooked | Surfaced in R5b |
 | **Hands dropping with the left fist closed leaves the music paused** | unresolved | R4d decision 2; the user to confirm |
+| **Scrubbing with no IN/OUT set: you must lower the right hand to mark, then steer** | unresolved | User 2026-10-12: "a little bit more to be desired"; wants a stress test first before redesigning |
