@@ -4,13 +4,14 @@
  * the caller passes the time with every frame, so the tests can replay synthetic
  * frame sequences.
  *
+ * No gesture depends on how long it is held (user, R4: "no button that is variable
+ * based off how long you are holding it"): a shape is held until its ring fills,
+ * and the command fires right then. Nothing waits for the release.
+ *
  * Flow for one shape:
  *
  *   idle --(command shape, palm facing, palm centre in the box)--> dwell
- *   dwell --(held for dwellMs)--> fires at once        if the shape has no hold action (open palm)
- *                            \--> armed                 otherwise (the first ring is full)
- *   armed --(shape released)--> fires TAP (on release)
- *   armed --(held to holdMs)--> fires HOLD
+ *   dwell --(held for dwellMs)--> fires, once --> spent
  *   spent: fired already; nothing more happens until the shape is released
  *
  * After any fire, `cooldownMs` must pass before a new dwell can start.
@@ -28,16 +29,13 @@ export interface HandObs {
   palm: Vec2;
 }
 
-export type FireKind = "tap" | "hold";
-
 export interface FireEvent {
   /** Time of the frame it fired on, same clock as the input. */
   t: number;
   shape: string;
-  kind: FireKind;
 }
 
-export type Phase = "idle" | "dwell" | "armed" | "spent";
+export type Phase = "idle" | "dwell" | "spent";
 
 /** Why a hand showing a command shape is not counting right now. */
 export type BlockReason = "outside box" | "two hands" | "low confidence" | "palm not facing";
@@ -85,8 +83,6 @@ export interface MachineView {
   blocked: BlockReason | null;
   /** Inner ring, 0..1. */
   progress: number;
-  /** Outer ring, 0..1, or null when the tracked shape has no hold action. */
-  holdProgress: number | null;
   /** Seconds of dwell elapsed / needed, for text. */
   elapsedMs: number;
   cooldownLeftMs: number;
@@ -98,15 +94,6 @@ export interface StepResult {
   state: MachineState;
   fired: FireEvent | null;
   view: MachineView;
-}
-
-export function hasHold(shape: string, cfg: CommandConfig): boolean {
-  return cfg.holdShapes.includes(shape);
-}
-
-/** The hold time actually used: `holdMs`, but never closer than `holdMinGapMs` after the dwell. */
-export function effectiveHoldMs(cfg: CommandConfig): number {
-  return Math.max(cfg.holdMs, cfg.dwellMs + cfg.holdMinGapMs);
 }
 
 interface Evaluation {
@@ -146,8 +133,8 @@ export function stepCommands(prev: MachineState, input: StepInput, cfg: CommandC
   const s: MachineState = { ...prev };
   let fired: FireEvent | null = null;
 
-  const fire = (kind: FireKind): void => {
-    fired = { t, shape: s.shape as string, kind };
+  const fire = (): void => {
+    fired = { t, shape: s.shape as string };
     s.cooldownUntil = t + cfg.cooldownMs;
   };
 
@@ -156,7 +143,6 @@ export function stepCommands(prev: MachineState, input: StepInput, cfg: CommandC
 
   // Release: the tracked shape has been gone (or replaced) for longer than the grace.
   if (s.shape !== null && !tracked && t - s.lastSeen >= cfg.dropoutGraceMs) {
-    if (s.phase === "armed") fire("tap");
     s.phase = "idle";
     s.shape = null;
     s.anchor = null;
@@ -173,7 +159,7 @@ export function stepCommands(prev: MachineState, input: StepInput, cfg: CommandC
     // Optional stillness rule: moving too far restarts the dwell from here.
     if (
       cfg.stillness.enabled &&
-      (s.phase === "dwell" || s.phase === "armed") &&
+      s.phase === "dwell" &&
       s.anchor &&
       drift(ev.hand.palm, s.anchor, aspect) > cfg.stillness.maxMove
     ) {
@@ -183,15 +169,7 @@ export function stepCommands(prev: MachineState, input: StepInput, cfg: CommandC
     }
     const elapsed = t - s.since;
     if (s.phase === "dwell" && elapsed >= cfg.dwellMs) {
-      if (hasHold(s.shape, cfg)) {
-        s.phase = "armed";
-      } else {
-        fire("tap");
-        s.phase = "spent";
-      }
-    }
-    if (s.phase === "armed" && elapsed >= effectiveHoldMs(cfg)) {
-      fire("hold");
+      fire();
       s.phase = "spent";
     }
   }
@@ -202,8 +180,6 @@ export function stepCommands(prev: MachineState, input: StepInput, cfg: CommandC
 function makeView(s: MachineState, t: number, seen: string | null, ev: Evaluation, input: StepInput, cfg: CommandConfig): MachineView {
   const idle = s.shape === null;
   const elapsed = idle ? 0 : t - s.since;
-  const holdable = s.shape !== null && hasHold(s.shape, cfg);
-  const holdSpan = effectiveHoldMs(cfg) - cfg.dwellMs;
   const palm = ev.hand?.palm ?? (idle ? null : (input.hands.find((h) => h.shape === s.shape)?.palm ?? s.anchor));
   return {
     phase: s.phase,
@@ -211,7 +187,6 @@ function makeView(s: MachineState, t: number, seen: string | null, ev: Evaluatio
     seen,
     blocked: ev.blocked,
     progress: idle ? 0 : s.phase === "dwell" ? Math.min(1, elapsed / cfg.dwellMs) : 1,
-    holdProgress: !holdable ? null : s.phase === "dwell" ? 0 : s.phase === "armed" ? Math.min(1, (elapsed - cfg.dwellMs) / holdSpan) : 1,
     elapsedMs: elapsed,
     cooldownLeftMs: Math.max(0, s.cooldownUntil - t),
     palm,

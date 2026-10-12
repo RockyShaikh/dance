@@ -77,36 +77,32 @@ User: "don't code that in explicitly for now". The box is the simple stand-in fo
 
 All command shapes must be made **inside the command box**.
 
-| # | Gesture | Detected by | **Tap** (ring fills once, then drop the hand) | **Hold** (keep holding ~1.5 s) | Roadmap |
-|---|---|---|---|---|---|
-| 1 | **Open palm**, "stop sign" | `Open_Palm` label | **Play / Pause** (fires as soon as the ring fills) | same as tap | R3 |
-| 2 | **Index up**, "one more time" | `Pointing_Up` label | **Restart:** loop start if one is set, otherwise song start (§4.5) | **Restart from the song start**, even with a loop set | R3 (song start) → R4 |
-| 3 | **Peace / V** | `Victory` label | **Loop step**, marking where the music is *right now*: 1st = set loop start, 2nd = set loop end and start looping, 3rd = clear | **Clear the loop** now | R4 |
-| 4 | **Pinch** (grab the knob) | our rule (§5.2) | While held: the hand is a **knob** (R4: nudge the loop start back; R5: speed). Release to let go | — | detect R2, use R4 + R5 |
+| # | Gesture | Detected by | Fires (once, when the ring fills) | Roadmap |
+|---|---|---|---|---|
+| 1 | **Open palm**, "stop sign" | `Open_Palm` label | **Play / Pause** | R3 |
+| 2 | **Index up**, "one more time" | `Pointing_Up` label | **Restart:** loop start if one is set, otherwise song start (§4.5) | R3 (song start) → R4 |
+| 3 | **Peace / V** | `Victory` label | **Loop step**, marking where the music is *right now*: 1st = set loop start, 2nd = set loop end and start looping, 3rd = clear | R4 |
+| 4 | **Pinch** (grab the knob) | our rule (§5.2) | While held: the hand is a **knob** (R4: nudge the loop start back; R5: speed). Release to let go | detect R2, use R4 + R5 |
 
 What was removed, and why:
 
-- **Fist ("clear"):** fists track worse than open hands in MediaPipe [market] and are common in choreography [workflows]. "Clear" is now V-hold, or the third V-tap.
+- **Fist ("clear"):** fists track worse than open hands in MediaPipe [market] and are common in choreography [workflows]. "Clear" is now the third V.
 - **Separate IN, OUT and loop-toggle shapes** (V, three fingers, shaka) collapse into one **V cycle**, copied from the Vidami looper pedal ("tap once to set start, again to set end, again to clear") [market].
 - **Horns** (reserved arm gesture) are no longer needed; the box and dwell do that job for now.
 - **Finger counts 1–5** are kept only as a later idea where the count *is* the message ("jump to marker 3") [market]. See the wish list.
 
 Net change: from six command shapes plus two reserved, to **three shapes plus one grab**.
 
-### 4.4 Tap vs hold
+### 4.4 No tap vs hold (decided; this replaces the looper-pedal idea)
 
-Borrowed from looper foot pedals: each switch does one thing on a tap and another on a hold [market].
+User, R4: "I don't like the tap vs hold feature ... there should be no button that is variable based off how long you are holding it."
 
-- **Tap** = the ring fills once, then you drop the shape. It fires on the drop.
-- **Hold** = you keep the shape up until a second, outer ring fills (~1.5 s total). It fires then.
-- A gesture with no hold action (open palm) fires as soon as the first ring fills, so play/pause stays fast.
-
-Cost: a tap fires a fraction of a second later, on release. That's fine between attempts.
+- Every command fires **once, when its ring fills** (~0.6 s). Nothing waits for the release, and holding on or letting go afterwards adds nothing.
+- There is no outer hold ring and no hold action. What used to be a hold (index to 0:00, clear the loop) is keys and buttons only (`Home`, `C`).
 
 ### 4.5 Restart (decided)
 
-- **Index tap** → jump to the **loop start if one is set, otherwise the song start**, and play (user).
-- **Index hold** → jump to the song start and play, even with a loop set. This is a convenience borrowed from looper pedals, where holding rewind goes to the start [market].
+- **Index up** → jump to the **loop start if one is set, otherwise the song start**, and play (user). Going to 0:00 with a loop set is the `Home` key / button only.
 - Playback restarts immediately. A lead-in (3-2-1 or "5, 6, 7, 8") is on the wish list, though both reports found dancers want time to get back into position [market, workflows].
 - R3 has no loops yet, so index always goes to the song start there.
 

@@ -143,17 +143,9 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
     const r = 56 * s;
     const full = view.progress >= 1;
     arc(ctx, x, y, r, view.progress, 12 * s, full ? ON : "#ffd23f");
-    if (view.holdProgress !== null) arc(ctx, x, y, r + 20 * s, view.holdProgress, 10 * s, WARN);
-    const below = y + r + (view.holdProgress !== null ? 20 * s : 0) + 36 * s;
+    const below = y + r + 36 * s;
     text(ctx, prettyShape(view.shape), x, below, 26 * s, "#fff", "center");
-    const note =
-      view.phase === "dwell"
-        ? "keep holding..."
-        : view.phase === "armed"
-          ? "drop now = TAP · keep holding = HOLD"
-          : view.phase === "spent"
-            ? "fired: drop the hand to re-arm"
-            : "";
+    const note = view.phase === "dwell" ? "keep holding..." : view.phase === "spent" ? "fired: drop the hand to re-arm" : "";
     if (note) text(ctx, note, x, below + 28 * s, 20 * s, full ? ON : "#ffd23f", "center");
   }
 }

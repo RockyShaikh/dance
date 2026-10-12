@@ -13,20 +13,22 @@ function loadedPlayer() {
 }
 
 describe("actionForFire", () => {
-  it("open palm toggles, tap or hold alike", () => {
-    expect(actionForFire({ shape: "Open_Palm", kind: "tap" })).toBe("toggle");
-    expect(actionForFire({ shape: "Open_Palm", kind: "hold" })).toBe("toggle");
+  it("open palm toggles", () => {
+    expect(actionForFire({ shape: "Open_Palm" })).toBe("toggle");
   });
-  it("index tap restarts (loop start if set), index hold goes to the top", () => {
-    expect(actionForFire({ shape: "Pointing_Up", kind: "tap" })).toBe("restart");
-    expect(actionForFire({ shape: "Pointing_Up", kind: "hold" })).toBe("restartTop");
+  it("index up restarts (loop start if set, else 0:00)", () => {
+    expect(actionForFire({ shape: "Pointing_Up" })).toBe("restart");
   });
-  it("V tap steps the loop, V hold clears it", () => {
-    expect(actionForFire({ shape: "Victory", kind: "tap" })).toBe("loopStep");
-    expect(actionForFire({ shape: "Victory", kind: "hold" })).toBe("clearLoop");
+  it("V steps the loop (start, end, clear)", () => {
+    expect(actionForFire({ shape: "Victory" })).toBe("loopStep");
+  });
+  it("no gesture maps to the top-of-track or clear-loop actions any more (keys and buttons only)", () => {
+    const actions = ["Open_Palm", "Pointing_Up", "Victory", "Closed_Fist", "Thumb_Up", "None"].map((shape) => actionForFire({ shape }));
+    expect(actions).not.toContain("restartTop");
+    expect(actions).not.toContain("clearLoop");
   });
   it("ignores other shapes", () => {
-    expect(actionForFire({ shape: "Closed_Fist", kind: "tap" })).toBeNull();
+    expect(actionForFire({ shape: "Closed_Fist" })).toBeNull();
   });
 });
 

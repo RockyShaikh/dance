@@ -18,7 +18,6 @@ export interface LogEntry {
   /** Wall-clock time the command fired. */
   at: number;
   shape: string;
-  kind: "tap" | "hold";
   /** Fired while the false-fire test was running. */
   test: boolean;
 }
@@ -98,7 +97,7 @@ export class Bench {
       this.settings.sound = sound.checked;
       if (sound.checked) {
         unlockAudio();
-        beep("tap"); // so you hear what it sounds like right away
+        beep(); // so you hear what it sounds like right away
       }
       save();
     });
@@ -149,9 +148,6 @@ export class Bench {
       case "dwell":
         state = `holding ${s(view.elapsedMs)} / ${s(this.settings.dwellMs)} s`;
         break;
-      case "armed":
-        state = "ring full: drop = TAP, keep holding = HOLD";
-        break;
       case "spent":
         state = "fired: drop the hand to re-arm";
         break;
@@ -168,10 +164,9 @@ export class Bench {
   }
 
   /** The full-width banner, for ~1 s. R3 also uses it for key and button actions. */
-  showBanner(main: string, sub: string, kind: "tap" | "hold"): void {
+  showBanner(main: string, sub: string): void {
     this.bannerMain.textContent = main;
     this.bannerSub.textContent = sub;
-    this.banner.dataset.kind = kind;
     this.banner.hidden = false;
     this.banner.classList.remove("flash");
     void this.banner.offsetWidth; // restart the CSS animation
@@ -185,7 +180,7 @@ export class Bench {
    * banner's big text (R3 shows what the music did, e.g. "PAUSE", instead of the shape).
    */
   fire(ev: FireEvent, label?: string): void {
-    const entry: LogEntry = { at: Date.now(), shape: ev.shape, kind: ev.kind, test: this.fft.running };
+    const entry: LogEntry = { at: Date.now(), shape: ev.shape, test: this.fft.running };
     const prev = this.log[0];
     this.log.unshift(entry);
     if (this.log.length > LOG_MAX) this.log.pop();
@@ -196,14 +191,13 @@ export class Bench {
     li.innerHTML =
       `<span class="time">${clock(entry.at)}</span>` +
       `<span class="shape">${prettyShape(ev.shape)}</span>` +
-      `<span class="kind ${ev.kind}">${ev.kind.toUpperCase()}</span>` +
       `<span class="gap">${gap}${entry.test ? " · test" : ""}</span>`;
     this.logList.prepend(li);
     while (this.logList.children.length > LOG_MAX) this.logList.lastElementChild?.remove();
 
-    this.showBanner(label ?? prettyShape(ev.shape).toUpperCase(), ev.kind === "tap" ? "TAP" : "HOLD", ev.kind);
+    this.showBanner(label ?? prettyShape(ev.shape).toUpperCase(), "GESTURE");
 
-    if (this.settings.sound) beep(ev.kind);
+    if (this.settings.sound) beep();
     this.renderFalseFire();
   }
 

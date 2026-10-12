@@ -8,16 +8,18 @@ A hands-free tool for learning choreography: control the music you practice to w
 
 Let the music play and mark where it is; you will always mark the start a little late, so the START can be nudged back.
 
-| Gesture (in the box) | Tap (drop the hand after the ring fills) | Hold (~1.5 s) |
-|---|---|---|
-| **V** | 1st = set loop START, 2nd = set END and loop, 3rd = clear | clear the loop |
-| **Index up** | back to the loop START (0:00 if none is set), plays | 0:00, plays |
-| **Open palm** | play / pause | same |
+Every gesture fires once, when its ring fills; nothing depends on how long you hold it (user: "no button that is variable based off how long you are holding it").
+
+| Gesture (in the box) | Does |
+|---|---|
+| **V** | 1st = set loop START, 2nd = set END and loop, 3rd = clear |
+| **Index up** | back to the loop START (0:00 if none is set), plays |
+| **Open palm** | play / pause |
 
 - Gesture marks are stamped where the music was when the ring **started**, minus `LOOP.markOffsetSec` (0.15 s, `src/config.ts`). Keys and buttons mark the playhead as it is.
 - An END at or before the START (closer than `LOOP.minGapSec`, 0.5 s) is ignored with a message.
 - The wrap (END back to START) is a 4 ms timer plus an animation-frame check on the audio element (`src/loopWrap.ts`); each wrap records its overshoot and seek time (`__dance.practice.wrapper.history` in dev).
-- **Keys:** `V` mark (cycle), `S` set start, `E` set end, `C` clear, `R` restart (loop start), `Home` from the top, `[` / `]` nudge the START by 0.1 s earlier / later, with `Shift` 1 s. Only the marker moves; restart to hear it. The START can't go below 0:00 or within 0.5 s of the END. There are buttons for all of them.
+- **Keys:** `V` mark (cycle), `S` set start, `E` set end, `C` clear, `R` restart (loop start), `Home` from the top (0:00, keyboard only), `[` / `]` nudge the START by 0.1 s earlier / later, with `Shift` 1 s. Only the marker moves; restart to hear it. The START can't go below 0:00 or within 0.5 s of the END. There are buttons for all of them.
 - The logic is in `src/loop.ts` (pure, tested); `Practice.nudgeStart(deltaSec)` is the entry point R4b's knob will call.
 - `?sim&track=/test/click-track.wav` (dev) loads a track with scripted hands; `window.__dance.setHands([{ shape: "Victory" }])` then `setHands([])` is a V tap.
 
@@ -25,7 +27,7 @@ Let the music play and mark where it is; you will always mark the start a little
 
 - **Load a track:** drag an MP3/WAV onto the page, or click **Open track…**. Local files only.
 - **Status word** (PLAYING / PAUSED / READY), a big **clock**, and a **timeline** with a moving white playhead, readable from across the room.
-- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts and plays (R4a: tap = loop start, hold = 0:00; a tap fires on release, as in the bench).
+- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts and plays (to the loop start if one is set, else 0:00). Every command fires when its ring fills.
 - **Keys and buttons:** `Space` = play/pause, `R` = restart, `Home` = from the top, `B` = bench (more keys in R4a below).
 - Chrome lets a hand gesture start audio only after the page has seen one click or key press; if you only dragged a file in, the page asks for one click.
 - Audio engine: `src/audioPlayer.ts` (an `HTMLAudioElement` behind a small interface: why is in its header comment). Gesture/key/button wiring: `src/transport.ts`; DOM: `src/practice.ts`.
@@ -95,13 +97,12 @@ The page feeds the model the un-mirrored camera frame (only the *display* is mir
 |---|---|
 | Counts | Shape label at least 50% sure, palm facing the camera, palm centre in the box, and only one hand showing a command shape in the box (two: ignored) |
 | Dwell | Hold for the dwell time (slider, default 0.6 s, range 0.6 to 1.2 s); the inner ring fills. Flickers shorter than 120 ms are ignored |
-| Open palm | Fires as soon as the ring is full |
-| Index up, V | **Tap:** drop the hand after the ring filled and it fires on release. **Hold:** keep holding until the outer ring (1.5 s total) fills and it fires. A hold fires once; releasing afterwards adds nothing |
+| Fire | Every command (open palm, index up, V) fires once, the moment the ring is full. Nothing waits for the release, and holding on or letting go afterwards adds nothing |
 | Cooldown | 1.0 s after any fire, no new dwell can start |
-| Hand lost or leaves the box | Before the ring is full: cancelled, nothing fires. After it is full (index up, V): counts as a release, so a tap |
+| Hand lost or leaves the box | Before the ring is full: cancelled, nothing fires. After it fired: adds nothing |
 | Stillness (checkbox, off) | If on, the palm centre must stay within 6% of the frame height during the hold, else the dwell restarts |
 
-On fire: a banner, a beep (tap and hold sound different; checkbox), and a timestamped row in the log. The **false-fire test** counts fires for 2 minutes (rows tagged `test`).
+On fire: a banner, a beep (checkbox), and a timestamped row in the log. The **false-fire test** counts fires for 2 minutes (rows tagged `test`).
 
 **Clutch shapes** (detection only, nothing is controlled): shown as GRABBED / released. Each must *start* in the box; once grabbed the hand may leave it, and a lost hand releases after 0.3 s.
 - **Pinch:** thumb tip to index tip, divided by palm size, below the slider value. It must open to 1.6x that to release. A **fist is not a pinch**: the middle, ring and pinky must be out (finger reach at least 1.3) to start one.

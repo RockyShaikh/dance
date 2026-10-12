@@ -86,7 +86,7 @@
             <input id="pinch" type="range" />
           </label>
           <label class="check"><input id="sound" type="checkbox" /> Sound on fire</label>
-          <label class="check"><input id="stillness" type="checkbox" /> Stillness rule (hand must stay put while holding)</label>
+          <label class="check"><input id="stillness" type="checkbox" /> Stillness rule (hand must stay put until the ring fills)</label>
 
           <h2>False-fire test</h2>
           <button type="button" id="fft-button">Start 2-minute test</button>
@@ -108,12 +108,12 @@
         <button type="button" id="btn-open">Open track…</button>
         <button type="button" id="btn-toggle"><span id="btn-toggle-label">Play</span> <kbd>Space</kbd></button>
         <button type="button" id="btn-restart" title="Index tap: the loop START if one is set, else 0:00">Restart <kbd>R</kbd></button>
-        <button type="button" id="btn-top" title="Index hold: 0:00, even with a loop set">From top <kbd>Home</kbd></button>
+        <button type="button" id="btn-top" title="0:00, even with a loop set">From top <kbd>Home</kbd></button>
         <span class="group" aria-label="loop">
-          <button type="button" id="btn-loopstep" title="V tap: START, then END (loop on), then clear">Mark <kbd>V</kbd></button>
+          <button type="button" id="btn-loopstep" title="V: START, then END (loop on), then clear">Mark <kbd>V</kbd></button>
           <button type="button" id="btn-setstart">Set start <kbd>S</kbd></button>
           <button type="button" id="btn-setend">Set end <kbd>E</kbd></button>
-          <button type="button" id="btn-clear" title="V hold">Clear <kbd>C</kbd></button>
+          <button type="button" id="btn-clear" title="Clear the loop">Clear <kbd>C</kbd></button>
         </span>
         <span class="group" aria-label="nudge the loop start">
           <span class="note">Nudge start</span>
@@ -124,7 +124,7 @@
         </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">In the box: open palm = play/pause · index tap = back to loop start (hold = from the top) · V tap = start, end, clear (hold = clear) · keys: Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">In the box: open palm = play/pause · index up = back to loop start (or 0:00) · V = start, then end, then clear · keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
     </footer>
     <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />

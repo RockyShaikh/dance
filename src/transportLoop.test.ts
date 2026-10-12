@@ -15,14 +15,6 @@ function loadedPlayer() {
   return { media, player };
 }
 
-describe("config", () => {
-  it("index up and V have hold actions again (R3's override is gone)", () => {
-    expect(COMMANDS.holdShapes).toContain("Pointing_Up");
-    expect(COMMANDS.holdShapes).toContain("Victory");
-    expect(COMMANDS.holdShapes).not.toContain("Open_Palm");
-  });
-});
-
 describe("runTransport: restart targets", () => {
   it("restart goes to the loop START when one is set (even START alone), else 0:00", () => {
     const { player, media } = loadedPlayer();
@@ -155,19 +147,14 @@ function rig() {
       media.advance(FRAME / 1000);
     }
   };
-  /** Holds a shape for a tap (ring fills, then drop). */
+  /** Shows a shape until its ring fills (the command fires then), then drops the hand. */
   const tap = (shape: string) => {
     show(COMMANDS.dwellMs + 3 * FRAME, [hand(shape)]);
     show(COMMANDS.dropoutGraceMs + 3 * FRAME, []);
   };
-  /** Holds a shape past the hold ring. */
-  const hold = (shape: string) => {
-    show(COMMANDS.holdMs + 4 * FRAME, [hand(shape)]);
-    show(COMMANDS.dropoutGraceMs + 3 * FRAME, []);
-  };
   /** Time passes (hand away, past the cooldown). */
   const wait = (ms: number) => show(ms, []);
-  return { player, media, show, tap, hold, wait, fires, loop: () => loop, setLoop: (l: LoopState) => (loop = l) };
+  return { player, media, show, tap, wait, fires, loop: () => loop, setLoop: (l: LoopState) => (loop = l) };
 }
 
 describe("command -> audio wiring", () => {
@@ -205,24 +192,20 @@ describe("command -> audio wiring", () => {
     expect(r.player.state).toBe("playing");
   });
 
-  it("index TAP restarts on release, not on ring fill (tap vs hold is back)", () => {
+  it("index up restarts when its ring fills, not on release", () => {
     const r = rig();
     r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
     r.wait(5000); // play for ~5 s
     expect(r.player.currentTime).toBeGreaterThan(4);
-    const fired = r.fires.length;
     r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Pointing_Up")]); // ring full, hand still up
-    expect(r.fires).toHaveLength(fired); // nothing yet: a tap fires on release
-    expect(r.player.currentTime).toBeGreaterThan(4);
-    r.wait(COMMANDS.dropoutGraceMs + 3 * FRAME); // drop the hand
     const f = r.fires.at(-1)!;
-    expect(f.fire).toMatchObject({ shape: "Pointing_Up", kind: "tap" });
+    expect(f.fire).toMatchObject({ shape: "Pointing_Up" });
     expect(f.label).toBe("RESTART"); // no loop: the song start
     expect(f.stateAfter).toBe("playing");
     expect(f.timeAfter).toBeLessThan(0.1);
   });
 
-  it("index tap restarts a paused track and starts it", () => {
+  it("index up restarts a paused track and starts it", () => {
     const r = rig();
     r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
     r.wait(2000);
@@ -234,7 +217,7 @@ describe("command -> audio wiring", () => {
     expect(r.fires.at(-1)!.timeAfter).toBeLessThan(0.1);
   });
 
-  it("index tap goes to the loop START when one is set; index hold goes to 0:00", () => {
+  it("index up goes to the loop START when one is set; the song start otherwise; the loop is left alone", () => {
     const r = rig();
     r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
     r.wait(9000);
@@ -242,27 +225,21 @@ describe("command -> audio wiring", () => {
     r.tap("Pointing_Up");
     expect(r.fires.at(-1)).toMatchObject({ label: "BACK TO START", stateAfter: "playing" });
     expect(r.fires.at(-1)!.timeAfter).toBeCloseTo(4, 1);
-    r.wait(2000);
-    r.hold("Pointing_Up");
-    const last = r.fires.at(-1)!;
-    expect(last.fire).toMatchObject({ shape: "Pointing_Up", kind: "hold" });
-    expect(last.label).toBe("FROM THE TOP");
-    expect(last.timeAfter).toBeLessThan(0.1);
-    expect(r.loop()).toEqual({ start: 4, end: 8 }); // restarts leave the loop alone
+    expect(r.loop()).toEqual({ start: 4, end: 8 });
   });
 
-  it("index held a long time restarts once", () => {
+  it("index held a long time restarts once, and nothing else fires", () => {
     const r = rig();
     r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
     r.wait(3000);
-    r.show(6000, [hand("Pointing_Up")]); // way past the hold time
+    r.show(6000, [hand("Pointing_Up")]); // way past the ring
     expect(r.fires.filter((f) => f.fire.shape === "Pointing_Up")).toHaveLength(1);
     expect(r.player.currentTime).toBeGreaterThan(3); // after the single restart the music kept playing
   });
 });
 
 describe("V cycle by gesture", () => {
-  it("tap 1 = START, tap 2 = END (loop on), tap 3 = clear", () => {
+  it("V 1 = START, V 2 = END (loop on), V 3 = clear", () => {
     const r = rig();
     r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
     r.wait(3000);
@@ -281,13 +258,16 @@ describe("V cycle by gesture", () => {
     expect(r.loop()).toEqual(NO_LOOP);
   });
 
-  it("V hold clears the loop (once)", () => {
+  it("holding V a long time marks once, and holding it longer never clears (nothing depends on hold time)", () => {
     const r = rig();
     r.setLoop({ start: 2, end: 6 });
-    r.hold("Victory");
+    r.show(10_000, [hand("Victory")]);
     expect(r.fires.filter((f) => f.fire.shape === "Victory")).toHaveLength(1);
-    expect(r.fires.at(-1)!.fire.kind).toBe("hold");
-    expect(r.loop()).toEqual(NO_LOOP);
+    expect(r.loop()).toEqual(NO_LOOP); // the single V was the third step: clear
+    r.wait(2000);
+    r.show(10_000, [hand("Victory")]);
+    expect(r.loop().start).not.toBeNull(); // and the next single V starts a new loop
+    expect(r.loop().end).toBeNull();
   });
 
   it("the mark is stamped where the music was when the ring STARTED, minus the offset", () => {
@@ -295,11 +275,9 @@ describe("V cycle by gesture", () => {
     r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
     r.wait(3000);
     const atRingStart = r.player.currentTime; // the V appears now...
-    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Victory")]); // ...the ring fills...
-    r.show(600, [hand("Victory")]); // ...and the dancer keeps it up a bit longer...
-    r.show(COMMANDS.dropoutGraceMs + 3 * FRAME, []); // ...then drops it: the tap fires on release.
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Victory")]); // ...the ring fills and it fires.
     const f = r.fires.at(-1)!;
-    expect(f.timeAfter - atRingStart).toBeGreaterThan(1.2); // the fire is well after the ring began
+    expect(f.timeAfter - atRingStart).toBeGreaterThan(0.55); // the fire is a ring-time after the shape appeared
     // The stamp: within one frame of the playhead at ring start, less the offset.
     expect(f.markAt).toBeGreaterThan(atRingStart - LOOP.markOffsetSec - 0.001);
     expect(f.markAt).toBeLessThan(atRingStart - LOOP.markOffsetSec + FRAME / 1000 + 0.001);

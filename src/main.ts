@@ -53,7 +53,7 @@ let clutchView: ClutchView | null = null;
 
 const player = createBrowserPlayer();
 const practice = new Practice(player, {
-  announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON", "tap"),
+  announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON"),
 });
 
 /** Current thresholds: the config defaults with the slider/toggle settings applied. */
@@ -115,7 +115,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     if (import.meta.env.DEV) recordTiming(r.fired.shape, ts, before, result?.label ?? null, markAt);
     bench.fire(r.fired, result?.label);
   }
-  // After the fire (a tap fires on release, when the machine has already gone idle).
+  // After the fire, so the stamp read above is the one from the ring that just filled.
   ringStamp = trackRingStart(ringStamp, machine.shape, machine.since, player.currentTime);
 
   const c = stepClutches(

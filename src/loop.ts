@@ -80,7 +80,7 @@ export function nudgeStart(loop: LoopState, deltaSec: number, duration: number, 
   return { loop: { start, end: loop.end }, label, changed: start !== loop.start, limited };
 }
 
-/** Where a restart goes: "start" = the loop START if one is set, else 0:00 (index tap); "top" = 0:00 (index hold). */
+/** Where a restart goes: "start" = the loop START if one is set, else 0:00 (index up); "top" = 0:00 (Home key). */
 export function restartTarget(loop: LoopState, kind: "start" | "top"): number {
   return kind === "start" ? (loop.start ?? 0) : 0;
 }
@@ -93,7 +93,7 @@ export function shouldWrap(current: number, loop: LoopState, lookahead: number =
 /**
  * Tracks when the ring (the dwell) began and where the music was then, so a mark made when the ring
  * FIRES can be stamped at the ring START. Feed it every frame; `prev` is what it returned last frame.
- * (On the frame a tap fires, read the stamp from `prev`: the machine has already gone idle by then.)
+ * (A command fires when its ring fills, so on that frame `prev` still holds the stamp from when the ring started.)
  */
 export interface RingStamp {
   since: number;

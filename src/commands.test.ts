@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Box, Vec2 } from "./box";
 import { PRESETS } from "./box";
-import { INITIAL_STATE, effectiveHoldMs, stepCommands, type FireEvent, type HandObs, type MachineState, type MachineView } from "./commands";
+import { INITIAL_STATE, stepCommands, type FireEvent, type HandObs, type MachineState, type MachineView } from "./commands";
 import { COMMANDS, type CommandConfig } from "./config";
 
 const FRAME = 33; // ~30 fps
@@ -53,7 +53,7 @@ describe("dwell: a shape must be held", () => {
     expect(b.fires).toHaveLength(0);
     b.show(200, [hand("Open_Palm")]);
     expect(b.fires).toHaveLength(1);
-    expect(b.fires[0]).toMatchObject({ shape: "Open_Palm", kind: "tap" });
+    expect(b.fires[0]).toMatchObject({ shape: "Open_Palm" });
     expect(b.fires[0].t).toBeGreaterThanOrEqual(COMMANDS.dwellMs);
     expect(b.fires[0].t).toBeLessThanOrEqual(COMMANDS.dwellMs + 2 * FRAME);
   });
@@ -130,12 +130,12 @@ describe("single fire on a long hold", () => {
     expect(b.view.phase).toBe("spent");
   });
 
-  it("index up held for 10 s fires exactly one hold, and nothing on release", () => {
+  it("index up held for 10 s fires exactly once, and nothing on release", () => {
     const b = new Bench();
     b.show(10_000, [hand("Pointing_Up")]);
     b.idle(3000);
     expect(b.fires).toHaveLength(1);
-    expect(b.fires[0]).toMatchObject({ shape: "Pointing_Up", kind: "hold" });
+    expect(b.fires[0]).toMatchObject({ shape: "Pointing_Up" });
   });
 
   it("holding on past the cooldown does not fire again", () => {
@@ -153,77 +153,69 @@ describe("single fire on a long hold", () => {
   });
 });
 
-describe("tap vs hold (index up, V)", () => {
-  for (const shape of ["Pointing_Up", "Victory"]) {
-    it(`${shape}: a tap fires on release, after the ring filled, as a tap`, () => {
+describe("no gesture depends on how long it is held (no tap vs hold)", () => {
+  for (const shape of COMMANDS.shapes) {
+    it(`${shape}: fires once, right when the ring fills, without waiting for the release`, () => {
       const b = new Bench();
-      b.show(900, [hand(shape)]); // ring full at 600, hold would be at 1500
-      expect(b.fires).toHaveLength(0); // nothing yet: waiting for release
-      expect(b.view.phase).toBe("armed");
-      b.idle(300);
-      expect(b.fires).toHaveLength(1);
-      expect(b.fires[0]).toMatchObject({ shape, kind: "tap" });
-      expect(b.fires[0].t).toBeGreaterThan(900);
-    });
-
-    it(`${shape}: a hold fires once at the outer ring, as a hold`, () => {
-      const b = new Bench();
-      b.show(effectiveHoldMs(COMMANDS) - 100, [hand(shape)]);
+      b.show(COMMANDS.dwellMs - 100, [hand(shape)]);
       expect(b.fires).toHaveLength(0);
       b.show(200, [hand(shape)]);
       expect(b.fires).toHaveLength(1);
-      expect(b.fires[0]).toMatchObject({ shape, kind: "hold" });
-      expect(b.fires[0].t).toBeGreaterThanOrEqual(effectiveHoldMs(COMMANDS));
+      expect(b.fires[0].shape).toBe(shape);
+      expect(b.fires[0].t).toBeGreaterThanOrEqual(COMMANDS.dwellMs);
+      expect(b.fires[0].t).toBeLessThan(COMMANDS.dwellMs + 2 * FRAME + 100);
+      expect(b.view.phase).toBe("spent");
+    });
+
+    it(`${shape}: holding 0.7 s then dropping and holding 10 s fire the same single command`, () => {
+      const quick = new Bench();
+      quick.show(700, [hand(shape)]);
+      quick.idle(3000);
+      const long = new Bench();
+      long.show(10_000, [hand(shape)]);
+      long.idle(3000);
+      expect(quick.fires).toHaveLength(1);
+      expect(long.fires).toHaveLength(1);
+      expect(quick.fires[0]).toEqual(long.fires[0]);
+    });
+
+    it(`${shape}: dropping the hand after it fired adds nothing`, () => {
+      const b = new Bench();
+      b.show(COMMANDS.dwellMs + 300, [hand(shape)]);
+      expect(b.fires).toHaveLength(1);
+      b.idle(5000);
+      expect(b.fires).toHaveLength(1);
     });
   }
 
-  it("the outer ring runs from 0 at the first ring to 1 at the hold time", () => {
+  it("a fire event carries no tap/hold kind, and the view has no outer ring", () => {
     const b = new Bench();
-    b.show(COMMANDS.dwellMs + 100, [hand("Victory")]);
-    expect(b.view.holdProgress).toBeGreaterThanOrEqual(0);
-    expect(b.view.holdProgress).toBeLessThan(0.3);
-    b.show(500, [hand("Victory")]);
-    expect(b.view.holdProgress).toBeGreaterThan(0.4);
-    expect(b.view.holdProgress).toBeLessThan(0.9);
+    b.show(900, [hand("Victory")]);
+    expect(Object.keys(b.fires[0]).sort()).toEqual(["shape", "t"]);
+    expect(Object.keys(b.view)).not.toContain("holdProgress");
   });
 
-  it("open palm has no outer ring", () => {
-    const b = new Bench();
-    b.show(300, [hand("Open_Palm")]);
-    expect(b.view.holdProgress).toBeNull();
-  });
-
-  it("a shape released just before the first ring is full is not a tap", () => {
+  it("a shape released just before the ring is full never fires", () => {
     const b = new Bench();
     b.show(COMMANDS.dwellMs - 100, [hand("Victory")]);
     b.idle(1000);
     expect(b.fires).toHaveLength(0);
   });
 
-  it("the hold time is never squashed against a long dwell", () => {
-    const c = cfg({ dwellMs: 1200 });
-    expect(effectiveHoldMs(c)).toBeGreaterThanOrEqual(1200 + COMMANDS.holdMinGapMs);
-    const b = new Bench(c);
-    b.show(1500, [hand("Victory")]);
-    expect(b.fires).toHaveLength(0); // still armed, hold not due yet
-    b.idle(300);
-    expect(b.fires[0]).toMatchObject({ kind: "tap" });
+  it("a long dwell setting just moves the moment it fires", () => {
+    const b = new Bench(cfg({ dwellMs: 1200 }));
+    b.show(1100, [hand("Victory")]);
+    expect(b.fires).toHaveLength(0);
+    b.show(300, [hand("Victory")]);
+    expect(b.fires).toHaveLength(1);
   });
 
-  it("switching straight to another shape after the ring filled counts as releasing the first (a tap)", () => {
+  it("switching straight to another shape after the first fired adds nothing until that one's ring fills", () => {
     const b = new Bench();
     b.show(900, [hand("Victory")]);
+    expect(b.fires).toHaveLength(1);
     b.show(300, [hand("Pointing_Up")]);
     expect(b.fires).toHaveLength(1);
-    expect(b.fires[0]).toMatchObject({ shape: "Victory", kind: "tap" });
-  });
-
-  it("taking the hand out of the box after the ring filled counts as release", () => {
-    const b = new Bench();
-    b.show(900, [hand("Pointing_Up")]);
-    b.show(300, [hand("Pointing_Up", OUTSIDE)]);
-    expect(b.fires).toHaveLength(1);
-    expect(b.fires[0]).toMatchObject({ kind: "tap" });
   });
 });
 
@@ -248,7 +240,7 @@ describe("cooldown", () => {
     expect(b.fires).toHaveLength(1);
   });
 
-  it("the cooldown counts from a tap's release, not from the ring", () => {
+  it("the cooldown counts from the moment it fired", () => {
     const b = new Bench();
     b.show(800, [hand("Pointing_Up")]);
     b.idle(200);
@@ -256,7 +248,7 @@ describe("cooldown", () => {
     const first = b.fires[0].t;
     b.show(5000, [hand("Open_Palm")]);
     expect(b.fires).toHaveLength(2);
-    expect(b.fires[1].t - first).toBeGreaterThanOrEqual(COMMANDS.cooldownMs + COMMANDS.dwellMs);
+    expect(b.fires[1].t - first).toBeGreaterThanOrEqual(COMMANDS.cooldownMs);
   });
 
   it("reports the cooldown remaining", () => {
@@ -316,13 +308,12 @@ describe("the command box", () => {
     expect(b.fires).toHaveLength(1);
   });
 
-  it("moving the box away mid-hold ends the hold; an armed shape then fires as a tap on release", () => {
+  it("moving the box away before the ring is full ends the hold: nothing fires", () => {
     const b = new Bench();
-    b.show(900, [hand("Victory", INSIDE)]);
+    b.show(400, [hand("Victory", INSIDE)]);
     b.box = PRESETS.left;
-    b.show(300, [hand("Victory", INSIDE)]);
-    expect(b.fires).toHaveLength(1);
-    expect(b.fires[0]).toMatchObject({ kind: "tap" });
+    b.show(1000, [hand("Victory", INSIDE)]);
+    expect(b.fires).toHaveLength(0);
   });
 
   it("whole-frame preset accepts a hand anywhere", () => {
@@ -454,12 +445,14 @@ describe("timing is by clock, not by frame count", () => {
     }
   });
 
-  it("the hold fires at the same moment at any frame rate", () => {
-    for (const ms of [100, 33, 8]) {
-      const times = fireTimes(ms, "Victory", 4000);
-      expect(times).toHaveLength(1);
-      expect(times[0] - ms).toBeGreaterThanOrEqual(COMMANDS.holdMs);
-      expect(times[0] - ms).toBeLessThanOrEqual(COMMANDS.holdMs + ms);
+  it("every command fires at the same moment at any frame rate", () => {
+    for (const shape of COMMANDS.shapes) {
+      for (const ms of [100, 33, 8]) {
+        const times = fireTimes(ms, shape, 4000);
+        expect(times).toHaveLength(1);
+        expect(times[0] - ms).toBeGreaterThanOrEqual(COMMANDS.dwellMs);
+        expect(times[0] - ms).toBeLessThanOrEqual(COMMANDS.dwellMs + ms);
+      }
     }
   });
 });
@@ -475,22 +468,13 @@ describe("the hand leaving view (tracking lost) mid-gesture", () => {
     });
   }
 
-  for (const shape of COMMANDS.holdShapes) {
-    it(`${shape}: vanishing after the ring is full counts as a release, so a TAP`, () => {
+  for (const shape of COMMANDS.shapes) {
+    it(`${shape}: vanishing after it fired adds nothing`, () => {
       const b = new Bench();
       b.show(COMMANDS.dwellMs + 300, [hand(shape)]);
-      expect(b.fires).toHaveLength(0);
+      expect(b.fires).toHaveLength(1);
       b.idle(5000);
       expect(b.fires).toHaveLength(1);
-      expect(b.fires[0]).toMatchObject({ shape, kind: "tap" });
-    });
-
-    it(`${shape}: vanishing after the hold already fired adds nothing`, () => {
-      const b = new Bench();
-      b.show(effectiveHoldMs(COMMANDS) + 300, [hand(shape)]);
-      b.idle(5000);
-      expect(b.fires).toHaveLength(1);
-      expect(b.fires[0].kind).toBe("hold");
     });
   }
 

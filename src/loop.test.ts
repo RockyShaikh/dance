@@ -121,12 +121,12 @@ describe("nudgeStart", () => {
 });
 
 describe("restartTarget", () => {
-  it("tap: loop START if set (even without END), else 0:00", () => {
+  it("loop START if set (even without END), else 0:00", () => {
     expect(restartTarget({ start: 12.5, end: 20 }, "start")).toBe(12.5);
     expect(restartTarget({ start: 12.5, end: null }, "start")).toBe(12.5);
     expect(restartTarget(NO_LOOP, "start")).toBe(0);
   });
-  it("hold: always 0:00", () => {
+  it("top (Home key): always 0:00", () => {
     expect(restartTarget({ start: 12.5, end: 20 }, "top")).toBe(0);
     expect(restartTarget(NO_LOOP, "top")).toBe(0);
   });

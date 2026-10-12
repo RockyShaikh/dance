@@ -159,10 +159,6 @@ body {
   line-height: 1.1;
 }
 
-#banner[data-kind="hold"] {
-  background: rgba(150, 90, 0, 0.9);
-}
-
 #banner-main {
   font-size: clamp(36px, 7vw, 84px);
   font-weight: 800;
@@ -458,23 +454,6 @@ button.small {
   font-weight: 700;
   font-family: system-ui, sans-serif;
   font-size: 15px;
-}
-
-#log .kind {
-  font-weight: 700;
-  font-size: 12px;
-  padding: 1px 7px;
-  border-radius: 4px;
-}
-
-#log .kind.tap {
-  background: #14472e;
-  color: var(--on);
-}
-
-#log .kind.hold {
-  background: #523600;
-  color: var(--warn);
 }
 
 #log .gap {

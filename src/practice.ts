@@ -128,7 +128,7 @@ export class Practice {
 
   /**
    * Moves the loop START by `deltaSec` (negative = earlier) and shows it huge for a moment. Only the
-   * marker moves: index-tap to hear it. Keys, buttons and (R4b) the knob all come through here.
+   * marker moves: index up to hear it. Keys, buttons and (R4b) the knob all come through here.
    */
   nudgeStart(deltaSec: number): TransportResult {
     const result = runNudge(this.player, this.loop, deltaSec);
@@ -179,11 +179,11 @@ export class Practice {
         case "Space":
           return "toggle";
         case "KeyR":
-          return "restart"; // loop START if set, else 0:00 (like an index tap)
+          return "restart"; // loop START if set, else 0:00 (like index up)
         case "Home":
-          return "restartTop"; // 0:00 (like an index hold)
+          return "restartTop"; // 0:00 (keyboard only)
         case "KeyV":
-          return "loopStep"; // like a V tap
+          return "loopStep"; // like V
         case "KeyS":
           return "setStart";
         case "KeyE":

@@ -12,26 +12,25 @@ export { formatTime };
 
 export type TransportAction =
   | "toggle"
-  /** Index tap: back to the loop START if one is set, else 0:00; plays. */
+  /** Index up: back to the loop START if one is set, else 0:00; plays. */
   | "restart"
-  /** Index hold: 0:00, even with a loop set; plays. */
+  /** Home key / button only: 0:00, even with a loop set; plays. No gesture: gestures never depend on hold time. */
   | "restartTop"
-  /** V tap: START, then END (loop on), then clear. */
+  /** V: START, then END (loop on), then clear. */
   | "loopStep"
   | "setStart"
   | "setEnd"
-  /** V hold. */
   | "clearLoop";
 
-/** Open palm toggles; index up restarts (tap: loop start, hold: song start); V steps the loop (hold: clears it). */
-export function actionForFire(ev: Pick<FireEvent, "shape" | "kind">): TransportAction | null {
+/** Every command fires once, when its ring fills. Open palm toggles; index up restarts; V steps the loop (START, END, clear). */
+export function actionForFire(ev: Pick<FireEvent, "shape">): TransportAction | null {
   switch (ev.shape) {
     case "Open_Palm":
       return "toggle";
     case "Pointing_Up":
-      return ev.kind === "hold" ? "restartTop" : "restart";
+      return "restart";
     case "Victory":
-      return ev.kind === "hold" ? "clearLoop" : "loopStep";
+      return "loopStep";
     default:
       return null;
   }

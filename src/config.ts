@@ -69,23 +69,18 @@ export const APP = {
 } as const;
 
 /**
- * R2: the command classifier (command box + dwell + tap/hold + cooldown).
+ * R2: the command classifier (command box + dwell + cooldown). Every command fires once, when its
+ * ring fills: no gesture depends on how long it is held (R4a amendment).
  * Times are in milliseconds. See docs/spec.md sections 4.2 and 4.4.
  */
 export interface CommandConfig {
   /** MediaPipe Gesture Recognizer labels that count as commands. */
   shapes: readonly string[];
-  /** Shapes that also have a hold action (an outer ring). The others fire when the first ring fills. */
-  holdShapes: readonly string[];
-  /** How long a shape must be held before the first ring is full. */
+  /** How long a shape must be held before the ring is full and the command fires. */
   dwellMs: number;
   /** Tunable range of `dwellMs` (the spec's 0.6 s is a minimum; tune up from there). */
   dwellMinMs: number;
   dwellMaxMs: number;
-  /** Hold fires when the shape has been held this long in total (outer ring)... */
-  holdMs: number;
-  /** ...but never sooner than this long after the first ring fills, so the slider can't squash the tap window. */
-  holdMinGapMs: number;
   /** After anything fires, no new dwell may start for this long. */
   cooldownMs: number;
   /**
@@ -106,12 +101,9 @@ export interface CommandConfig {
 
 export const COMMANDS: CommandConfig = {
   shapes: ["Open_Palm", "Pointing_Up", "Victory"],
-  holdShapes: ["Pointing_Up", "Victory"],
   dwellMs: 600,
   dwellMinMs: 600,
   dwellMaxMs: 1200,
-  holdMs: 1500,
-  holdMinGapMs: 400,
   cooldownMs: 1000,
   dropoutGraceMs: 120,
   minShapeScore: 0.5,
