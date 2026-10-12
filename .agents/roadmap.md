@@ -2,14 +2,14 @@
 
 *Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
-Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (tag `r2-done`). R3 done 2026-10-12 (tag `r3-done`). R4 next: plan awaiting the user's confirmation.
+Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (tag `r2-done`). R3 done 2026-10-12 (tag `r3-done`). R4 active 2026-10-12, split into R4a and R4b (user: "go").
 
 | # | Checkpoint | Status |
 |---|---|---|
 | R1 | Bring-up: camera, hand skeleton, pseudo-chords | done |
 | R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | done |
 | R3 | Audio + webcam together; play/pause/restart by gesture | done |
-| R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | planned |
+| R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | **active** (R4a → R4b) |
 | R5 | Speed by rotation knob | planned |
 
 ---
@@ -119,7 +119,11 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - You've nudged at least 5 loop starts with each mapping and motion (joystick, absolute, relative, circling) and each clutch (pinch, claw, two-hand), and recorded what felt best (and why) in AGENTS.md → Decisions.
 - A nudge can't move the start past the end, or before 0:00.
 
-**Status:** planned
+**Status:** active (started 2026-10-12)
+
+**Split (approved 2026-10-12):** two branches, each merged `--no-ff` and tagged on its own.
+- **R4a** (`r4a-loops`): V cycle marking, late-mark fix, restart to loop start (restores index tap vs hold), START/END flags and loop bar, huge start time, **keyboard/button nudge** of the loop start, clean loop wrap.
+- **R4b** (`r4b-knob`, built on R4a): knob nudge with all variants switchable. **Default grab = claw** (user found pinch rough); pinch and two-hand stay as options. Joystick tilt first, then absolute wiper, relative + ratchet, circling.
 
 **Notes**
 - The loop model is the user's: let it play, mark it, then fine-tune only the start, because "you will always overplay at the beginning." It replaces the earlier "rotate to find points" vs "play-pause-set" A/B.

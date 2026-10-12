@@ -41,6 +41,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-11 — The user started R3 before testing R2 by hand ("I think r2 was pretty trivial"). R3 builds on R2. **Each of R2 and R3 must be individually rollback-able:** separate branches (`r2-gestures`, then the R3 branch based on it); at integration, merge each as its own `--no-ff` merge commit (R2 first, then R3) and tag it, so either can be reverted alone. Tags: `r1-done`.
 - 2026-10-12 — R2 accepted ("r2 is good"); merged `--no-ff`, tag `r2-done`. Pinch is rough and the user doesn't see using it often; claw is decent. Open R2 questions left at defaults (one-hand rule = block only when two hands show command shapes in the box; dwell slider min 0.6 s).
 - 2026-10-12 — R3 accepted ("it seems to be working"); merged `--no-ff`, tag `r3-done`.
+- 2026-10-12 — R4 plan confirmed ("go"). Split into **R4a** (loops, restart, late-mark fix, visuals, keyboard nudge) and **R4b** (knob nudge, all variants), with separate branches, merges and tags. **Default knob grab = claw**, since pinch is rough; pinch and two-hand stay as options.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->
