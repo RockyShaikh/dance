@@ -50,6 +50,10 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Suppress commands while a clutch is grabbed** (esp. two-hand) | QoL | Surfaced in R2; decide in R4 when clutches control something |
 | **Collapsible settings panel** (side panel scrolls on a laptop screen) | QoL | Surfaced in R2 |
 | **Tune the tap's 0.12 s release delay** (dropout grace) | QoL | Surfaced in R2 |
+| **Click/drag the timeline to seek** | QoL | Surfaced in R3; `seek` already exists |
+| **Mute or change the confirm beep during practice** (plays over the music) | QoL | Surfaced in R3; needs ears |
+| **Volume control; show track name / recent files** | QoL | Surfaced in R3 |
+| **Commit the e2e browser driver** (`?sim` checks) under `scripts/` | overlooked | Surfaced in R3; currently lives in /tmp only |
 
 ## Unresolved threads
 
@@ -90,3 +94,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **"One hand at a time" rule**: currently only blocks when two hands show command shapes inside the box | unresolved | Builder's reading; user to confirm or tighten |
 | **Quick shape switches** (index up → V): old shape lingers 120 ms, can tap-fire if its ring was full | risk | Surfaced in R2 |
 | **Gesture Recognizer labels may carry their own palm-orientation bias** | risk | Real 9/10 tests will show |
+| **Loop wrap with HTMLAudioElement is timer-based** and may sound loose at the loop point | risk | Check by ear in R4; fallback is a Web Audio engine behind the same `AudioPlayer` interface |
+| **R3 makes Pointing_Up fire on ring-fill** (`PRACTICE.holdShapes` override) | risk | R4 must remove it to restore tap vs hold |
+| **Chrome needs one click/key before gesture-started audio** (handled with a hint; non-Chrome wording untested) | unresolved | Surfaced in R3 |

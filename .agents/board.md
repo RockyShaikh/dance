@@ -5,15 +5,16 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B3 | R3 audio (resumed after session limit): finish on branch `r3-audio` (based on r2-gestures) | ship | `.claude/worktrees/agent-a9b979ebc902653be` | 2026-10-12 |
 
 ## Waiting on user
+- R3 real-hand/ear test at http://localhost:5175/ (worktree `.claude/worktrees/agent-a9b979ebc902653be`, branch `r3-audio`), then merge --no-ff + tag `r3-done` on the user's word.
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 - T3 — dashboard R2/R3 update stopped mid-work (session limit). Resume later.
 
 ## Done (last 10)
+- B3 — R3 built: 186 tests + build pass, 26/26 sim e2e checks; audio reacts 2–8 ms after fire; real hand/ears unverified — branch `r3-audio` (pushed, NOT merged; only R3 commits on top of r2-gestures) — 2026-10-12
 - R2 — accepted by the user, merged to main (--no-ff), tag `r2-done` — 2026-10-12
 - B2 — R2 built: 145 tests + build pass; 43/43 Playwright sim checks; real-hand unverified — branch `worktree-agent-aca1e0441ea8b7677` (pushed, NOT merged), worktree `.claude/worktrees/agent-aca1e0441ea8b7677` — 2026-10-11
 - T2 — dashboard v2: real R1 code pointers, handedness/palm lesson, R2 concepts + timeline lab — same link — 2026-10-11

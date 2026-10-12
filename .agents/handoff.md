@@ -11,7 +11,7 @@ R3: load a local track; open palm = play/pause, index up = restart; webcam + sta
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-B3 resumed to finish R3 on `r3-audio`. On completion: give the user test steps; on their OK, merge `r3-audio` --no-ff and tag `r3-done`. T3 (dashboard R2/R3) is interrupted; resume when there's room.
+The user tests R3 at http://localhost:5175/ (test track `public/test/click-track.wav` in the R3 worktree, or any MP3). On OK: `git merge --no-ff r3-audio` into main, tag `r3-done`, push, mark R3 done, wishlist review, then ask about R4. Then resume T3 (dashboard R2/R3 update).
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

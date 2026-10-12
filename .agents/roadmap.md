@@ -150,4 +150,4 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Status:** planned
 
-**Notes:** the user chose a continuous knob and favours the spring-loaded joystick. Practice tools usually use fixed speeds instead [market, workflows], so presets stay on the wish list as a fallback.
+**Notes:** remove R3's `PRACTICE.holdShapes` override (index up fires on ring-fill in R3) to restore tap vs hold. Check the loop wrap by ear: HTMLAudioElement wrap is timer-based. Pinch is rough per the user, so consider defaulting the grab to claw.  the user chose a continuous knob and favours the spring-loaded joystick. Practice tools usually use fixed speeds instead [market, workflows], so presets stay on the wish list as a fallback.
