@@ -1,0 +1,266 @@
+    <!-- R3 -->
+    <section class="block" id="r3">
+      <div class="section-intro">
+        <span class="eyebrow">Checkpoint R3 · active</span>
+        <h2>R3: music under your hand</h2>
+        <p>R2 ends with a <code>FireEvent</code>: <code>{ t, shape, kind }</code>. R3 turns that into sound: load a local track, open palm plays and pauses, index up restarts from 0:00, with a big status word and a moving playhead (roadmap R3). The hard part isn't calling <code>play()</code>. It's knowing what happens between that call and your ears, and what the browser does and doesn't allow. The R3 code is being written on branch <code>r3-audio</code>, so this section is grounded in the roadmap, <code>docs/spec.md</code> §4.5 and §6.2, and the audio code R2 already has (<code>src/sound.ts</code>). Look for the rest in <code>src/</code> once R3 lands.</p>
+      </div>
+
+      <div class="facts">
+        <div class="fact"><span class="k">Done means (roadmap R3)</span><p>MP3 or WAV loads with length and a moving playhead. Palm pauses and resumes from the same spot. Index restarts from 0:00. Music reacts as soon as the ring completes, with no noticeable extra delay.</p></div>
+        <div class="fact"><span class="k">Already in R2</span><p><code>src/sound.ts</code> makes an <code>AudioContext</code> for the fire beeps and "unlocks" it on your first click or key press (<code>bench.ts:62–65</code>). R3 inherits both the API and the autoplay problem.</p></div>
+        <div class="fact"><span class="k">Watch-outs (roadmap notes)</span><p>Audio stutter while the hand model runs every frame, and Bluetooth speaker delay. Both are explained below, with a lab for the second.</p></div>
+      </div>
+
+      <!-- AUDIO API -->
+      <article class="concept" id="audioapi">
+        <div class="concept-head">
+          <span class="tag browser">R3 · The browser's audio</span>
+          <h3>Two ways to play a file: the audio element and Web Audio</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>An MP3 is compressed: a stream of small frames that must be decoded into raw samples (numbers between −1 and 1, 44,100 or 48,000 per second per channel) before a speaker can play them. Something has to read the file, decode it, keep the speaker fed without gaps, and let you pause and jump around.</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Decode the whole file yourself in JavaScript and push samples to the speaker from the frame loop. The speaker needs a fresh chunk every few milliseconds. The frame loop runs every 33 ms and sometimes stalls for 40 ms inside the model. Every stall is an audible gap.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p>Browsers give you two finished answers. Both keep the speaker fed from a separate audio thread, so your code only sends commands.</p>
+            <div class="tablewrap"><table class="lm">
+              <thead><tr><th></th><th><code>&lt;audio&gt;</code> / <code>HTMLAudioElement</code></th><th>Web Audio API</th></tr></thead>
+              <tbody>
+                <tr><td>Load</td><td><code>audio.src = URL.createObjectURL(file)</code>. The browser streams from the file and decodes a little ahead of the playhead.</td><td><code>ctx.decodeAudioData(await file.arrayBuffer())</code> decodes the <i>whole</i> track up front into an <code>AudioBuffer</code>: plain float arrays in memory.</td></tr>
+                <tr><td>Memory</td><td class="n">a few MB</td><td>4 bytes × 2 channels × 48,000 × seconds. A 3:30 song is about <b>80 MB</b>.</td></tr>
+                <tr><td>Play / pause</td><td><code>play()</code> (returns a Promise), <code>pause()</code></td><td>An <code>AudioBufferSourceNode</code> plays <b>once</b>. Pause = <code>stop()</code> and remember the position; resume = a new node with <code>start(0, offset)</code>.</td></tr>
+                <tr><td>Seek</td><td><code>audio.currentTime = 0</code>, asynchronous (<code>seeking</code> → <code>seeked</code> events)</td><td>Pick the offset in <code>start(when, offset)</code>, exact to the sample</td></tr>
+                <tr><td>Clock</td><td><code>currentTime</code>; the <code>timeupdate</code> event fires only about every 250 ms in Chrome</td><td><code>ctx.currentTime</code>, the audio hardware's own clock, advancing in 128-sample steps</td></tr>
+                <tr><td>Loop a section</td><td>Only the whole file (<code>loop</code>). A section loop means watching the time and seeking back yourself</td><td><code>loopStart</code> / <code>loopEnd</code> on the node: seamless, handled on the audio thread</td></tr>
+                <tr><td>Speed</td><td><code>playbackRate</code> with <code>preservesPitch</code> on by default: pitch stays put</td><td><code>playbackRate</code> resamples: faster = higher pitch</td></tr>
+              </tbody>
+            </table></div>
+            <p>They can also be combined: <code>ctx.createMediaElementSource(audio)</code> routes an audio element into a Web Audio graph, so you get streaming and pitch-preserved speed plus Web Audio effects. Section loops still have to be done by seeking.</p>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">For R3 alone, either works; the element is fewer lines. The choice matters later. R4 wants clean, repeated section loops, which Web Audio does natively. R5 wants live speed with the pitch preserved, which the element does natively and Web Audio does not. Spec §6.2 says "Web Audio is built for this" for looping and "built-in for basic quality; libraries for better" for speed. Check which one R3 picked and whether its report says why: it decides what R4 and R5 have to build.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Element:</b> low memory, instant start on a long file, pitch-preserved speed for free. Loose control over timing: seeks take a moment, and section loops overshoot by however late your code notices the end.</li>
+            <li><b>Web Audio:</b> exact timing, gapless loops, everything on one clock. Costs a decode wait on load (around a second for a song) and tens of MB of memory. Pitch-preserved speed needs a library.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>R3 uses Web Audio. You pause at 1:12.4 by calling <code>stop()</code> on the source node. Later you call <code>start()</code> on that same node to resume. What happens, and what should the code do instead?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>The browser throws an <code>InvalidStateError</code>: a buffer source node can only be started once. The code should create a new <code>AudioBufferSourceNode</code> on the same decoded buffer and call <code>start(0, 72.4)</code>. Nodes are cheap; the 80 MB buffer is shared and never decoded again. So "pause" in Web Audio is really "stop, and remember where".</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- LATENCY -->
+      <article class="concept" id="latency">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Timing</span>
+          <h3>Audio latency: from "ring full" to sound in your ears</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Roadmap R3's done means says "music reacts as soon as the ring completes, with no noticeable extra delay." To check that, you have to know where delay can come from, and turn "noticeable" into a number.</p></div></div>
+          <div class="step"><div class="k">Naive view</div><div class="v"><p>"<code>play()</code> runs, sound comes out." In reality, the audio thread renders samples into a buffer slightly ahead of the speaker, and the device adds its own buffering on top. A sample written now is heard later, by an amount that depends mostly on the output device.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p>Split the time into what happens before the fire and what happens after it.</p>
+            <ol>
+              <li><b>Before the fire (deliberate).</b> You hold the shape for the 0.6 s dwell. Each frame also arrives a camera frame late (about 33–50 ms) and spends one model call (10–40 ms) being read. The ring shows all of this, so it reads as "the system is confirming", not as lag.</li>
+              <li><b>The fire.</b> <code>stepCommands</code> returns a <code>FireEvent</code> on the frame where the ring fills. In the same JavaScript task, the R3 transport calls <code>play()</code> or <code>start()</code>. That step costs well under a millisecond.</li>
+              <li><b>Audio thread.</b> The audio thread works in chunks of 128 samples (a render quantum: 2.7 ms at 48 kHz). A start command takes effect at the next chunk.</li>
+              <li><b>Output buffer.</b> The browser keeps a few chunks queued so the speaker never runs dry. Web Audio reports this as <code>ctx.baseLatency</code>, typically a few to about 20 ms.</li>
+              <li><b>Device.</b> <code>ctx.outputLatency</code> is the operating system's estimate from there to the speaker. Built-in speakers and wired outputs add around 10–30 ms. A <b>Bluetooth</b> speaker compresses audio into packets and buffers them against radio dropouts, which typically adds 150–300 ms.</li>
+              <li><b>Air.</b> Sound travels 343 m/s: about 3 ms per metre.</li>
+            </ol>
+            <p><b>What "noticeable" means.</b> Your eyes see the ring complete after the next screen refresh and the display's own delay, roughly 20–40 ms after the fire. So the delay you feel is the <i>gap</i> between the ring filling on screen and the music starting. Broadcast standards (ITU-R BT.1359) put the point where people detect sound lagging the picture at around 125 ms. For a trigger like this, staying under about 50 ms feels instant. Wired output keeps the gap near zero. Bluetooth alone usually goes past 125 ms.</p>
+            <p><b>Making it measurable.</b> Log three timestamps per command, all on the <code>performance.now()</code> clock: the frame time when the ring filled (<code>FireEvent.t</code>), the moment the transport issued the audio call, and the estimated moment the sound reaches the speaker. Web Audio gives you the third through <code>ctx.getOutputTimestamp()</code>, which maps the audio clock to <code>performance.now()</code>, plus <code>outputLatency</code>. For a check outside the code, film the laptop with a phone in slow motion (240 fps = 4 ms per frame) and count the frames between the ring filling and the sound in the video's audio track.</p>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">Spec §2: laptop or external speakers. The Bluetooth delay is already an Unresolved thread (roadmap R3 notes). There's no way to make sound arrive earlier than the device allows. In R4 it matters a second way: you hear the music late, so you also <i>mark</i> late, by the device delay on top of your reaction time. The spec's 0.15 s late-mark offset (§4.6) could then subtract <code>outputLatency</code> as well.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Smaller buffers</b> mean lower latency but a higher risk of running dry (an underrun: a click or dropout) when the machine is busy. Web Audio's default <code>latencyHint: "interactive"</code> picks the smallest buffer the system can sustain.</li>
+            <li><b>Bluetooth</b> trades latency for no cable. For drilling to music that's usually fine once it's playing; it's the start and the loop marks that feel late.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Same laptop, same code. You switch from the laptop speakers to a Bluetooth speaker. Which step in the chain changes, by roughly how much, and does the 0.6 s ring take any longer to fill?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Only the device step, by roughly 150–250 ms. The ring fills at exactly the same moment, since nothing before the fire touched audio. What changes is the silence after it: the ring completes, then about a fifth of a second passes before the music starts. Try it in the lab below.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- LATENCY LAB -->
+      <div class="latlab" id="latlab" aria-label="Latency lab">
+        <div class="section-intro">
+          <h3 style="font-size:1.15rem">Latency lab: when do you see it, when do you hear it?</h3>
+          <p class="hint">Time 0 is the frame where <code>stepCommands</code> fires. The top bar is your eyes, the bottom bar is your ears. The figures are typical values, not measurements of your setup, except when you press "Measure this device", which reads the real numbers from your browser.</p>
+        </div>
+        <div class="latlab-grid">
+          <div class="controls">
+            <div class="row"><span class="lbl">Output</span>
+              <button class="opt" id="lt-dev-lap" aria-pressed="true">Laptop speakers</button>
+              <button class="opt" id="lt-dev-wire" aria-pressed="false">Wired speaker</button>
+              <button class="opt" id="lt-dev-bt" aria-pressed="false">Bluetooth speaker</button>
+            </div>
+            <div class="row"><span class="lbl">Audio path</span>
+              <button class="opt" id="lt-path-wa" aria-pressed="true">Web Audio buffer</button>
+              <button class="opt" id="lt-path-res" aria-pressed="false">Element: resume</button>
+              <button class="opt" id="lt-path-seek" aria-pressed="false">Element: seek to 0:00</button>
+            </div>
+            <label class="slider" for="lt-dist">Speaker distance <input type="range" id="lt-dist" min="0.5" max="5" step="0.5" value="2"><output id="lt-dist-o">2.0 m</output></label>
+            <label class="slider" for="lt-model">Model call <input type="range" id="lt-model" min="10" max="60" step="5" value="25"><output id="lt-model-o">25 ms</output></label>
+            <div class="row">
+              <button class="play" id="lt-measure">Measure this device</button>
+              <span class="hint" id="lt-measure-note">Plays a short click and reads <code>baseLatency</code> and <code>outputLatency</code>.</span>
+            </div>
+          </div>
+          <div class="latread">
+            <div class="eyebrow">Gap you feel</div>
+            <div class="biggap"><span id="lt-gap">13</span><small> ms</small></div>
+            <span class="pill" id="lt-verdict">feels instant</span>
+            <dl class="read">
+              <dt>ring seen</dt><dd id="lt-eye">20 ms</dd>
+              <dt>sound heard</dt><dd id="lt-ear">33 ms</dd>
+              <dt>since shape made</dt><dd id="lt-total">0.70 s</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="chartwrap"><svg id="lt-chart" viewBox="0 0 760 210" role="img" aria-label="Two bars from the fire moment: when the ring is seen on screen and when the sound is heard, with each delay as a segment"></svg></div>
+        <div class="legend" id="lt-legend"></div>
+        <p class="hint" id="lt-before"></p>
+      </div>
+
+      <!-- SEEK -->
+      <article class="concept" id="seek">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Timing</span>
+          <h3>Seeking: how exactly can you land on a moment?</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Restart means "jump to 0:00 and play". R4 will mean "jump to 1:31.20 and play", over and over. How precisely does a jump land, and how long does it take?</p></div></div>
+          <div class="step"><div class="k">Naive view</div><div class="v"><p>"Time 91.2 s is just a position in the file." That's true only for uncompressed audio. In a compressed file, the browser has to work out where 91.2 s starts.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>WAV</b> is raw samples after a short header. The byte for time t is <code>header + t × sampleRate × channels × bytesPerSample</code>. The jump is exact and instant.</li>
+              <li><b>MP3</b> is a chain of frames of 1,152 samples each (26 ms at 44.1 kHz). In a <b>constant-bitrate</b> file every frame is the same size, so the arithmetic still works, to the frame. In a <b>variable-bitrate</b> file, frame sizes differ. The browser relies on a small table in the header (often only 100 entries, one per 1% of the song) or scans the file. Depending on the browser, a VBR seek can land slightly off.</li>
+              <li><b>Encoder delay.</b> MP3 encoders put a few dozen milliseconds of silence at the very start. A restart to 0:00 includes it. Harmless for R3.</li>
+              <li><b>Decoded buffer (Web Audio).</b> Once the track is decoded, time is an array index: 91.2 s × 48,000 = sample 4,377,600. Exact to a 48,000th of a second, with no decoding at seek time.</li>
+              <li><b>Seek time.</b> An element seek is asynchronous: it finds the frame, refills the decoder and resumes. On a local file that's usually tens of milliseconds, and it adds directly to the "gap you feel". A buffer-source start costs nothing extra.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3 only ever seeks to 0:00 (spec §4.5: "R3 has no loops yet"), which is exact in every format. Precision starts to matter in R4: the loop start is mid-song, you jump to it on every repeat, and "looping from end back to start is clean (no noticeable gap or overshoot)" is a done-means line.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li>Decoding up front buys exact, instant seeks with a wait on load and tens of MB of memory.</li>
+            <li>Streaming buys a quick start with seeks that are fast enough for a restart but loose for tight loops.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Your track is a variable-bitrate MP3 played through the audio element. Is the R3 restart to 0:00 affected by VBR seeking? What about an R4 loop start at 1:31.20?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>0:00 is always exact: it's the first frame, with no estimating needed. 1:31.20 is mid-file, so the browser has to locate it, and with a coarse table it may land a little off and take a moment. A decoded Web Audio buffer would land exactly on sample 4,377,600 (at 48 kHz) with no wait.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- AUTOPLAY -->
+      <article class="concept" id="autoplay">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Browser rules</span>
+          <h3>The autoplay policy: why the page needs one click first</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Web pages that blast sound the moment they open are hostile, so browsers block audible playback until the person has actually interacted with the page. Dance wants to be hands-free. Where does that leave the first play?</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Call <code>play()</code> when the first open-palm gesture fires. The ring fills, the banner shows, and there's silence. <code>play()</code>'s Promise rejects with <code>NotAllowedError</code>, or the <code>AudioContext</code> sits in the <code>"suspended"</code> state.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>User activation.</b> The browser keeps a per-page flag that only real input events set: a key press, a mouse button press, a tap. The events must be trusted: produced by the operating system, never by script. Once set, Chrome keeps this "sticky" activation for the life of the page.</li>
+              <li><b>The camera doesn't count.</b> To the browser, a gesture Dance recognizes is just JavaScript calling <code>play()</code>, with no input event behind it. Neither does mouse movement, scrolling, or a drag-and-drop from Finder (the mouse press happened in Finder, not in the page).</li>
+              <li><b>Web Audio</b>: a context created before any activation starts <code>"suspended"</code>, and <code>ctx.resume()</code> works only after one. <b>Element</b>: <code>play()</code> returns a rejected Promise until then.</li>
+              <li>Chrome sometimes relaxes the rule for sites where you play a lot of media (the Media Engagement Index), so behaviour can differ between your profile and a fresh one. Don't rely on it.</li>
+            </ul>
+            <div class="pre"><span class="c">// R2 already does this for its beeps (src/sound.ts:8–15, src/bench.ts:62–65)</span>
+document.addEventListener("pointerdown", unlock);
+document.addEventListener("keydown", unlock);
+function unlock() { ctx ??= new AudioContext(); if (ctx.state === "suspended") ctx.resume(); }</div>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">Loading the track with a click on the file picker sets the activation, so every gesture after that may play. Roadmap R3 also has keys and on-screen buttons, and those count too. The case to check is drag-and-drop: drop a file without clicking anything, walk back, show a palm, and you may get silence. R3 should handle the rejected <code>play()</code> visibly (for example "Click once to enable sound") instead of failing silently.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li>One click per page load costs almost nothing, since you're at the laptop to pick the track anyway.</li>
+            <li>Failure mode: the gesture looks like it worked (ring, banner) but no sound plays. Without an on-screen message, it looks like an audio bug.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>You open Dance, drag a track from Finder onto the page, step back to your spot and show an open palm in the box. You haven't clicked or pressed anything in the page. What happens?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Probably: the ring fills, the banner and status flip to PLAYING, and there's no sound, because a drop isn't an activation-triggering event and the page has no sticky activation yet. <code>play()</code> rejects with <code>NotAllowedError</code> (or the context stays suspended). One click or key press anywhere on the page fixes it for the rest of the session. Worth testing on the real R3 build.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- MAIN THREAD -->
+      <article class="concept" id="mainthread">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Threads</span>
+          <h3>One main thread, two jobs: where stutter comes from</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>The roadmap warns: "watch for audio stutter while the hand model runs every frame." To know whether that's a real risk, you need to know which thread does what.</p></div></div>
+          <div class="step"><div class="k">Naive view</div><div class="v"><p>"JavaScript is single-threaded, so while the model runs, the music must stop." That's half right. Your code runs on one thread, but the browser renders audio somewhere else.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>The main thread</b> runs one task at a time: your frame callback, input events, layout, painting. <code>recognizeForVideo</code> is synchronous (<code>main.ts:189</code> on r2-gestures), so the page is busy for its whole duration, 10–40 ms per frame. Nothing else on the main thread runs in that time.</li>
+              <li><b>The audio thread</b> is a separate high-priority thread that pulls samples from the already-decoded buffer or the element's decoder and hands them to the output buffer, chunk by chunk. It doesn't wait for the main thread. A track that is already playing keeps playing smoothly through a 40 ms model call, and even through a 300 ms freeze.</li>
+              <li><b>What does suffer</b> is anything that needs the main thread at a precise moment:
+                <ol>
+                  <li><i>Commands land late.</i> A key press during a model call waits for it to finish. A gesture fire is computed right after the call, so it doesn't wait twice.</li>
+                  <li><i>Loops timed from the main thread.</i> "Check <code>currentTime</code> every frame; if past the loop end, seek back" overshoots by up to a frame plus a model call. With <code>timeupdate</code> it can be 250 ms. That's an R4 concern. Web Audio's <code>loopEnd</code>, or scheduling ahead on the audio clock with <code>start(when)</code>, avoids it.</li>
+                  <li><i>Audio processing on the wrong thread.</i> The old <code>ScriptProcessorNode</code> ran your sample code on the main thread, and glitched whenever the page was busy. Its replacement, <code>AudioWorklet</code>, runs on the audio thread, but must finish each 128-sample chunk in time (2.7 ms at 48 kHz) or the buffer runs dry and you hear a click. That's the R5 time-stretch risk.</li>
+                  <li><i>The whole machine is overloaded.</i> Video decoding, the model on the GPU, and thermal throttling can, in bad cases, starve even the audio thread. Rare on a modern laptop.</li>
+                </ol>
+              </li>
+              <li><b>Visual stutter is separate.</b> The playhead and status word repaint only when the main thread is free. At 22 fps the playhead moves in steps, but the sound is still smooth.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3's play, pause and restart are one-off commands, so the main-thread cost is "a few milliseconds late", well under the 0.6 s dwell. Things to check in the R3 code: the playhead reads the audio clock (<code>ctx.currentTime</code> or <code>audio.currentTime</code>) on every frame rather than counting frames, and nothing audio-related runs on a <code>setInterval</code> timer. If stutter shows up anyway, the bigger fix is moving the model into a Web Worker, so the main thread only paints and handles input.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Model on the main thread:</b> simple, and fine while the audio is a few commands. <b>In a worker:</b> frames have to be transferred between threads, and the code gets more complex.</li>
+            <li><b>Schedule ahead on the audio clock</b> for anything rhythmic (loops, count-ins). <b>React on the main thread</b> for one-off commands.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>The model call takes 40 ms per frame. A track is playing. Does the music stutter? What does get worse, and by how much?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>The music doesn't stutter: the audio thread keeps pulling samples on its own. The fps drops to about 22, so the playhead moves in visible steps. A key press can land up to 40 ms late. And if R4 did loops by checking <code>currentTime</code> once per frame, each repeat could overshoot the loop end by up to about 45 ms (one frame interval plus the model call), audibly different on every pass.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- STRETCH -->
+      <article class="concept" id="stretch">
+        <div class="concept-head">
+          <span class="tag tool">Preview · R5, not in R3</span>
+          <h3>Changing speed without chipmunks: pitch-preserving time-stretch</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>R5: turn the hand to slow the music down to 0.5× or speed it up to 1.25×, "pitch preserved" (roadmap R5, spec §9 Q3).</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Play the samples faster or slower (resampling). Every frequency scales with the speed: 1.25× raises the pitch by 12 × log₂(1.25) ≈ <b>3.9 semitones</b>; 0.5× drops it a full octave. That's the chipmunk effect, and it's what Web Audio's <code>playbackRate</code> does.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>Grains.</b> Cut the audio into short overlapping windows, around 20–50 ms. Read them from the input at one spacing and lay them down in the output at another. Spacing them out makes the music longer without changing the waveform inside each grain, so the pitch stays the same.</li>
+              <li><b>The catch:</b> where two grains overlap, their waves may be out of step and partly cancel, which you hear as warble. <b>WSOLA</b> (waveform-similarity overlap-add) fixes that by sliding each new grain a few milliseconds to wherever it best lines up with what's already written, then crossfading. Chrome's audio element uses a WSOLA algorithm for <code>playbackRate</code> with <code>preservesPitch</code>.</li>
+              <li><b>Phase vocoder.</b> The other family: take each grain into the frequency domain (FFT), keep the strength of each frequency, and adjust their phases to match the new spacing. Smooth on sustained notes, but drum hits get smeared. High-end stretchers such as Rubber Band combine both and treat drum hits specially.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">If R3 picks the audio element, R5's stretch comes built in. If it picks Web Audio, R5 needs a stretcher library compiled to WebAssembly running in an <code>AudioWorklet</code> (SoundTouch, Rubber Band), which brings back the "finish each chunk in 2.7 ms" risk from the threads section. The 1.0× detent is a natural place to bypass the stretcher entirely, so normal speed is untouched.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li>Artifacts grow with distance from 1.0×. At 0.5× each grain is used about twice, and drum hits can sound doubled.</li>
+            <li>Built-in stretch is free but its quality is fixed. A library is configurable but costs CPU on the audio thread, plus licence terms to check.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>A song's main note is A at 440 Hz. At 0.8× with plain resampling, what frequency do you hear? With WSOLA, what frequency, and how long does a 3:00 song take?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Resampling: 440 × 0.8 = 352 Hz, about 3.9 semitones flat, and the song takes 3:45. WSOLA: still 440 Hz, and the song also takes 3:45. Both stretch time by 1 / 0.8 = 1.25; only WSOLA keeps the pitch.</p>
+          </div>
+        </details>
+      </article>
+    </section>
+

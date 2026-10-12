@@ -94,6 +94,7 @@ svg .b-model-skip { fill: var(--surface); stroke: var(--accent); stroke-width: 1
 svg .b-ours { fill: var(--tint-ours); stroke: var(--ours); stroke-width: 1.5; }
 svg .b-ours-inner { fill: var(--surface); stroke: var(--ours); stroke-width: 1; }
 svg .b-planned { fill: var(--paper); stroke: var(--ours); stroke-width: 1.5; stroke-dasharray: 6 4; }
+svg .b-branch { fill: none; stroke: var(--ours); stroke-width: 1.5; stroke-dasharray: 2 3; }
 svg .b-frame { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
 svg .b-cmdbox { fill: var(--tint-ours); stroke: var(--ours); stroke-width: 1.5; stroke-dasharray: 6 4; }
 svg .arrow { stroke: var(--muted); stroke-width: 1.6; fill: none; }
@@ -261,8 +262,16 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
   <aside class="rail" aria-label="Sections">
     <nav>
       <a href="#pipeline">How the pieces connect</a>
-      <a href="#lesson">What the live test taught us</a>
-      <a href="#r2">R2: shapes into commands</a>
+      <a href="#r3">R3: music under your hand</a>
+      <a class="sub" href="#audioapi">Audio element vs Web Audio</a>
+      <a class="sub" href="#latency">Audio latency</a>
+      <a class="sub" href="#latlab">Latency lab</a>
+      <a class="sub" href="#seek">Seeking precision</a>
+      <a class="sub" href="#autoplay">Autoplay policy</a>
+      <a class="sub" href="#mainthread">Main thread and stutter</a>
+      <a class="sub" href="#stretch">Preview: time-stretch (R5)</a>
+      <a href="#r2">R2 as built</a>
+      <a class="sub" href="#r2answers">Answers from the code</a>
       <a class="sub" href="#fsm">State machines</a>
       <a class="sub" href="#dwell">Dwell</a>
       <a class="sub" href="#debounce">Debounce, hysteresis</a>
@@ -271,6 +280,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
       <a class="sub" href="#hittest">Hit-testing the box</a>
       <a class="sub" href="#drag">Drag and resize</a>
       <a class="sub" href="#clutch">Pinch, claw, two-hand</a>
+      <a href="#lesson">R1 live-test lesson</a>
       <a href="#concepts">R1 foundations</a>
       <a class="sub" href="#mediapipe">MediaPipe hand tracking</a>
       <a class="sub" href="#chords">Pseudo-chords</a>
@@ -285,19 +295,19 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
 
   <main>
     <header class="top">
-      <div class="eyebrow">Dance · Learning dashboard · R1 merged · R2 in progress</div>
-      <h1>How a hand becomes a command <span class="chord">idle → arming → fired</span></h1>
-      <p class="lede">R1 is on main: the page sees your hands, draws the skeleton, and reads each finger. R2 turns those jittery per-frame readings into deliberate commands: a shape, held inside a box, long enough, fires exactly once. This page explains the mechanism under both, pointing at the real code.</p>
+      <div class="eyebrow">Dance · Learning dashboard · R1 merged · R2 built · R3 active</div>
+      <h1>How a hand becomes music <span class="chord">dwell → fire → play()</span></h1>
+      <p class="lede">R1 sees your hands and reads each finger. R2 turns those jittery readings into deliberate commands: a shape, held inside a box, long enough, fires exactly once. R3 connects those commands to a track: open palm plays and pauses, index up restarts. This page explains the mechanism under each step and points at the real code.</p>
       <div class="meta">
-        <span class="chip">updated 2026-10-11 · v2</span>
+        <span class="chip">updated 2026-10-11 · v3</span>
         <span class="chip live">R1 merged · 6d0fdff</span>
-        <span class="chip">R2 code on another branch</span>
+        <span class="chip">R2 built · branch r2-gestures · 3ab8902 · 145 tests</span>
+        <span class="chip">R3 in progress · branch r3-audio</span>
         <span class="chip">@mediapipe/tasks-vision 1.1.0</span>
-        <span class="chip">Vite 8 · TS 7 · Vitest 5</span>
       </div>
       <div class="howto">
-        <span><b>New here:</b> the live-test lesson, then the R2 section.</span>
-        <span><b>Play with</b> the timeline lab before reading tap vs hold twice.</span>
+        <span><b>New in v3:</b> the R3 audio section and its latency lab, then "R2 as built".</span>
+        <span><b>Try</b> "Measure this device" in the latency lab with your speaker connected.</span>
         <span><b>Each concept</b> ends with a Predict question. Answer before you reveal.</span>
       </div>
     </header>
@@ -305,9 +315,9 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
     <!-- PIPELINE -->
     <section class="block" id="pipeline">
       <h2>How the pieces connect</h2>
-      <p>One trip around this loop happens for every camera frame, about 30 times a second. Colour tells you who owns each step. The dashed row at the bottom is R2: it is planned from the spec and its code is not on main yet.</p>
+      <p>One trip around this loop happens for every camera frame, about 30 times a second. Colour tells you who owns each step. The dotted row is R2, built on branch <code>r2-gestures</code> and not merged yet. The dashed row is R3, the audio, being written now on <code>r3-audio</code>.</p>
       <figure class="fig">
-        <svg viewBox="0 0 1040 560" role="img" aria-label="Pipeline: webcam to video element to frame callback to the Gesture Recognizer, then the result object, our hand features, and drawing. Below, the planned R2 row: the mouse edits the command box; palm centre in box, shape on with hysteresis, the gesture state machine, and events feed back into drawing.">
+        <svg viewBox="0 0 1040 712" role="img" aria-label="Pipeline: webcam to video element to frame callback to the Gesture Recognizer, then the result object, our hand features, and drawing. Below, the R2 row built on a branch: the mouse edits the command box; palm centre in box, the counting gates, the state machine, and fire events. Below that, the R3 row in progress: a fire event goes to the transport, which drives the audio engine; a loaded file feeds the engine; the audio thread and the output device produce sound.">
           <defs>
             <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
           </defs>
@@ -394,41 +404,72 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <rect class="b-browser" x="20" y="420" width="190" height="96" rx="8"/>
           <text class="t-head" x="34" y="446">Mouse</text>
           <text class="t-mono" x="34" y="468">pointerdown/move/up</text>
-          <text class="t-sub" x="34" y="488">drag to move, edges</text>
-          <text class="t-sub" x="34" y="505">and corners to resize</text>
+          <text class="t-sub" x="34" y="488">boxEditor.ts: drag to</text>
+          <text class="t-sub" x="34" y="505">move, edges to resize</text>
           <path class="arrow" d="M210 474 H246" marker-end="url(#ah)"/>
 
-          <rect class="b-planned" x="236" y="408" width="784" height="120" rx="8" style="fill:none"/>
-          <text class="t-lane" x="252" y="428">R2 · GESTURE LOGIC · PLANNED (SPEC §4.2–4.4)</text>
+          <rect class="b-branch" x="236" y="408" width="784" height="120" rx="8"/>
+          <text class="t-lane" x="252" y="428">R2 · GESTURE LOGIC · BUILT ON BRANCH r2-gestures (NOT MERGED)</text>
           <rect class="b-ours-inner" x="252" y="440" width="172" height="74" rx="6"/>
           <text class="t-head" x="264" y="462" style="font-size:13px">Command box</text>
-          <text class="t-sub" x="264" y="481">palm centre inside</text>
-          <text class="t-sub" x="264" y="498">the rectangle?</text>
+          <text class="t-sub" x="264" y="481">palm centre inside?</text>
+          <text class="t-sub" x="264" y="498">box.ts · display coords</text>
           <rect class="b-ours-inner" x="440" y="440" width="172" height="74" rx="6"/>
-          <text class="t-head" x="452" y="462" style="font-size:13px">Shape on?</text>
-          <text class="t-sub" x="452" y="481">label + palm facing,</text>
-          <text class="t-sub" x="452" y="498">hysteresis</text>
+          <text class="t-head" x="452" y="462" style="font-size:13px">Counts?</text>
+          <text class="t-sub" x="452" y="481">score ≥ 0.5, palm facing,</text>
+          <text class="t-sub" x="452" y="498">one hand, 120 ms grace</text>
           <rect class="b-ours-inner" x="628" y="440" width="200" height="74" rx="6"/>
           <text class="t-head" x="640" y="462" style="font-size:13px">State machine</text>
-          <text class="t-sub" x="640" y="481">dwell 0.6 s · tap/hold ·</text>
-          <text class="t-sub" x="640" y="498">cooldown · clutch grab</text>
+          <text class="t-sub" x="640" y="481">commands.ts · dwell 0.6 s,</text>
+          <text class="t-sub" x="640" y="498">tap/hold, cooldown 1 s</text>
           <rect class="b-ours-inner" x="844" y="440" width="162" height="74" rx="6"/>
-          <text class="t-head" x="856" y="462" style="font-size:13px">Events</text>
-          <text class="t-sub" x="856" y="481">banner, sound,</text>
-          <text class="t-sub" x="856" y="498">timestamped log</text>
+          <text class="t-head" x="856" y="462" style="font-size:13px">FireEvent</text>
+          <text class="t-sub" x="856" y="481">{ t, shape, kind }</text>
+          <text class="t-sub" x="856" y="498">banner, beep, log</text>
           <path class="arrow" d="M424 477 H438" marker-end="url(#ah)"/>
           <path class="arrow" d="M612 477 H626" marker-end="url(#ah)"/>
           <path class="arrow" d="M828 477 H842" marker-end="url(#ah)"/>
           <path class="arrow-back" d="M338 440 V372" marker-end="url(#ah)"/>
-          <text class="t-sub" x="346" y="398">box outline, rings</text>
+          <text class="t-sub" x="346" y="398">HUD canvas: box, rings</text>
 
-          <rect class="b-browser" x="20" y="538" width="14" height="14" rx="3"/><text class="t-sub" x="42" y="550">browser</text>
-          <rect class="b-model" x="120" y="538" width="14" height="14" rx="3"/><text class="t-sub" x="142" y="550">MediaPipe</text>
-          <rect class="b-ours" x="236" y="538" width="14" height="14" rx="3"/><text class="t-sub" x="258" y="550">Dance code on main (src/)</text>
-          <rect class="b-planned" x="440" y="538" width="14" height="14" rx="3"/><text class="t-sub" x="462" y="550">R2, planned</text>
-          <rect class="b-model-skip" x="560" y="538" width="14" height="14" rx="3"/><text class="t-sub" x="582" y="550">runs only when no hand is being tracked</text>
+          <!-- R3 row -->
+          <path class="arrow" d="M925 514 V582" marker-end="url(#ah)"/>
+          <rect class="b-browser" x="20" y="584" width="190" height="72" rx="8"/>
+          <text class="t-head" x="34" y="608">File picker / drop</text>
+          <text class="t-sub" x="34" y="628">local MP3 or WAV,</text>
+          <text class="t-sub" x="34" y="645">a click unlocks audio</text>
+          <path class="arrow" d="M210 620 H250" marker-end="url(#ah)"/>
+
+          <rect class="b-planned" x="236" y="548" width="784" height="122" rx="8" style="fill:none"/>
+          <text class="t-lane" x="252" y="566">R3 · AUDIO · BEING BUILT ON r3-audio (ROADMAP R3)</text>
+          <rect class="b-ours-inner" x="252" y="584" width="190" height="72" rx="6"/>
+          <text class="t-head" x="264" y="606" style="font-size:13px">Audio engine</text>
+          <text class="t-sub" x="264" y="625">decode, play, pause, seek</text>
+          <text class="t-sub" x="264" y="642">media element or Web Audio</text>
+          <rect class="b-browser" x="458" y="584" width="170" height="72" rx="6"/>
+          <text class="t-head" x="470" y="606" style="font-size:13px">Audio thread</text>
+          <text class="t-sub" x="470" y="625">not the main thread;</text>
+          <text class="t-sub" x="470" y="642">128-sample chunks</text>
+          <rect class="b-browser" x="644" y="584" width="184" height="72" rx="6"/>
+          <text class="t-head" x="656" y="606" style="font-size:13px">Output device</text>
+          <text class="t-sub" x="656" y="625">speakers ~10–30 ms,</text>
+          <text class="t-sub" x="656" y="642">Bluetooth ~150–300 ms</text>
+          <rect class="b-ours-inner" x="844" y="584" width="162" height="72" rx="6"/>
+          <text class="t-head" x="856" y="606" style="font-size:13px">Transport</text>
+          <text class="t-sub" x="856" y="625">palm = play/pause</text>
+          <text class="t-sub" x="856" y="642">index = restart 0:00</text>
+          <path class="arrow" d="M442 620 H456" marker-end="url(#ah)"/>
+          <path class="arrow" d="M628 620 H642" marker-end="url(#ah)"/>
+          <path class="arrow" d="M844 604 H836 V576 H347 V582" marker-end="url(#ah)"/>
+
+          <rect class="b-browser" x="20" y="686" width="14" height="14" rx="3"/><text class="t-sub" x="42" y="698">browser</text>
+          <rect class="b-model" x="120" y="686" width="14" height="14" rx="3"/><text class="t-sub" x="142" y="698">MediaPipe</text>
+          <rect class="b-ours" x="236" y="686" width="14" height="14" rx="3"/><text class="t-sub" x="258" y="698">Dance code (src/)</text>
+          <rect class="b-branch" x="390" y="686" width="14" height="14" rx="3"/><text class="t-sub" x="412" y="698">R2, built on a branch</text>
+          <rect class="b-planned" x="566" y="686" width="14" height="14" rx="3"/><text class="t-sub" x="588" y="698">R3, in progress</text>
+          <rect class="b-model-skip" x="706" y="686" width="14" height="14" rx="3"/><text class="t-sub" x="728" y="698">runs only when no hand is tracked</text>
         </svg>
-        <figcaption>R1 ends at "Hand features": every frame produces a fresh <code>HandReading</code> per hand, with no memory of the frame before. R2 adds the first piece of code that remembers across frames (the state machine), and the first input that is not the camera (the mouse).</figcaption>
+        <figcaption>R1 ends at "Hand features": every frame produces a fresh <code>HandReading</code> per hand, with no memory of the frame before. R2 adds the first code that remembers across frames (<code>stepCommands</code>), and the first input that is not the camera (the mouse). R3 adds the first output that is not pixels. Everything above the audio row happens on the page's single main thread; the sound itself is rendered on a separate audio thread, which is why a slow frame doesn't automatically mean a stutter.</figcaption>
       </figure>
     </section>
 

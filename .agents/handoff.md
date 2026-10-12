@@ -11,7 +11,7 @@ R3: load a local track; open palm = play/pause, index up = restart; webcam + sta
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B3. Then give the user R3 test steps (R2 checks can be folded in). Integration only on their word: merge `r2-gestures` --no-ff → tag r2-done, then `r3-audio` --no-ff → tag r3-done. The R2 dev server may still be running on :5174.
+The user is checking R2 by hand at http://localhost:5174/ (dev server from `.claude/worktrees/agent-aca1e0441ea8b7677`). Then: fix anything R2 needs, then resume R3 from the partial worktree `.claude/worktrees/agent-a9b979ebc902653be` (branch `r3-audio`, uncommitted work; do not discard).
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
