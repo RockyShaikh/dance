@@ -127,6 +127,25 @@ The user's model (decided): you don't hunt for points. **Let the music play and 
 
 Because overplay is predictable, an **automatic pre-roll** (start every new loop N seconds earlier than marked) could remove most nudging. It's on the wish list as an option, not built.
 
+### 4.6b Two hands: scrub, then mark (decided with the user, R4b; this supersedes the one-hand V cycle in 4.3 and 4.6)
+
+User: "scrubbing is very important. We should really get the second hand involved for scrubbing and choosing in and out points." Chosen: **scrub, then mark**, with **audible scrub**.
+
+| | Right hand (transport + scrub) | Left hand (marks) |
+|---|---|---|
+| Open palm | play / pause | play / pause |
+| Index up | restart: loop IN if set, else 0:00 | **set OUT** at the playhead and loop |
+| V | clear the loop | **set IN** at the playhead (again: move IN) |
+| Claw grab + tilt | **scrub the playhead** | (not a grab) |
+
+- Each hand has its **own command box** (mouse-editable; defaults: left half for the left hand, right half for the right). Hands are told apart by the handedness label. The right-hand grab must start in the right-hand box.
+- OUT at or before IN + 0.5 s is ignored with a message; IN is refused within 0.5 s of OUT. Keys and buttons stay for everything (S, E, C, `[` `]`, Home, V cycle).
+- **Audible scrub:** while grabbed the playhead is seeked live (at most ~20 seeks/s). Playing: it keeps playing from the new spot. Paused: each seek plays a ~160 ms snippet; it stays paused on release.
+- **Late-mark offset (0.15 s)** only when marking while playing and not scrubbing; while paused, scrubbing, or just after a scrub, the mark is the exact playhead.
+- The knob's **target is selectable**: playhead (default), loop START, loop END (END with the START clamps mirrored). The two-hand clutch (left open palm = modifier) is kept as an option but switches the left-hand marks off.
+- While the knob is grabbed, the steering hand's own commands are blocked (a claw can read as an open palm).
+- Known collision to test by hand: the claw starts from an open hand, and an open palm held 0.6 s in the right box toggles play/pause. Curl the hand within about half a second.
+
 ### 4.7 Feedback (readable from where you dance)
 
 - **Always visible:** a giant status word (PLAYING / PAUSED / LOOP), the loop bar with IN/OUT flags, and the **command box** outlined on the video.
