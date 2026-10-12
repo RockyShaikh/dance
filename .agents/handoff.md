@@ -11,7 +11,7 @@ R3: load a local track; open palm = play/pause, index up = restart; webcam + sta
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-The user tests R3 at http://localhost:5175/ (test track `public/test/click-track.wav` in the R3 worktree, or any MP3). On OK: `git merge --no-ff r3-audio` into main, tag `r3-done`, push, mark R3 done, wishlist review, then ask about R4. Then resume T3 (dashboard R2/R3 update).
+The user asked to confirm the R4 plan in brief bullets before starting. On confirmation: mark R4 active, dispatch ship(s) per the confirmed split, and resume T3 (dashboard).
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

@@ -2,13 +2,13 @@
 
 *Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
-Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (merged, tag `r2-done`). R3 active.
+Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (tag `r2-done`). R3 done 2026-10-12 (tag `r3-done`). R4 next: plan awaiting the user's confirmation.
 
 | # | Checkpoint | Status |
 |---|---|---|
 | R1 | Bring-up: camera, hand skeleton, pseudo-chords | done |
 | R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | done |
-| R3 | Audio + webcam together; play/pause/restart by gesture | **active** |
+| R3 | Audio + webcam together; play/pause/restart by gesture | done |
 | R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | planned |
 | R5 | Speed by rotation knob | planned |
 
@@ -89,7 +89,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Music reacts as soon as the ring completes, with no noticeable extra delay.
 - Status and playhead are readable from where you dance.
 
-**Status:** active (started 2026-10-11; builds on `r2-gestures`)
+**Status:** done (2026-10-12; merged `--no-ff`, tag `r3-done`). User: "it seems to be working".
 
 **Notes:** watch for audio stutter while the hand model runs every frame, and for Bluetooth speaker delay (Unresolved threads).
 
