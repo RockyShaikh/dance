@@ -187,6 +187,8 @@ export const LOOP = {
    * plus recognition time makes marks land late. (A key or button marks the playhead as is.)
    */
   markOffsetSec: 0.15,
+  /** R4b: for this long after a scrub ends (and while one runs, or while paused) a mark is the exact playhead, no offset. */
+  exactAfterScrubMs: 2500,
   /** Smallest loop: the END must be at least this far after the START (also bounds the nudge). */
   minGapSec: 0.5,
   /** Nudge step for [ and ], and with Shift. */
@@ -212,10 +214,19 @@ export const LOOP = {
 export type ClutchKind = "claw" | "pinch" | "twoHand";
 export type MotionKind = "tilt" | "circling";
 export type MappingKind = "joystick" | "absolute" | "relative" | "jog";
+/** What the knob moves (the output is a delta in seconds applied to one of these). Default: the playhead, audibly. */
+export type KnobTarget = "playhead" | "start" | "end";
 
 export interface KnobConfig {
   /** What the settings panel starts with (the user's choice: claw as the default grab). */
-  defaults: { clutch: ClutchKind; motion: MotionKind; mapping: MappingKind; gain: number; deadZoneDeg: number; invert: boolean };
+  defaults: { clutch: ClutchKind; motion: MotionKind; mapping: MappingKind; target: KnobTarget; gain: number; deadZoneDeg: number; invert: boolean };
+  /** Seconds-per-second multiplier per target: scrubbing the playhead wants to be faster than nudging a marker. */
+  targetScale: Record<KnobTarget, number>;
+  /**
+   * Which of the dancer's hands steers a claw or pinch grab (docs/spec.md 5.2, two-hand roles: the right
+   * hand is transport + scrub, the left hand marks). A grab by the other hand is ignored by the knob.
+   */
+  steeringHand: "Left" | "Right";
   /** Panel slider ranges. `gain` multiplies every mapping; the dead zone is the joystick's. */
   gainMin: number;
   gainMax: number;
@@ -260,7 +271,9 @@ export interface KnobConfig {
 }
 
 export const KNOB: KnobConfig = {
-  defaults: { clutch: "claw", motion: "tilt", mapping: "joystick", gain: 1, deadZoneDeg: 12, invert: false },
+  defaults: { clutch: "claw", motion: "tilt", mapping: "joystick", target: "playhead", gain: 1, deadZoneDeg: 12, invert: false },
+  targetScale: { playhead: 1.5, start: 1, end: 1 },
+  steeringHand: "Right",
   gainMin: 0.25,
   gainMax: 3,
   deadZoneMinDeg: 3,
@@ -272,4 +285,20 @@ export const KNOB: KnobConfig = {
   relative: { secPerDeg: 0.06 },
   jog: { secPerTurn: 2 },
   maxDtSec: 0.1,
+};
+
+/**
+ * R4b: audible scrub of the playhead (the knob's default target). While grabbed the playhead is
+ * seeked live so the music follows. Seeks are rate-limited so the audio element does not stutter.
+ */
+export interface ScrubConfig {
+  /** At most this many seeks per second. */
+  maxSeeksPerSec: number;
+  /** Paused scrub: each seek plays this much audio (a short snippet), then pauses again. */
+  snippetMs: number;
+}
+
+export const SCRUB: ScrubConfig = {
+  maxSeeksPerSec: 20,
+  snippetMs: 160,
 };

@@ -4,7 +4,7 @@ import { IDLE_KNOB, normalizeChoice, stepKnob, takeWholeMs, type KnobChoice, typ
 import { nudgeStart, type LoopState } from "./loop";
 
 const FRAME = 33;
-const CHOICE: KnobChoice = { clutch: "claw", motion: "tilt", mapping: "joystick", gain: 1, deadZoneDeg: 12, invert: false };
+const CHOICE: KnobChoice = { clutch: "claw", motion: "tilt", mapping: "joystick", target: "start", gain: 1, deadZoneDeg: 12, invert: false };
 const DURATION = 60;
 
 /** The knob driving a real loop model, the way main.ts does (applySec -> nudgeStart). */

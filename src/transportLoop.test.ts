@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AudioPlayer } from "./audioPlayer";
-import { PRESETS } from "./box";
-import { INITIAL_STATE, stepCommands, type FireEvent, type HandObs, type MachineState } from "./commands";
+import { DEFAULT_BOXES } from "./box";
 import { COMMANDS, LOOP } from "./config";
-import { NO_LOOP, markTime, trackRingStart, type LoopState, type RingStamp } from "./loop";
+import type { Handedness } from "./hand";
+import { INITIAL_MACHINES, stepHandCommands, type HandCmdObs, type HandFire, type HandMachines } from "./handCommands";
+import { NO_LOOP, markPlayhead, trackRingStart, type LoopState, type RingStamp } from "./loop";
 import { FakeMedia, FakeUrls } from "./test/fakeMedia";
 import { actionForFire, runNudge, runTransport } from "./transport";
 
@@ -108,196 +109,319 @@ describe("runNudge", () => {
   });
 });
 
-// --- Gesture -> audio, through the real classifier ------------------------------------
+// --- Gesture -> audio, through the real per-hand classifiers ---------------------------
 
 const FRAME = 33;
-const INSIDE = { x: 0.75, y: 0.5 };
-const hand = (shape: string): HandObs => ({ shape, shapeScore: 0.9, palmFacing: true, palm: INSIDE });
+const RIGHT_AT = { x: 0.75, y: 0.5 };
+const LEFT_AT = { x: 0.25, y: 0.5 };
+const hand = (h: Handedness, shape: string, palm = h === "Right" ? RIGHT_AT : LEFT_AT): HandCmdObs => ({ hand: h, shape, shapeScore: 0.9, palmFacing: true, palm });
 
 /**
- * Replays frames through the classifier and, like main.ts, hands every fire to the player, with the
- * loop state and the ring-start stamp (so marks land where the music was when the ring began).
+ * Replays frames through the two per-hand classifiers and, like main.ts, hands every fire to the player,
+ * with the loop state and the ring-start stamp (so marks land where the music was when the ring began).
  */
 function rig() {
   const { player, media } = loadedPlayer();
-  let state: MachineState = INITIAL_STATE;
+  let machines: HandMachines = INITIAL_MACHINES;
   let t = 0;
   let loop: LoopState = NO_LOOP;
-  let stamp: RingStamp | null = null;
-  const fires: { fire: FireEvent; stateAfter: string; timeAfter: number; label: string | null; markAt: number }[] = [];
-  const show = (ms: number, hands: HandObs[]) => {
+  const stamps: Record<Handedness, RingStamp | null> = { Left: null, Right: null };
+  let scrubbing = false;
+  let lastScrubT = -Infinity;
+  const fires: { fire: HandFire; stateAfter: string; timeAfter: number; label: string | null; markAt: number; changed: boolean }[] = [];
+  const show = (ms: number, hands: HandCmdObs[]) => {
     const end = t + ms;
     while (t < end) {
       t += FRAME;
-      const r = stepCommands(state, { t, hands, box: PRESETS.right }, COMMANDS);
-      state = r.state;
-      if (r.fired) {
-        const action = actionForFire(r.fired);
-        const markAt = markTime(stamp?.playhead ?? player.currentTime, player.duration);
+      if (scrubbing) lastScrubT = t;
+      const r = stepHandCommands(machines, { t, hands, boxes: DEFAULT_BOXES, suppress: { Left: false, Right: false } }, COMMANDS);
+      machines = r.state;
+      for (const f of r.fired) {
+        const action = actionForFire(f);
+        const markAt = markPlayhead(stamps[f.hand], { current: player.currentTime, playing: player.state === "playing", scrubbing, lastScrubT, t, duration: player.duration });
         let label: string | null = null;
+        let changed = false;
         if (action) {
           const res = runTransport(player, loop, action, { markAt });
           loop = res.loop;
           label = res.label;
+          changed = res.changed;
         }
         // What the player looks like on the very frame the fire happened.
-        fires.push({ fire: r.fired, stateAfter: player.state, timeAfter: player.currentTime, label, markAt });
+        fires.push({ fire: f, stateAfter: player.state, timeAfter: player.currentTime, label, markAt, changed });
       }
-      stamp = trackRingStart(stamp, state.shape, state.since, player.currentTime);
+      for (const h of ["Left", "Right"] as const) stamps[h] = trackRingStart(stamps[h], machines[h].shape, machines[h].since, player.currentTime, player.state === "playing");
       media.advance(FRAME / 1000);
     }
   };
-  /** Shows a shape until its ring fills (the command fires then), then drops the hand. */
-  const tap = (shape: string) => {
-    show(COMMANDS.dwellMs + 3 * FRAME, [hand(shape)]);
-    show(COMMANDS.dropoutGraceMs + 3 * FRAME, []);
+  /** Shows one hand's shape until its ring fills (the command fires then), drops the hand, and lets the cooldown pass. */
+  const gesture = (h: Handedness, shape: string, palm?: { x: number; y: number }) => {
+    show(COMMANDS.dwellMs + 3 * FRAME, [hand(h, shape, palm)]);
+    show(COMMANDS.cooldownMs + 3 * FRAME, []);
   };
-  /** Time passes (hand away, past the cooldown). */
+  /** Time passes (hands away, past the cooldown). */
   const wait = (ms: number) => show(ms, []);
-  return { player, media, show, tap, wait, fires, loop: () => loop, setLoop: (l: LoopState) => (loop = l) };
+  /** Starts the music and lets it play for `sec`. */
+  const play = (sec: number) => {
+    gesture("Right", "Open_Palm");
+    wait(sec * 1000);
+  };
+  return {
+    player,
+    media,
+    show,
+    gesture,
+    wait,
+    play,
+    fires,
+    loop: () => loop,
+    setLoop: (l: LoopState) => (loop = l),
+    setScrubbing: (on: boolean) => (scrubbing = on),
+    last: () => fires.at(-1)!,
+  };
 }
 
-describe("command -> audio wiring", () => {
-  it("open palm: the music starts on the frame the ring completes", () => {
+describe("per-hand routing", () => {
+  it("right hand: open palm plays, then pauses, then resumes from the same spot", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Open_Palm")]);
-    expect(r.fires).toHaveLength(1);
-    const f = r.fires[0];
-    expect(f.stateAfter).toBe("playing");
-    // The dwell began on the first frame (t = FRAME); it fires on the first frame at least dwellMs later.
-    expect(f.fire.t - FRAME).toBeGreaterThanOrEqual(COMMANDS.dwellMs);
-    expect(f.fire.t - FRAME).toBeLessThan(COMMANDS.dwellMs + FRAME);
-  });
-
-  it("open palm again pauses, and a third time resumes from the same spot", () => {
-    const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(1500); // drop the hand; the cooldown passes and the music plays for a while
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Open_Palm")]);
+    expect(r.last().stateAfter).toBe("playing");
+    expect(r.last().fire.hand).toBe("Right");
+    r.wait(1500);
     const playedTo = r.player.currentTime;
     expect(playedTo).toBeGreaterThan(1);
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    expect(r.fires[1].stateAfter).toBe("paused");
-    const pausedAt = r.fires[1].timeAfter;
-    r.wait(2000); // time passes while paused: the playhead must not move
+    r.gesture("Right", "Open_Palm");
+    expect(r.last().stateAfter).toBe("paused");
+    const pausedAt = r.last().timeAfter;
+    r.wait(2000);
     expect(r.player.currentTime).toBe(pausedAt);
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    expect(r.fires[2].stateAfter).toBe("playing");
-    expect(r.fires[2].timeAfter).toBe(pausedAt);
+    r.gesture("Right", "Open_Palm");
+    expect(r.last().stateAfter).toBe("playing");
+    expect(r.last().timeAfter).toBe(pausedAt);
+  });
+
+  it("left hand: open palm toggles play/pause too", () => {
+    const r = rig();
+    r.gesture("Left", "Open_Palm");
+    expect(r.player.state).toBe("playing");
+    expect(r.last().fire.hand).toBe("Left");
+    r.wait(1500);
+    r.gesture("Left", "Open_Palm");
+    expect(r.player.state).toBe("paused");
   });
 
   it("holding open palm a long time fires once (does not flip-flop)", () => {
     const r = rig();
-    r.show(8000, [hand("Open_Palm")]);
+    r.show(8000, [hand("Right", "Open_Palm")]);
     expect(r.fires).toHaveLength(1);
     expect(r.player.state).toBe("playing");
   });
 
-  it("index up restarts when its ring fills, not on release", () => {
+  it("right index up restarts when its ring fills, not on release: the loop START if set, else 0:00", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(5000); // play for ~5 s
+    r.play(5);
     expect(r.player.currentTime).toBeGreaterThan(4);
-    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Pointing_Up")]); // ring full, hand still up
-    const f = r.fires.at(-1)!;
-    expect(f.fire).toMatchObject({ shape: "Pointing_Up" });
-    expect(f.label).toBe("RESTART"); // no loop: the song start
-    expect(f.stateAfter).toBe("playing");
-    expect(f.timeAfter).toBeLessThan(0.1);
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Pointing_Up")]); // ring full, hand still up
+    expect(r.last().fire).toMatchObject({ hand: "Right", shape: "Pointing_Up" });
+    expect(r.last().label).toBe("RESTART");
+    expect(r.last().stateAfter).toBe("playing");
+    expect(r.last().timeAfter).toBeLessThan(0.1);
+    r.wait(2000);
+    r.setLoop({ start: 4, end: 8 });
+    r.gesture("Right", "Pointing_Up");
+    expect(r.last()).toMatchObject({ label: "BACK TO START", stateAfter: "playing" });
+    expect(r.last().timeAfter).toBeCloseTo(4, 1);
+    expect(r.loop()).toEqual({ start: 4, end: 8 }); // restarts leave the loop alone
   });
 
-  it("index up restarts a paused track and starts it", () => {
+  it("right index up restarts a paused track and starts it", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(2000);
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]); // pause
+    r.play(2);
+    r.gesture("Right", "Open_Palm"); // pause
     r.wait(1500);
     expect(r.player.state).toBe("paused");
-    r.tap("Pointing_Up");
+    r.gesture("Right", "Pointing_Up");
     expect(r.player.state).toBe("playing");
-    expect(r.fires.at(-1)!.timeAfter).toBeLessThan(0.1);
+    expect(r.last().timeAfter).toBeLessThan(0.1);
   });
 
-  it("index up goes to the loop START when one is set; the song start otherwise; the loop is left alone", () => {
+  it("right V clears the loop, once, however long it is held", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(9000);
-    r.setLoop({ start: 4, end: 8 });
-    r.tap("Pointing_Up");
-    expect(r.fires.at(-1)).toMatchObject({ label: "BACK TO START", stateAfter: "playing" });
-    expect(r.fires.at(-1)!.timeAfter).toBeCloseTo(4, 1);
-    expect(r.loop()).toEqual({ start: 4, end: 8 });
+    r.setLoop({ start: 2, end: 6 });
+    r.show(10_000, [hand("Right", "Victory")]);
+    expect(r.fires.filter((f) => f.fire.shape === "Victory")).toHaveLength(1);
+    expect(r.loop()).toEqual(NO_LOOP);
+    expect(r.last().label).toBe("LOOP CLEARED");
   });
 
-  it("index held a long time restarts once, and nothing else fires", () => {
+  it("right V does NOT set marks; left index up does NOT restart; left V does NOT clear", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(3000);
-    r.show(6000, [hand("Pointing_Up")]); // way past the ring
-    expect(r.fires.filter((f) => f.fire.shape === "Pointing_Up")).toHaveLength(1);
-    expect(r.player.currentTime).toBeGreaterThan(3); // after the single restart the music kept playing
+    r.play(3);
+    r.gesture("Right", "Victory");
+    expect(r.loop()).toEqual(NO_LOOP);
+    expect(r.last().label).toBe("NO LOOP TO CLEAR");
+    r.wait(1200);
+    const at = r.player.currentTime;
+    r.gesture("Left", "Pointing_Up"); // OUT with no IN
+    expect(r.last().label).toBe("SET A START FIRST");
+    expect(r.player.currentTime).toBeGreaterThan(at); // no restart
+    r.setLoop({ start: 1, end: 5 });
+    r.wait(1200);
+    r.gesture("Left", "Victory"); // sets IN again: does not clear
+    expect(r.loop().end).toBe(5);
   });
 });
 
-describe("V cycle by gesture", () => {
-  it("V 1 = START, V 2 = END (loop on), V 3 = clear", () => {
+describe("per-hand command boxes", () => {
+  it("a shape counts only when that hand's palm is in that hand's box", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(3000);
-    r.tap("Victory");
-    expect(r.fires.at(-1)!.label).toMatch(/^SET START/);
+    // The right hand in the LEFT half (the left hand's box) does nothing...
+    r.show(2000, [hand("Right", "Open_Palm", LEFT_AT)]);
+    // ...and so does the left hand in the right half.
+    r.show(2000, [hand("Left", "Open_Palm", RIGHT_AT)]);
+    expect(r.fires).toHaveLength(0);
+    r.show(1000, [hand("Right", "Open_Palm", RIGHT_AT)]);
+    expect(r.fires).toHaveLength(1);
+  });
+
+  it("the left hand in the left half counts, in either of the halves it is not blocked by the right hand's box", () => {
+    const r = rig();
+    r.show(1000, [hand("Left", "Open_Palm", LEFT_AT)]);
+    expect(r.fires).toHaveLength(1);
+    expect(r.fires[0].fire.hand).toBe("Left");
+  });
+
+  it("both hands showing command shapes at once are each judged on their own: one fires, the other waits out the cooldown", () => {
+    const r = rig();
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Pointing_Up"), hand("Left", "Victory")]);
+    // Both rings were running side by side and filled together: both fire (each is its own hand's command).
+    expect(r.fires.map((f) => f.fire.hand).sort()).toEqual(["Left", "Right"]);
+  });
+
+  it("a hand that fired puts the other hand on cooldown too (one command at a time)", () => {
+    const r = rig();
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Open_Palm")]);
+    expect(r.fires).toHaveLength(1);
+    r.show(COMMANDS.cooldownMs - 400, [hand("Left", "Victory")]); // starts inside the cooldown: no dwell begins
+    r.show(100, []);
+    expect(r.fires).toHaveLength(1);
+  });
+});
+
+describe("IN / OUT by the left hand", () => {
+  it("left V sets IN at the playhead, left index up sets OUT and starts looping", () => {
+    const r = rig();
+    r.play(3);
+    r.gesture("Left", "Victory");
+    expect(r.last().label).toMatch(/^SET START/);
     expect(r.loop().start).not.toBeNull();
     expect(r.loop().end).toBeNull();
     r.wait(4000);
-    r.tap("Victory");
-    expect(r.fires.at(-1)!.label).toMatch(/^SET END/);
-    expect(r.loop().end).not.toBeNull();
+    r.gesture("Left", "Pointing_Up");
+    expect(r.last().label).toMatch(/^SET END.*LOOPING/);
     expect(r.loop().end!).toBeGreaterThan(r.loop().start! + 3);
-    r.wait(1500);
-    r.tap("Victory");
-    expect(r.fires.at(-1)!.label).toBe("LOOP CLEARED");
-    expect(r.loop()).toEqual(NO_LOOP);
   });
 
-  it("holding V a long time marks once, and holding it longer never clears (nothing depends on hold time)", () => {
+  it("OUT at or before IN + the minimum gap is ignored with a message, and the loop is unchanged", () => {
     const r = rig();
-    r.setLoop({ start: 2, end: 6 });
-    r.show(10_000, [hand("Victory")]);
-    expect(r.fires.filter((f) => f.fire.shape === "Victory")).toHaveLength(1);
-    expect(r.loop()).toEqual(NO_LOOP); // the single V was the third step: clear
-    r.wait(2000);
-    r.show(10_000, [hand("Victory")]);
-    expect(r.loop().start).not.toBeNull(); // and the next single V starts a new loop
+    r.setLoop({ start: 30, end: null });
+    r.player.seek(30.2); // playhead barely after IN
+    r.gesture("Left", "Pointing_Up");
+    expect(r.last()).toMatchObject({ label: "END MUST COME AFTER START", changed: false });
+    expect(r.loop()).toEqual({ start: 30, end: null });
+    r.player.seek(10); // playhead before IN
+    r.gesture("Left", "Pointing_Up");
+    expect(r.last()).toMatchObject({ label: "END MUST COME AFTER START", changed: false });
     expect(r.loop().end).toBeNull();
   });
 
-  it("the mark is stamped where the music was when the ring STARTED, minus the offset", () => {
+  it("OUT with no IN is refused", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(3000);
-    const atRingStart = r.player.currentTime; // the V appears now...
-    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Victory")]); // ...the ring fills and it fires.
-    const f = r.fires.at(-1)!;
+    r.gesture("Left", "Pointing_Up");
+    expect(r.last()).toMatchObject({ label: "SET A START FIRST", changed: false });
+  });
+
+  it("setting IN again while a loop exists moves IN, with the same clamps (IN must stay before OUT - gap)", () => {
+    const r = rig();
+    r.setLoop({ start: 10, end: 20 });
+    r.player.seek(15); // paused: the mark is exactly here
+    r.gesture("Left", "Victory");
+    expect(r.loop()).toEqual({ start: 15, end: 20 });
+    r.player.seek(19.9);
+    r.gesture("Left", "Victory"); // too close to OUT
+    expect(r.last()).toMatchObject({ label: "START MUST BE BEFORE END", changed: false });
+    expect(r.loop()).toEqual({ start: 15, end: 20 });
+    r.player.seek(25);
+    r.gesture("Left", "Victory"); // past OUT
+    expect(r.loop()).toEqual({ start: 15, end: 20 });
+  });
+
+  it("IN can be set before OUT in either order of the loop's life: clear (right V) and start over", () => {
+    const r = rig();
+    r.setLoop({ start: 10, end: 20 });
+    r.gesture("Right", "Victory");
+    expect(r.loop()).toEqual(NO_LOOP);
+    r.player.seek(5);
+    r.gesture("Left", "Victory");
+    r.player.seek(9);
+    r.gesture("Left", "Pointing_Up");
+    expect(r.loop()).toEqual({ start: 5, end: 9 });
+  });
+
+  it("a mark near 0:00 is clamped to 0:00", () => {
+    const r = rig();
+    r.gesture("Left", "Victory"); // paused at 0:00
+    expect(r.loop().start).toBe(0);
+  });
+});
+
+describe("mark offset rules", () => {
+  it("while PLAYING and not scrubbing: stamped where the music was when the ring STARTED, minus the offset", () => {
+    const r = rig();
+    r.play(3);
+    const atRingStart = r.player.currentTime;
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Left", "Victory")]);
+    const f = r.last();
     expect(f.timeAfter - atRingStart).toBeGreaterThan(0.55); // the fire is a ring-time after the shape appeared
-    // The stamp: within one frame of the playhead at ring start, less the offset.
     expect(f.markAt).toBeGreaterThan(atRingStart - LOOP.markOffsetSec - 0.001);
     expect(f.markAt).toBeLessThan(atRingStart - LOOP.markOffsetSec + FRAME / 1000 + 0.001);
     expect(r.loop().start).toBe(f.markAt);
   });
 
-  it("a V tap while paused marks exactly where it paused (less the offset)", () => {
+  it("while PAUSED: the exact playhead, no offset", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]);
-    r.wait(3000);
-    r.show(COMMANDS.dwellMs + FRAME, [hand("Open_Palm")]); // pause
+    r.play(3);
+    r.gesture("Right", "Open_Palm"); // pause
     r.wait(1500);
     const pausedAt = r.player.currentTime;
-    r.tap("Victory");
-    expect(r.loop().start).toBeCloseTo(pausedAt - LOOP.markOffsetSec, 3);
+    r.gesture("Left", "Victory");
+    expect(r.loop().start).toBeCloseTo(pausedAt, 6);
   });
 
-  it("a mark near 0:00 is clamped to 0:00", () => {
+  it("while SCRUBBING: the exact playhead now, no offset", () => {
     const r = rig();
-    r.tap("Victory"); // paused at 0:00: 0 - 0.15 would be negative
-    expect(r.loop().start).toBe(0);
+    r.play(6);
+    r.setScrubbing(true);
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Left", "Victory")]);
+    expect(r.last().markAt).toBeCloseTo(r.last().timeAfter, 3);
+  });
+
+  it("RIGHT AFTER a scrub: exact (the ring-start playhead); later: the offset applies again", () => {
+    const r = rig();
+    r.play(6);
+    r.setScrubbing(true);
+    r.wait(200);
+    r.setScrubbing(false);
+    r.wait(100);
+    const atRingStart = r.player.currentTime;
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Left", "Victory")]);
+    expect(r.last().markAt).toBeGreaterThan(atRingStart - 0.001);
+    expect(r.last().markAt).toBeLessThan(atRingStart + FRAME / 1000 + 0.001);
+    // Much later: back to the late-mark offset.
+    r.wait(LOOP.exactAfterScrubMs + 1000);
+    r.setLoop(NO_LOOP);
+    const later = r.player.currentTime;
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Left", "Victory")]);
+    expect(r.last().markAt).toBeLessThan(later - LOOP.markOffsetSec + FRAME / 1000 + 0.001);
   });
 });

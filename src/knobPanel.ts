@@ -8,6 +8,8 @@ import {
   MAPPINGS,
   MOTION_NAMES,
   MOTIONS,
+  TARGETS,
+  TARGET_NAMES,
   saveKnobSettings,
   type KnobSettings,
 } from "./knobSettings";
@@ -34,6 +36,7 @@ export class KnobPanel {
   private readonly clutch = el<HTMLSelectElement>("knob-clutch");
   private readonly motion = el<HTMLSelectElement>("knob-motion");
   private readonly mapping = el<HTMLSelectElement>("knob-mapping");
+  private readonly target = el<HTMLSelectElement>("knob-target");
   private readonly gain = el<HTMLInputElement>("knob-gain");
   private readonly dead = el<HTMLInputElement>("knob-dead");
   private readonly invert = el<HTMLInputElement>("knob-invert");
@@ -48,6 +51,7 @@ export class KnobPanel {
     fill(this.clutch, CLUTCHES, CLUTCH_NAMES);
     fill(this.motion, MOTIONS, MOTION_NAMES);
     fill(this.mapping, MAPPINGS, MAPPING_NAMES);
+    fill(this.target, TARGETS, TARGET_NAMES);
     this.gain.min = String(KNOB.gainMin);
     this.gain.max = String(KNOB.gainMax);
     this.gain.step = "0.05";
@@ -58,6 +62,7 @@ export class KnobPanel {
     this.clutch.addEventListener("change", () => this.edit(() => (this.settings.clutch = this.clutch.value as KnobSettings["clutch"])));
     this.motion.addEventListener("change", () => this.edit(() => (this.settings.motion = this.motion.value as KnobSettings["motion"])));
     this.mapping.addEventListener("change", () => this.edit(() => (this.settings.mapping = this.mapping.value as KnobSettings["mapping"])));
+    this.target.addEventListener("change", () => this.edit(() => (this.settings.target = this.target.value as KnobSettings["target"])));
     this.gain.addEventListener("input", () => this.edit(() => (this.settings.gain = Number(this.gain.value))));
     this.dead.addEventListener("input", () => this.edit(() => (this.settings.deadZoneDeg = Number(this.dead.value))));
     this.invert.addEventListener("change", () => this.edit(() => (this.settings.invert = this.invert.checked)));
@@ -135,6 +140,8 @@ export class KnobPanel {
     this.clutch.value = s.clutch;
     this.motion.value = s.motion;
     this.mapping.value = s.mapping;
+    this.target.value = s.target;
+    el("knob-twohand-warning").hidden = s.clutch !== "twoHand";
     for (const o of Array.from(this.mapping.options)) o.disabled = (o.value === "jog") !== (s.motion === "circling");
     this.gain.value = String(s.gain);
     this.dead.value = String(s.deadZoneDeg);
@@ -142,7 +149,7 @@ export class KnobPanel {
     el("knob-gain-value").textContent = `${s.gain.toFixed(2)}×`;
     el("knob-dead-value").textContent = `${s.deadZoneDeg.toFixed(0)}°`;
     this.dead.disabled = s.mapping !== "joystick";
-    const name = `${CLUTCH_NAMES[s.clutch]} · ${MOTION_NAMES[s.motion]} · ${MAPPING_NAMES[s.mapping]}`;
+    const name = `${CLUTCH_NAMES[s.clutch]} · ${MOTION_NAMES[s.motion]} · ${MAPPING_NAMES[s.mapping]} → ${TARGET_NAMES[s.target]}`;
     el("knob-label").textContent = name;
     el("knob-variant").textContent = name;
     const t = this.log[this.key()];

@@ -1,4 +1,4 @@
-import { KNOB, type ClutchKind, type MappingKind, type MotionKind } from "./config";
+import { KNOB, type ClutchKind, type KnobTarget, type MappingKind, type MotionKind } from "./config";
 import { normalizeChoice, type KnobChoice } from "./knob";
 
 /** The knob's chosen variant and sliders, kept in localStorage so they survive a reload. Defaults: claw + tilt + joystick. */
@@ -9,6 +9,9 @@ const KEY = "dance.r4b.knob";
 export const CLUTCHES: readonly ClutchKind[] = ["claw", "pinch", "twoHand"];
 export const MOTIONS: readonly MotionKind[] = ["tilt", "circling"];
 export const MAPPINGS: readonly MappingKind[] = ["joystick", "absolute", "relative", "jog"];
+
+export const TARGETS: readonly KnobTarget[] = ["playhead", "start", "end"];
+export const TARGET_NAMES: Record<KnobTarget, string> = { playhead: "Playhead (scrub)", start: "Loop START", end: "Loop END" };
 
 export const CLUTCH_NAMES: Record<ClutchKind, string> = { claw: "Claw", pinch: "Pinch", twoHand: "Two-hand" };
 export const MOTION_NAMES: Record<MotionKind, string> = { tilt: "Tilt (wiper)", circling: "Circling" };
@@ -35,6 +38,7 @@ export function sanitizeKnobSettings(raw: unknown): KnobSettings {
     clutch: pick(j.clutch, CLUTCHES, d.clutch),
     motion: pick(j.motion, MOTIONS, d.motion),
     mapping: pick(j.mapping, MAPPINGS, d.mapping),
+    target: pick(j.target, TARGETS, d.target),
     gain: num(j.gain, KNOB.gainMin, KNOB.gainMax, d.gain),
     deadZoneDeg: num(j.deadZoneDeg, KNOB.deadZoneMinDeg, KNOB.deadZoneMaxDeg, d.deadZoneDeg),
     invert: typeof j.invert === "boolean" ? j.invert : d.invert,

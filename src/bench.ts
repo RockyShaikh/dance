@@ -1,4 +1,5 @@
 import { PRESETS, type Box, type PresetName } from "./box";
+import type { Handedness } from "./hand";
 import type { ClutchView } from "./clutch";
 import type { FireEvent, MachineView } from "./commands";
 import { CLUTCH, COMMANDS } from "./config";
@@ -18,12 +19,14 @@ export interface LogEntry {
   /** Wall-clock time the command fired. */
   at: number;
   shape: string;
+  /** R4b: which hand fired it. */
+  hand?: Handedness;
   /** Fired while the false-fire test was running. */
   test: boolean;
 }
 
 export interface BenchHooks {
-  setBox(b: Box): void;
+  setBox(hand: Handedness, b: Box): void;
 }
 
 const FFT_MS = 2 * 60 * 1000;
@@ -64,7 +67,7 @@ export class Bench {
     document.addEventListener("keydown", unlock);
 
     for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-preset]")) {
-      btn.addEventListener("click", () => this.hooks.setBox({ ...PRESETS[btn.dataset.preset as PresetName] }));
+      btn.addEventListener("click", () => this.hooks.setBox(btn.dataset.hand as Handedness, { ...PRESETS[btn.dataset.preset as PresetName] }));
     }
 
     this.dwell.min = String(COMMANDS.dwellMinMs / 1000);
@@ -114,7 +117,7 @@ export class Bench {
       this.log.length = 0;
       this.logList.textContent = "";
     });
-    this.showBox(this.settings.box);
+    this.showBoxes(this.settings.boxes);
   }
 
   /** Updates a text node only when its text changed (called every frame). */
@@ -127,18 +130,26 @@ export class Bench {
     if (cls !== undefined) node.className = cls;
   }
 
-  showBox(b: Box): void {
+  showBoxes(boxes: Record<Handedness, Box>): void {
     const pct = (v: number) => `${Math.round(v * 100)}%`;
-    this.setText("box-readout", `Box: left ${pct(b.x)}, top ${pct(b.y)}, ${pct(b.w)} wide, ${pct(b.h)} tall. Drag it on the video to move; drag an edge or corner to resize.`);
+    const one = (name: string, b: Box) => `${name}: left ${pct(b.x)}, top ${pct(b.y)}, ${pct(b.w)} wide, ${pct(b.h)} tall`;
+    this.setText("box-readout", `${one("Right hand", boxes.Right)}. ${one("Left hand", boxes.Left)}. Drag a box on the video to move it; drag an edge or corner to resize.`);
   }
 
   setPinchLive(ratios: readonly number[]): void {
     this.setText("pinch-live", ratios.length ? ratios.map((r) => r.toFixed(2)).join(" / ") : "no hand");
   }
 
-  renderCommand(view: MachineView): void {
-    this.setText("cmd-seen", view.seen ? prettyShape(view.seen) : "—");
-    this.setText("cmd-blocked", view.blocked ?? "—", view.blocked ? "v warn" : "v");
+  /** Both hands' command state, one line each. */
+  renderCommand(views: Record<Handedness, MachineView>): void {
+    const both = (f: (v: MachineView) => string): string => `R: ${f(views.Right)} · L: ${f(views.Left)}`;
+    this.setText("cmd-seen", both((v) => (v.seen ? prettyShape(v.seen) : "—")));
+    const anyBlocked = views.Right.blocked !== null || views.Left.blocked !== null;
+    this.setText("cmd-blocked", both((v) => v.blocked ?? "—"), anyBlocked ? "v warn" : "v");
+    this.setText("cmd-state", both((v) => this.phaseText(v)));
+  }
+
+  private phaseText(view: MachineView): string {
     const s = (ms: number) => (ms / 1000).toFixed(2);
     let state: string;
     switch (view.phase) {
@@ -152,7 +163,7 @@ export class Bench {
         state = "fired: drop the hand to re-arm";
         break;
     }
-    this.setText("cmd-state", state);
+    return state;
   }
 
   renderClutch(v: ClutchView): void {
@@ -179,8 +190,8 @@ export class Bench {
    * A command fired: banner, sound, log, and the false-fire count. `label` replaces the
    * banner's big text (R3 shows what the music did, e.g. "PAUSE", instead of the shape).
    */
-  fire(ev: FireEvent, label?: string): void {
-    const entry: LogEntry = { at: Date.now(), shape: ev.shape, test: this.fft.running };
+  fire(ev: FireEvent & { hand?: Handedness }, label?: string): void {
+    const entry: LogEntry = { at: Date.now(), shape: ev.shape, hand: ev.hand, test: this.fft.running };
     const prev = this.log[0];
     this.log.unshift(entry);
     if (this.log.length > LOG_MAX) this.log.pop();
@@ -190,7 +201,7 @@ export class Bench {
     const gap = prev ? `+${((entry.at - prev.at) / 1000).toFixed(1)} s` : "";
     li.innerHTML =
       `<span class="time">${clock(entry.at)}</span>` +
-      `<span class="shape">${prettyShape(ev.shape)}</span>` +
+      `<span class="shape">${ev.hand ? `${ev.hand} ` : ""}${prettyShape(ev.shape)}</span>` +
       `<span class="gap">${gap}${entry.test ? " · test" : ""}</span>`;
     this.logList.prepend(li);
     while (this.logList.children.length > LOG_MAX) this.logList.lastElementChild?.remove();

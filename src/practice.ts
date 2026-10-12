@@ -1,6 +1,7 @@
 import type { AudioPlayer } from "./audioPlayer";
 import { LOOP } from "./config";
 import { NO_LOOP, type LoopState } from "./loop";
+import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
 import { formatTime, playheadFraction, runNudge, runTransport, statusWord, type TransportAction, type TransportOptions, type TransportResult } from "./transport";
 
@@ -59,6 +60,9 @@ export class Practice {
   private nudgeNote = "";
   /** R4b: the knob is grabbed, so the START readout stays up. */
   private nudgeHeld = false;
+  /** Which time the huge readout shows: the loop START, END or the playhead. */
+  private readoutTarget: "start" | "end" | "playhead" = "start";
+  private readonly nudgeTitle = el("nudge-title");
   /** The END-to-START wrap. Public so the dev console can read its measurements. */
   readonly wrapper: LoopWrapper;
 
@@ -133,24 +137,49 @@ export class Practice {
    * marker moves: index up to hear it. Keys, buttons and (R4b) the knob all come through here.
    */
   nudgeStart(deltaSec: number, opts: { note?: (limited: boolean) => string } = {}): TransportResult {
-    const result = runNudge(this.player, this.loop, deltaSec);
+    return this.nudgeMarker("start", deltaSec, opts);
+  }
+
+  /** R4b: the same for the loop END, with the clamps mirrored (END stays at least the minimum gap after START, and inside the track). */
+  nudgeEnd(deltaSec: number, opts: { note?: (limited: boolean) => string } = {}): TransportResult {
+    return this.nudgeMarker("end", deltaSec, opts);
+  }
+
+  private nudgeMarker(which: "start" | "end", deltaSec: number, opts: { note?: (limited: boolean) => string }): TransportResult {
+    const result = runNudge(this.player, this.loop, deltaSec, which);
     this.loop = result.loop;
-    if (this.loop.start !== null) {
+    if (this.loop[which] !== null) {
+      this.readoutTarget = which;
       if (!this.nudgeHeld) this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;
       const mag = Math.round(Math.abs(deltaSec) * 1000) / 1000;
       this.nudgeNote = opts.note ? opts.note(!!result.limited) : `${deltaSec < 0 ? "−" : "+"}${mag} s${result.limited ? "  LIMIT" : ""}`;
     }
-    this.showHint(this.loop.start === null ? result.label : null);
+    this.showHint(this.loop[which] === null ? result.label : null);
     this.render();
     return result;
   }
 
   /**
-   * R4b: while the knob is grabbed the huge START time stays up (also when nothing is moving), with
-   * `note` under it; letting go starts the usual timeout. With no START set there is nothing to show.
+   * R4b: runs the player calls the scrub asked for (seek, play a snippet, pause). The seek lands on the
+   * audio element at once; the playhead on screen follows on the next frame.
    */
-  setNudgeHold(held: boolean, note = ""): void {
+  runScrub(actions: readonly ScrubAction[]): void {
+    for (const a of actions) {
+      if (a.type === "seek") this.player.seek(a.to);
+      else if (a.type === "play") void this.player.play();
+      else this.player.pause();
+    }
+    if (actions.length > 0) this.render();
+  }
+
+  /**
+   * R4b: while the knob is grabbed the huge time of its target (the playhead, the START or the END)
+   * stays up, also when nothing is moving, with `note` under it; letting go starts the usual timeout.
+   * With no START / END set there is nothing to show for those.
+   */
+  setNudgeHold(held: boolean, note = "", target: "start" | "end" | "playhead" = this.readoutTarget): void {
     this.nudgeHeld = held;
+    this.readoutTarget = target;
     this.nudgeNote = note;
     this.nudgeUntil = held ? Infinity : performance.now() + LOOP.nudgeReadoutMs;
     this.render();
@@ -333,10 +362,13 @@ export class Practice {
       this.layoutFlags();
     }
 
-    const nudging = start !== null && performance.now() < this.nudgeUntil;
+    const shown = this.readoutTarget === "playhead" ? this.player.currentTime : this.loop[this.readoutTarget];
+    const nudging = shown !== null && performance.now() < this.nudgeUntil;
     if (this.nudgeEl.hidden === nudging) this.nudgeEl.hidden = !nudging;
     if (nudging) {
-      this.setText("nudge-time", this.nudgeTime, formatTime(start as number));
+      this.setText("nudge-title", this.nudgeTitle, this.readoutTarget === "playhead" ? "PLAYHEAD" : this.readoutTarget === "start" ? "LOOP START" : "LOOP END");
+      this.nudgeEl.dataset.target = this.readoutTarget;
+      this.setText("nudge-time", this.nudgeTime, formatTime(shown as number));
       this.setText("nudge-sub", this.nudgeSub, this.nudgeNote);
       this.nudgeEl.dataset.limit = this.nudgeNote.includes("LIMIT") ? "1" : "0";
     }

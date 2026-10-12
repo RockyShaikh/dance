@@ -68,13 +68,19 @@
         </section>
 
         <section class="panel" id="controls">
-          <h2>Command box</h2>
-          <div class="presets">
-            <button type="button" data-preset="right">Right half</button>
-            <button type="button" data-preset="left">Left half</button>
-            <button type="button" data-preset="whole">Whole frame</button>
+          <h2>Command boxes (one per hand)</h2>
+          <div class="note">Right hand (blue): transport and scrub. Left hand (purple, dashed): marks. A shape counts only while that hand's palm centre is in that hand's box.</div>
+          <div class="presets"><span class="note">Right-hand box</span>
+            <button type="button" data-hand="Right" data-preset="right">Right half</button>
+            <button type="button" data-hand="Right" data-preset="left">Left half</button>
+            <button type="button" data-hand="Right" data-preset="whole">Whole frame</button>
           </div>
-          <div id="box-readout" class="note">drag the box on the video to move it; drag an edge or corner to resize</div>
+          <div class="presets"><span class="note">Left-hand box</span>
+            <button type="button" data-hand="Left" data-preset="left">Left half</button>
+            <button type="button" data-hand="Left" data-preset="right">Right half</button>
+            <button type="button" data-hand="Left" data-preset="whole">Whole frame</button>
+          </div>
+          <div id="box-readout" class="note">drag a box on the video to move it; drag an edge or corner to resize</div>
 
           <h2>Tuning</h2>
           <label class="slider">
@@ -124,7 +130,7 @@
         </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">In the box: open palm = play/pause · index up = back to loop start (or 0:00) · V = start, then end, then clear · keys: Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">Right hand: open palm = play/pause · index up = back to START (or 0:00) · V = clear · claw + tilt = scrub. Left hand: V = set START (IN) · index up = set END (OUT) and loop · open palm = play/pause · keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
@@ -132,13 +138,15 @@
         <summary>Knob <span id="knob-label"></span><span id="knob-state" class="pill">released</span></summary>
         <div id="knob-body">
           <div class="knob-col">
+            <label class="field"><span>Moves (target)</span><select id="knob-target"></select></label>
             <label class="field"><span>Grab (clutch)</span><select id="knob-clutch"></select></label>
+            <div id="knob-twohand-warning" class="note warn" hidden>Two-hand uses your LEFT open palm as the modifier, so the left-hand marks (START / END) are switched off while it is selected.</div>
             <label class="field"><span>Turning (motion)</span><select id="knob-motion"></select></label>
             <label class="field"><span>Mapping</span><select id="knob-mapping"></select></label>
             <label class="slider"><span>Gain <b id="knob-gain-value"></b></span><input id="knob-gain" type="range" /></label>
             <label class="slider"><span>Dead zone (joystick) <b id="knob-dead-value"></b></span><input id="knob-dead" type="range" /></label>
             <label class="check"><input id="knob-invert" type="checkbox" /> Flip direction (clockwise = earlier)</label>
-            <div class="note">Where you grab, with the hand in the command box, is "centre". Turning clockwise moves the START later, counter-clockwise earlier. Only the marker moves: index-tap to hear it.</div>
+            <div class="note">Where you grab (right hand, starting in the right-hand box) is "centre". Clockwise moves the target later, counter-clockwise earlier. Playhead: the music follows as you scrub (paused: short snippets, and it stays paused). START / END: only the marker moves; index up to hear it.</div>
           </div>
           <div class="knob-col">
             <div class="note">Experiment log, for <b id="knob-variant"></b></div>

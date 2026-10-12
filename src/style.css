@@ -745,6 +745,14 @@ kbd {
   color: var(--dim);
 }
 
+#nudge-readout[data-target="end"] #nudge-title {
+  color: var(--flag-end);
+}
+
+#nudge-readout[data-target="playhead"] #nudge-title {
+  color: var(--accent);
+}
+
 #nudge-readout[data-limit="1"] #nudge-sub {
   color: var(--warn);
 }
@@ -829,4 +837,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.note.warn {
+  color: var(--warn);
 }

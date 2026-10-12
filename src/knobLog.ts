@@ -3,8 +3,8 @@
  * (counted automatically), "felt best" / "not great" marks, and a note. Kept in localStorage; "Copy
  * results" turns it into text for the user to paste. Pure functions here, DOM in knobPanel.ts.
  */
-import type { ClutchKind, MappingKind, MotionKind } from "./config";
-import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, CLUTCHES, MAPPINGS, MOTIONS, type KnobSettings } from "./knobSettings";
+import type { ClutchKind, KnobTarget, MappingKind, MotionKind } from "./config";
+import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, TARGET_NAMES, CLUTCHES, MAPPINGS, MOTIONS, TARGETS, type KnobSettings } from "./knobSettings";
 
 export interface VariantTally {
   /** Grabs that actually moved the START (counted automatically). */
@@ -18,7 +18,9 @@ export type KnobLog = Record<string, VariantTally>;
 
 const KEY = "dance.r4b.log";
 
-export const variantKey = (v: { clutch: ClutchKind; motion: MotionKind; mapping: MappingKind }): string => `${v.clutch}+${v.motion}+${v.mapping}`;
+/** clutch+motion+mapping, and +target when it isn't the playhead (older entries without a target mean the playhead). */
+export const variantKey = (v: { clutch: ClutchKind; motion: MotionKind; mapping: MappingKind; target?: KnobTarget }): string =>
+  `${v.clutch}+${v.motion}+${v.mapping}+${v.target ?? "playhead"}`;
 
 const empty = (): VariantTally => ({ nudges: 0, best: 0, poor: 0, note: "" });
 
@@ -32,15 +34,15 @@ export const markVariant = (log: KnobLog, key: string, mark: "best" | "poor"): K
 export const setNote = (log: KnobLog, key: string, note: string): KnobLog => update(log, key, (t) => ({ ...t, note }));
 
 function describe(key: string): string {
-  const [c, m, p] = key.split("+") as [ClutchKind, MotionKind, MappingKind];
+  const [c, m, p, t = "playhead"] = key.split("+") as [ClutchKind, MotionKind, MappingKind, KnobTarget];
   const name = (names: Record<string, string>, k: string) => names[k] ?? k;
-  return `${name(CLUTCH_NAMES, c)} + ${name(MOTION_NAMES, m)} + ${name(MAPPING_NAMES, p)}`;
+  return `${name(CLUTCH_NAMES, c)} + ${name(MOTION_NAMES, m)} + ${name(MAPPING_NAMES, p)} -> ${name(TARGET_NAMES, t)}`;
 }
 
 /** The text the "Copy results" button puts on the clipboard. Only variants that have something recorded. */
 export function formatResults(log: KnobLog, settings: KnobSettings, date: string): string {
   const order = new Map<string, number>();
-  for (const c of CLUTCHES) for (const m of MOTIONS) for (const p of MAPPINGS) order.set(variantKey({ clutch: c, motion: m, mapping: p }), order.size);
+  for (const t of TARGETS) for (const c of CLUTCHES) for (const m of MOTIONS) for (const p of MAPPINGS) order.set(variantKey({ clutch: c, motion: m, mapping: p, target: t }), order.size);
   const rows = Object.entries(log)
     .filter(([, t]) => t.nudges > 0 || t.best > 0 || t.poor > 0 || t.note.trim() !== "")
     .sort(([a], [b]) => (order.get(a) ?? 999) - (order.get(b) ?? 999));

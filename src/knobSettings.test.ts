@@ -4,14 +4,15 @@ import { formatResults, markVariant, recordNudge, setNote, variantKey, type Knob
 import { defaultKnobSettings, loadKnobSettings, sanitizeKnobSettings } from "./knobSettings";
 
 describe("knob settings", () => {
-  it("default to claw + tilt + joystick", () => {
+  it("default to claw + tilt + joystick, moving the playhead", () => {
     const d = defaultKnobSettings();
-    expect([d.clutch, d.motion, d.mapping]).toEqual(["claw", "tilt", "joystick"]);
+    expect([d.clutch, d.motion, d.mapping, d.target]).toEqual(["claw", "tilt", "joystick", "playhead"]);
     expect(d.gain).toBe(KNOB.defaults.gain);
   });
 
   it("sanitize: bad values fall back, numbers are clamped, circling forces jog", () => {
-    const s = sanitizeKnobSettings({ clutch: "foot", motion: "circling", mapping: "absolute", gain: 99, deadZoneDeg: -4, invert: "yes" });
+    const s = sanitizeKnobSettings({ clutch: "foot", motion: "circling", mapping: "absolute", target: "volume", gain: 99, deadZoneDeg: -4, invert: "yes" });
+    expect(s.target).toBe("playhead");
     expect(s.clutch).toBe("claw");
     expect(s.motion).toBe("circling");
     expect(s.mapping).toBe("jog");
@@ -23,7 +24,7 @@ describe("knob settings", () => {
   });
 
   it("a saved choice round-trips through sanitize", () => {
-    const saved = { clutch: "twoHand", motion: "tilt", mapping: "absolute", gain: 1.5, deadZoneDeg: 9, invert: true };
+    const saved = { clutch: "twoHand", motion: "tilt", mapping: "absolute", target: "end", gain: 1.5, deadZoneDeg: 9, invert: true };
     expect(sanitizeKnobSettings(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
   });
 
@@ -42,21 +43,26 @@ describe("knob settings", () => {
 
 describe("experiment log", () => {
   const key = variantKey({ clutch: "claw", motion: "tilt", mapping: "joystick" });
+  it("the key includes the target, defaulting to the playhead", () => {
+    expect(key).toBe("claw+tilt+joystick+playhead");
+    expect(variantKey({ clutch: "claw", motion: "tilt", mapping: "joystick", target: "start" })).toBe("claw+tilt+joystick+start");
+  });
+
 
   it("counts nudges and marks per variant without touching the others", () => {
     let log: KnobLog = {};
     log = recordNudge(log, key);
     log = recordNudge(log, key);
     log = markVariant(log, key, "best");
-    log = markVariant(log, "pinch+tilt+joystick", "poor");
+    log = markVariant(log, "pinch+tilt+joystick+start", "poor");
     log = setNote(log, key, "steady");
     expect(log[key]).toEqual({ nudges: 2, best: 1, poor: 0, note: "steady" });
-    expect(log["pinch+tilt+joystick"]).toEqual({ nudges: 0, best: 0, poor: 1, note: "" });
+    expect(log["pinch+tilt+joystick+start"]).toEqual({ nudges: 0, best: 0, poor: 1, note: "" });
   });
 
   it("copy text lists only variants with something recorded, in a stable order, with the sliders", () => {
     let log: KnobLog = {};
-    log = recordNudge(log, "twoHand+tilt+absolute");
+    log = recordNudge(log, "twoHand+tilt+absolute+playhead");
     log = markVariant(log, key, "best");
     log = setNote(log, key, "felt steady, wrist ran out at the end");
     log = setNote(log, "pinch+tilt+relative", "   "); // blank note: nothing to report
@@ -65,8 +71,8 @@ describe("experiment log", () => {
     expect(lines[0]).toContain("2026-10-12");
     expect(lines[1]).toContain("gain 1.25");
     expect(lines).toHaveLength(4);
-    expect(lines[2]).toBe("- Claw + Tilt (wiper) + Joystick (rate): 0 loop starts nudged, felt best x1, not great x0 | note: felt steady, wrist ran out at the end");
-    expect(lines[3]).toContain("Two-hand + Tilt (wiper) + Absolute (wiper): 1 loop starts nudged");
+    expect(lines[2]).toBe("- Claw + Tilt (wiper) + Joystick (rate) -> Playhead (scrub): 0 loop starts nudged, felt best x1, not great x0 | note: felt steady, wrist ran out at the end");
+    expect(lines[3]).toContain("Two-hand + Tilt (wiper) + Absolute (wiper) -> Playhead (scrub): 1 loop starts nudged");
   });
 
   it("says so when nothing is recorded", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LOOP } from "./config";
-import { NO_LOOP, clearLoop, isLooping, loopStep, markTime, nudgeStart, restartTarget, setEnd, setStart, shouldWrap, trackRingStart, type LoopState } from "./loop";
+import { NO_LOOP, clearLoop, isLooping, loopStep, markOffsetFor, markPlayhead, markTime, nudgeEnd, nudgeStart, restartTarget, setEnd, setStart, shouldWrap, trackRingStart, type LoopState } from "./loop";
 
 const D = 60;
 
@@ -154,7 +154,7 @@ describe("trackRingStart", () => {
     let s = trackRingStart(null, null, 0, 5);
     expect(s).toBeNull();
     s = trackRingStart(s, "Victory", 1000, 7);
-    expect(s).toEqual({ since: 1000, playhead: 7 });
+    expect(s).toEqual({ since: 1000, playhead: 7, playing: true });
     s = trackRingStart(s, "Victory", 1000, 9);
     expect(s?.playhead).toBe(7);
   });
@@ -163,10 +163,92 @@ describe("trackRingStart", () => {
     s = trackRingStart(s, null, 1000, 8);
     expect(s).toBeNull();
     s = trackRingStart(s, "Victory", 3000, 11);
-    expect(s).toEqual({ since: 3000, playhead: 11 });
+    expect(s).toEqual({ since: 3000, playhead: 11, playing: true });
   });
   it("a restarted dwell (stillness rule) takes a new stamp", () => {
-    const s = trackRingStart({ since: 1000, playhead: 7 }, "Victory", 1500, 7.5);
-    expect(s).toEqual({ since: 1500, playhead: 7.5 });
+    const s = trackRingStart({ since: 1000, playhead: 7, playing: true }, "Victory", 1500, 7.5);
+    expect(s).toEqual({ since: 1500, playhead: 7.5, playing: true });
+  });
+});
+
+describe("markOffsetFor (offset only when marking while playing and not scrubbing)", () => {
+  const playing = { playing: true, scrubbing: false, msSinceScrub: Infinity };
+  it("while playing and not scrubbing: the late-mark offset", () => {
+    expect(markOffsetFor(playing)).toBe(LOOP.markOffsetSec);
+  });
+  it("while paused: exact", () => {
+    expect(markOffsetFor({ ...playing, playing: false })).toBe(0);
+  });
+  it("while scrubbing: exact", () => {
+    expect(markOffsetFor({ ...playing, scrubbing: true })).toBe(0);
+  });
+  it("right after a scrub: exact, until the window has passed", () => {
+    expect(markOffsetFor({ ...playing, msSinceScrub: 500 })).toBe(0);
+    expect(markOffsetFor({ ...playing, msSinceScrub: LOOP.exactAfterScrubMs - 1 })).toBe(0);
+    expect(markOffsetFor({ ...playing, msSinceScrub: LOOP.exactAfterScrubMs })).toBe(LOOP.markOffsetSec);
+  });
+  it("a tunable offset still applies when it should", () => {
+    expect(markOffsetFor(playing, 0.3)).toBe(0.3);
+  });
+});
+
+describe("nudgeEnd (the START clamps, mirrored)", () => {
+  const loop: LoopState = { start: 10, end: 20 };
+  it("moves END later and earlier and reports a change", () => {
+    expect(nudgeEnd(loop, 2, D).loop).toEqual({ start: 10, end: 22 });
+    expect(nudgeEnd(loop, -2, D).loop).toEqual({ start: 10, end: 18 });
+    expect(nudgeEnd(loop, 2, D).changed).toBe(true);
+  });
+  it("never before START + the minimum gap", () => {
+    const r = nudgeEnd(loop, -50, D);
+    expect(r.loop.end).toBe(10 + LOOP.minGapSec);
+    expect(r.limited).toBe(true);
+    expect(r.label).toContain("LIMIT");
+  });
+  it("never past the end of the track", () => {
+    const r = nudgeEnd(loop, 500, D);
+    expect(r.loop.end).toBe(D);
+    expect(r.limited).toBe(true);
+  });
+  it("a backward nudge never pushes an END that is already too close to START forward", () => {
+    const tight: LoopState = { start: 10, end: 10.2 };
+    expect(nudgeEnd(tight, -1, D).loop.end).toBe(10.2);
+  });
+  it("needs an END, ignores zero, leaves START alone", () => {
+    expect(nudgeEnd({ start: 10, end: null }, 1, D).label).toBe("SET AN END FIRST");
+    expect(nudgeEnd(loop, 0, D).changed).toBe(false);
+    expect(nudgeEnd(loop, 3, D).loop.start).toBe(10);
+  });
+  it("the START clamp is mirrored: START stops at END - gap, END stops at START + gap", () => {
+    expect(nudgeStart(loop, 50, D).loop.start).toBe(20 - LOOP.minGapSec);
+    expect(nudgeEnd(loop, -50, D).loop.end).toBe(10 + LOOP.minGapSec);
+  });
+});
+
+describe("markPlayhead (where a gesture mark lands)", () => {
+  const base = { current: 40, playing: true, scrubbing: false, lastScrubT: -Infinity, t: 10_000, duration: D };
+  const stamp = { since: 9_400, playhead: 39.4, playing: true };
+
+  it("playing, no scrub: the ring-start playhead less the late-mark offset", () => {
+    expect(markPlayhead(stamp, base)).toBeCloseTo(39.4 - LOOP.markOffsetSec, 6);
+  });
+  it("paused when the ring began: the exact ring-start playhead", () => {
+    expect(markPlayhead({ ...stamp, playing: false }, base)).toBe(39.4);
+  });
+  it("while the knob scrubs: the exact playhead NOW (the stamp is stale)", () => {
+    expect(markPlayhead(stamp, { ...base, scrubbing: true })).toBe(40);
+  });
+  it("a scrub that ran since the ring started: the exact playhead now", () => {
+    expect(markPlayhead(stamp, { ...base, lastScrubT: 9_700 })).toBe(40);
+  });
+  it("right after a scrub that ended before the ring began: the exact ring-start playhead, no offset", () => {
+    expect(markPlayhead(stamp, { ...base, lastScrubT: 9_000 })).toBe(39.4);
+  });
+  it("long after the last scrub: back to the offset", () => {
+    expect(markPlayhead(stamp, { ...base, lastScrubT: 9_400 - LOOP.exactAfterScrubMs - 100 })).toBeCloseTo(39.4 - LOOP.markOffsetSec, 6);
+  });
+  it("with no ring stamp it uses the playhead now, and is clamped to the track", () => {
+    expect(markPlayhead(null, { ...base, playing: false })).toBe(40);
+    expect(markPlayhead(null, { ...base, current: 0.05 })).toBe(0);
   });
 });

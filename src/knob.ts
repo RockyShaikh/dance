@@ -14,7 +14,7 @@
  * slow turns would otherwise round to nothing and be lost); the remainder is carried to the next frame.
  */
 import type { Vec2 } from "./box";
-import type { ClutchKind, KnobConfig, MappingKind, MotionKind } from "./config";
+import type { ClutchKind, KnobConfig, KnobTarget, MappingKind, MotionKind } from "./config";
 import { rebaseMapping, startMapping, stepMapping, type MappingParams, type MappingState } from "./knobMapping";
 import { rebaseMotion, startMotion, stepMotion, type MotionState } from "./knobMotion";
 
@@ -23,6 +23,8 @@ export interface KnobChoice extends MappingParams {
   clutch: ClutchKind;
   motion: MotionKind;
   mapping: MappingKind;
+  /** What the movement is applied to: the playhead (audible scrub), the loop START, or the loop END. */
+  target: KnobTarget;
 }
 
 /** Circling can only be read as a jog wheel, and a jog wheel needs circling: keep the pair consistent. */
@@ -79,18 +81,20 @@ export interface KnobView {
 }
 
 export interface KnobOutput {
+  /** What `applySec` is a delta FOR. The pipeline doesn't care which: the caller applies it (scrub, nudge START, nudge END). */
+  target: KnobTarget;
   /** The knob is held (frozen counts): commands must be suppressed. */
   grabbed: boolean;
   /** The grab began on this frame. */
   started: boolean;
   /** The grab ended on this frame. */
   released: boolean;
-  /** Move the loop START by this many seconds (whole milliseconds, 0 when nothing to do). */
+  /** Move the target by this many seconds (whole milliseconds, 0 when nothing to do). Already scaled for the target. */
   applySec: number;
   view: KnobView | null;
 }
 
-const NONE: KnobOutput = { grabbed: false, started: false, released: false, applySec: 0, view: null };
+const NONE: Omit<KnobOutput, "target"> = { grabbed: false, started: false, released: false, applySec: 0, view: null };
 
 /** Splits `pending` into whole milliseconds to apply now and the sub-millisecond rest. */
 export function takeWholeMs(pending: number): { apply: number; rest: number } {
@@ -114,6 +118,11 @@ function viewOf(s: KnobState, frozen: boolean): KnobView {
 }
 
 export function stepKnob(prev: KnobState, input: KnobInput, choice: KnobChoice, cfg: KnobConfig, releaseGraceMs: number): { state: KnobState; out: KnobOutput } {
+  const r = stepKnobCore(prev, input, choice, cfg, releaseGraceMs);
+  return { state: r.state, out: { ...r.out, target: choice.target } };
+}
+
+function stepKnobCore(prev: KnobState, input: KnobInput, choice: KnobChoice, cfg: KnobConfig, releaseGraceMs: number): { state: KnobState; out: Omit<KnobOutput, "target"> } {
   const { t, hand } = input;
   const mi = hand ? { t, tiltDeg: hand.tiltDeg, palm: hand.palm, aspect: input.aspect } : null;
 
@@ -156,7 +165,7 @@ export function stepKnob(prev: KnobState, input: KnobInput, choice: KnobChoice, 
     motion = stepMotion(motion, mi, cfg);
     const r = stepMapping(mapping, motion.angle, dtSec, choice, cfg);
     mapping = r.state;
-    const { apply, rest } = takeWholeMs(prev.pendingSec + r.deltaSec);
+    const { apply, rest } = takeWholeMs(prev.pendingSec + r.deltaSec * cfg.targetScale[choice.target]);
     const state: KnobState = { grabbed: true, lastSeen: t, lastT: t, dropped: false, motion, mapping, pendingSec: rest };
     return { state, out: { grabbed: true, started: false, released: false, applySec: apply, view: viewOf(state, false) } };
   }

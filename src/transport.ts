@@ -4,8 +4,8 @@
  * code path and the tests can check the wiring without a browser.
  */
 import type { AudioPlayer, PlayerState } from "./audioPlayer";
-import type { FireEvent } from "./commands";
-import { clearLoop, isLooping, loopStep, nudgeStart, restartTarget, setEnd, setStart, type LoopState } from "./loop";
+import type { HandFire } from "./handCommands";
+import { clearLoop, isLooping, loopStep, nudgeEnd, nudgeStart, restartTarget, setEnd, setStart, type LoopState } from "./loop";
 import { formatTime } from "./time";
 
 export { formatTime };
@@ -16,24 +16,30 @@ export type TransportAction =
   | "restart"
   /** Home key / button only: 0:00, even with a loop set; plays. No gesture: gestures never depend on hold time. */
   | "restartTop"
-  /** V: START, then END (loop on), then clear. */
+  /** The V key / Mark button: START, then END (loop on), then clear. */
   | "loopStep"
   | "setStart"
   | "setEnd"
   | "clearLoop";
 
-/** Every command fires once, when its ring fills. Open palm toggles; index up restarts; V steps the loop (START, END, clear). */
-export function actionForFire(ev: Pick<FireEvent, "shape">): TransportAction | null {
-  switch (ev.shape) {
-    case "Open_Palm":
-      return "toggle";
-    case "Pointing_Up":
-      return "restart";
-    case "Victory":
-      return "loopStep";
-    default:
-      return null;
+/**
+ * Which action a fired command is. Every command fires once, when its ring fills. R4b's two-hand scheme:
+ *  - RIGHT hand = transport (+ scrub, by the knob): open palm = play/pause, index up = restart (to the loop
+ *    START if set, else 0:00), V = clear the loop.
+ *  - LEFT hand = marks: V = set IN (START) at the playhead, index up = set OUT (END) at the playhead and
+ *    loop; open palm = play/pause as well.
+ * The V key / Mark button still cycle START, END, clear (`loopStep`); no gesture does.
+ */
+export function actionForFire(ev: Pick<HandFire, "shape" | "hand">): TransportAction | null {
+  if (ev.shape === "Open_Palm") return "toggle";
+  if (ev.hand === "Right") {
+    if (ev.shape === "Pointing_Up") return "restart";
+    if (ev.shape === "Victory") return "clearLoop";
+    return null;
   }
+  if (ev.shape === "Victory") return "setStart";
+  if (ev.shape === "Pointing_Up") return "setEnd";
+  return null;
 }
 
 export interface TransportResult {
@@ -83,10 +89,10 @@ export function runTransport(player: AudioPlayer, loop: LoopState, action: Trans
   }
 }
 
-/** Moves the loop START (keys, buttons, and R4b's knob). Only the marker moves; the music is untouched. */
-export function runNudge(player: AudioPlayer, loop: LoopState, deltaSec: number): TransportResult {
+/** Moves the loop START or END (keys, buttons, and R4b's knob). Only the marker moves; the music is untouched. */
+export function runNudge(player: AudioPlayer, loop: LoopState, deltaSec: number, which: "start" | "end" = "start"): TransportResult {
   if (!player.loaded) return { label: "LOAD A TRACK FIRST", changed: false, loop };
-  const r = nudgeStart(loop, deltaSec, player.duration);
+  const r = which === "start" ? nudgeStart(loop, deltaSec, player.duration) : nudgeEnd(loop, deltaSec, player.duration);
   return { label: r.label, changed: r.changed, loop: r.loop, limited: r.limited };
 }
 

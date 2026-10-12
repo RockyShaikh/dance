@@ -1,5 +1,6 @@
 import type { HandReading } from "./analyze";
 import { contains, type Box } from "./box";
+import type { Handedness } from "./hand";
 import { prettyShape } from "./hud";
 import { CHORD_ORDER } from "./pseudoChord";
 
@@ -34,15 +35,15 @@ function renderCard(card: HTMLElement, h: HandReading | undefined, box: Box): vo
     <div class="row two">
       <div><span class="label">Palm facing camera</span>
         <span class="${h.palmFacing ? "yes" : "no"}">${h.palmFacing ? "YES" : "NO"}</span></div>
-      <div><span class="label">Palm centre in box</span>
+      <div><span class="label">Palm centre in its box</span>
         <span class="${inBox ? "yes" : "no"}">${inBox ? "YES" : "NO"}</span></div>
     </div>
     <div class="row tiny"><span class="score">pinch gap ${h.pinchRatio.toFixed(2)} · finger reach ${h.clawExt.toFixed(2)}</span></div>`;
 }
 
-export function renderHands(hands: readonly HandReading[], box: Box): void {
-  renderCard(cards[0], hands[0], box);
-  renderCard(cards[1], hands[1], box);
+export function renderHands(hands: readonly HandReading[], boxes: Record<Handedness, Box>): void {
+  renderCard(cards[0], hands[0], hands[0] ? boxes[hands[0].hand] : boxes.Right);
+  renderCard(cards[1], hands[1], hands[1] ? boxes[hands[1].hand] : boxes.Right);
 }
 
 export function setFps(fps: number | null): void {

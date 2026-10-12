@@ -1,26 +1,27 @@
-import { applyDrag, cursorFor, hitTest, type Box, type Handle, type Vec2 } from "./box";
+import { applyDrag, cursorFor, pickBox, type Box, type Handle, type Vec2 } from "./box";
 import { BOX } from "./config";
+import type { Handedness } from "./hand";
 
 export interface BoxEditor {
-  /** The handle under the pointer (or being dragged), for the HUD to highlight. */
-  readonly active: Handle | null;
+  /** The box and handle under the pointer (or being dragged), for the HUD to highlight. */
+  readonly active: { hand: Handedness; handle: Handle } | null;
   readonly dragging: boolean;
 }
 
 /**
- * Mouse editing of the command box on the HUD canvas: drag inside to move, drag an
- * edge or corner to resize. The HUD canvas is not mirrored, so a pointer position
- * maps straight to display-normalized coordinates, the same space the box uses.
- * Every change goes through `setBox` right away.
+ * Mouse editing of the command boxes on the HUD canvas (R4b: one per hand): drag inside a box to move
+ * it, drag an edge or corner to resize. The HUD canvas is not mirrored, so a pointer position maps
+ * straight to display-normalized coordinates, the same space the boxes use. Every change goes through
+ * `setBox` right away.
  */
 export function attachBoxEditor(
   canvas: HTMLCanvasElement,
-  getBox: () => Box,
-  setBox: (b: Box) => void,
+  getBoxes: () => Record<Handedness, Box>,
+  setBox: (hand: Handedness, b: Box) => void,
   onChange: () => void,
 ): BoxEditor {
-  let hover: Handle | null = null;
-  let drag: { handle: Handle; start: Box; from: Vec2; id: number } | null = null;
+  let hover: { hand: Handedness; handle: Handle } | null = null;
+  let drag: { hand: Handedness; handle: Handle; start: Box; from: Vec2; id: number } | null = null;
 
   const pos = (e: PointerEvent): { p: Vec2; tol: Vec2 } => {
     const r = canvas.getBoundingClientRect();
@@ -29,25 +30,29 @@ export function attachBoxEditor(
       tol: { x: BOX.grabPx / r.width, y: BOX.grabPx / r.height },
     };
   };
+  const hit = (e: PointerEvent) => {
+    const { p, tol } = pos(e);
+    const h = pickBox(getBoxes(), p, tol);
+    return h ? { hand: h.key, handle: h.handle } : null;
+  };
 
   canvas.addEventListener("pointerdown", (e) => {
-    const { p, tol } = pos(e);
-    const handle = hitTest(getBox(), p, tol);
-    if (!handle) return;
-    drag = { handle, start: getBox(), from: p, id: e.pointerId };
+    const h = hit(e);
+    if (!h) return;
+    drag = { ...h, start: { ...getBoxes()[h.hand] }, from: pos(e).p, id: e.pointerId };
     canvas.setPointerCapture(e.pointerId);
-    canvas.style.cursor = cursorFor(handle);
+    canvas.style.cursor = cursorFor(h.handle);
     e.preventDefault();
     onChange();
   });
 
   canvas.addEventListener("pointermove", (e) => {
-    const { p, tol } = pos(e);
     if (drag) {
-      setBox(applyDrag(drag.start, drag.handle, p.x - drag.from.x, p.y - drag.from.y));
+      const { p } = pos(e);
+      setBox(drag.hand, applyDrag(drag.start, drag.handle, p.x - drag.from.x, p.y - drag.from.y));
     } else {
-      hover = hitTest(getBox(), p, tol);
-      canvas.style.cursor = cursorFor(hover);
+      hover = hit(e);
+      canvas.style.cursor = cursorFor(hover?.handle ?? null);
     }
     onChange();
   });
@@ -56,8 +61,8 @@ export function attachBoxEditor(
     if (!drag) return;
     if (canvas.hasPointerCapture(drag.id)) canvas.releasePointerCapture(drag.id);
     drag = null;
-    hover = hitTest(getBox(), pos(e).p, pos(e).tol);
-    canvas.style.cursor = cursorFor(hover);
+    hover = hit(e);
+    canvas.style.cursor = cursorFor(hover?.handle ?? null);
     onChange();
   };
   canvas.addEventListener("pointerup", end);
@@ -71,7 +76,7 @@ export function attachBoxEditor(
 
   return {
     get active() {
-      return drag ? drag.handle : hover;
+      return drag ? { hand: drag.hand, handle: drag.handle } : hover;
     },
     get dragging() {
       return drag !== null;

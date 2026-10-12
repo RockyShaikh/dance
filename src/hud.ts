@@ -1,4 +1,5 @@
 import { contains, type Box, type Handle } from "./box";
+import type { Handedness } from "./hand";
 import type { MachineView } from "./commands";
 import { drawKnob, type KnobDraw } from "./knobHud";
 
@@ -14,16 +15,22 @@ const WARN = "#ffb020";
 const OFF = "#ff5d6c";
 
 export interface HudInput {
-  box: Box;
-  /** Handle under the pointer / being dragged. */
-  active: Handle | null;
+  /** R4b: each hand's command box. */
+  boxes: Record<Handedness, Box>;
+  /** The box and handle under the pointer / being dragged. */
+  active: { hand: Handedness; handle: Handle } | null;
   dragging: boolean;
-  /** Palm centres of detected hands, display-normalized. */
-  palms: readonly { x: number; y: number }[];
-  view: MachineView | null;
+  /** Detected hands: palm centre (display-normalized) and which hand. */
+  palms: readonly { hand: Handedness; x: number; y: number }[];
+  /** Each hand's command ring, if it has one. */
+  views: Partial<Record<Handedness, MachineView>>;
   /** R4b: the knob dial and the big GRABBED word, while the knob is held. */
   knob?: KnobDraw | null;
 }
+
+/** The dancer's right hand appears on the right of the mirrored picture, so its box is blue; the left hand's is purple. */
+const HAND_COLOR: Record<Handedness, string> = { Right: ACCENT, Left: "#c79bff" };
+const HAND_LABEL: Record<Handedness, string> = { Right: "RIGHT HAND: PLAY / RESTART / CLEAR", Left: "LEFT HAND: MARK START / END" };
 
 export function prettyShape(label: string): string {
   const s = label.replace(/_/g, " ");
@@ -80,40 +87,51 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
   const s = W / 1280; // pixel scale, so line widths look the same at any camera resolution
   ctx.clearRect(0, 0, W, H);
 
-  const { box, view } = input;
-  const bx = box.x * W;
-  const by = box.y * H;
-  const bw = box.w * W;
-  const bh = box.h * H;
-  const occupied = input.palms.some((p) => contains(box, p));
+  const hands: Handedness[] = ["Left", "Right"];
+  for (const hand of hands) {
+    const box = input.boxes[hand];
+    const bx = box.x * W;
+    const by = box.y * H;
+    const bw = box.w * W;
+    const bh = box.h * H;
+    // Lit while that hand's palm centre is inside its own box.
+    const occupied = input.palms.some((p) => p.hand === hand && contains(box, p));
+    const base = HAND_COLOR[hand];
+    const color = occupied ? ON : base;
+    ctx.fillStyle = occupied ? "rgba(56,224,140,0.10)" : hand === "Right" ? "rgba(92,200,255,0.07)" : "rgba(199,155,255,0.07)";
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.lineWidth = (occupied ? 6 : 4) * s;
+    ctx.strokeStyle = color;
+    ctx.setLineDash(hand === "Left" ? [14 * s, 8 * s] : []);
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.setLineDash([]);
+    text(ctx, HAND_LABEL[hand], bx + 14 * s, by + 32 * s, 20 * s, color);
 
-  // The box itself.
-  const color = occupied ? ON : ACCENT;
-  ctx.fillStyle = occupied ? "rgba(56,224,140,0.10)" : "rgba(92,200,255,0.07)";
-  ctx.fillRect(bx, by, bw, bh);
-  ctx.lineWidth = (occupied ? 6 : 4) * s;
-  ctx.strokeStyle = color;
-  ctx.setLineDash([]);
-  ctx.strokeRect(bx, by, bw, bh);
-  text(ctx, "COMMAND BOX", bx + 14 * s, by + 32 * s, 22 * s, color);
+    // Drag handles: small squares on the corners and edge midpoints.
+    const mine = input.active?.hand === hand ? input.active.handle : null;
+    for (const [h, hx, hy] of handlePoints(box)) {
+      const lit = mine === h;
+      const size = (lit ? 18 : 12) * s;
+      ctx.fillStyle = lit ? "#ffffff" : color;
+      ctx.fillRect(hx * W - size / 2, hy * H - size / 2, size, size);
+      ctx.lineWidth = 2 * s;
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(hx * W - size / 2, hy * H - size / 2, size, size);
+    }
+    if (mine === "move") {
+      text(ctx, input.dragging ? "release to set" : "drag to move", bx + bw / 2, by + bh / 2, 20 * s, "rgba(255,255,255,0.7)", "center");
+    }
 
-  // Drag handles: small squares on the corners and edge midpoints.
-  for (const [h, hx, hy] of handlePoints(box)) {
-    const lit = input.active === h;
-    const size = (lit ? 18 : 12) * s;
-    ctx.fillStyle = lit ? "#ffffff" : color;
-    ctx.fillRect(hx * W - size / 2, hy * H - size / 2, size, size);
-    ctx.lineWidth = 2 * s;
-    ctx.strokeStyle = "#000";
-    ctx.strokeRect(hx * W - size / 2, hy * H - size / 2, size, size);
+    const view = input.views[hand];
+    if (view) {
+      if (view.cooldownLeftMs > 0) text(ctx, `COOLDOWN ${(view.cooldownLeftMs / 1000).toFixed(1)} s`, bx + bw - 14 * s, by + 56 * s, 20 * s, WARN, "right");
+      if (view.blocked && view.phase === "idle") text(ctx, `Not counting: ${view.blocked}`, bx + bw / 2, by + bh - 16 * s, 24 * s, WARN, "center");
+    }
   }
-  if (input.dragging || input.active === "move") {
-    text(ctx, input.dragging ? "release to set" : "drag to move", bx + bw / 2, by + bh / 2, 20 * s, "rgba(255,255,255,0.7)", "center");
-  }
 
-  // Palm centres: the exact point tested against the box.
+  // Palm centres: the exact point tested against that hand's own box.
   for (const p of input.palms) {
-    const inside = contains(box, p);
+    const inside = contains(input.boxes[p.hand], p);
     const x = p.x * W;
     const y = p.y * H;
     const r = 9 * s;
@@ -131,17 +149,11 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
   }
 
   if (input.knob) drawKnob(ctx, input.knob);
-  if (!view) return;
 
-  if (view.cooldownLeftMs > 0) {
-    text(ctx, `COOLDOWN ${(view.cooldownLeftMs / 1000).toFixed(1)} s`, bx + bw - 14 * s, by + 32 * s, 22 * s, WARN, "right");
-  }
-  if (view.blocked && view.phase === "idle") {
-    text(ctx, `Not counting: ${view.blocked}`, bx + bw / 2, by + bh - 16 * s, 24 * s, WARN, "center");
-  }
-
-  // Dwell rings at the hand that is being tracked.
-  if (view.shape && view.palm) {
+  // Dwell rings at each hand that is being tracked.
+  for (const hand of hands) {
+    const view = input.views[hand];
+    if (!view || !view.shape || !view.palm) continue;
     const x = view.palm.x * W;
     const y = view.palm.y * H;
     const r = 56 * s;
