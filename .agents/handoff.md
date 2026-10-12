@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-R4c: two-hand steering wheel (left-hand shape = mode: palm play+scrub, fist pause+scrub, V START, index END), snappy, waveform. Then R5: 2× speed toggle (right thumbs up).
+R4d: the left hand only anchors modes (fist = pause while closed); right fist = play/pause, open palm inert; circling wheel. R5b: hold right thumbs up = 2× while held; left shaka + wheel = 0.05 speed steps, heard live.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ R4c: two-hand steering wheel (left-hand shape = mode: palm play+scrub, fist paus
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-The user tests R4c (:5185, test checkout) and R5 (:5186, worktree agent-ae531b24ea41c8084). Then merge the chain r4a-loops → r4b-knob → r4c-steer → r5-speed into main, each --no-ff + tag, on the user's word. Clean up the old worktrees (R1, R2, R3, R4a, R4b, test-r4c) only with their OK.
+Wait for B4d. Then give the user the test link and checklist. The merge chain (r4a → r4b → r4c → r5 → r4d → r5b, each --no-ff + tag) happens on the user's word. Test servers: :5185 (R4c), :5186 (R5).
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
