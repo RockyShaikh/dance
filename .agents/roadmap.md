@@ -2,12 +2,12 @@
 
 *Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
-Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 built (branch `r2-gestures`, not merged, real-hand check pending); the user moved on to R3 ("go ahead and start [r3]... I think r2 was pretty trivial"). R3 active.
+Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (merged, tag `r2-done`). R3 active.
 
 | # | Checkpoint | Status |
 |---|---|---|
 | R1 | Bring-up: camera, hand skeleton, pseudo-chords | done |
-| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | built, awaiting real-hand check |
+| R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | done |
 | R3 | Audio + webcam together; play/pause/restart by gesture | **active** |
 | R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | planned |
 | R5 | Speed by rotation knob | planned |
@@ -62,7 +62,9 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - Pinch, claw and two-hand grabs show GRABBED/released correctly, or failures are noted.
 - Informational: dance for ~2 minutes with no commands intended and note the false-fire count in the log. This feeds the choreography-collision thread; it isn't a pass/fail gate.
 
-**Status:** built 2026-10-11 on branch `r2-gestures` (145 tests, 43/43 sim checks). Not merged; real-hand check pending. The user approved starting R3 on top of it.
+**Status:** done (2026-10-12; merged to main with `--no-ff`, tag `r2-done`)
+
+**Result (user's live test):** "r2 is good". Pinch is "a little rough", but the user doesn't expect to use pinch often. Claw is "decently good". Two-hand works.
 
 **Notes:** clutch shapes live here because detecting them is the same problem as detecting command shapes. Rotation waits for R4, where it's first used. The planned zone direction is a per-session calibration ("raise your hand: only above here"). It's wish-listed for R6+ (user), not part of R2.
 

@@ -86,7 +86,7 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Model license** stated as Apache-2.0 from MediaPipe pages, not checked against the model card | unresolved | Confirm before anyone else reuses the repo |
 | **8.4 MB model committed to git history** | risk | Fine for one model; consider Git LFS if more arrive |
 | **Choppy frame rate at startup until a hand appears** | bug? | Seen in R1 live test; smooth once a hand is in view. Minor |
-| **Claw and fist-vs-pinch thresholds tuned on synthetic hands** (real fist reach probably ~1.0 vs fixture 1.21) | risk | Retune from live pinch gap / finger reach readouts |
+| **Claw and fist-vs-pinch thresholds tuned on synthetic hands** (real fist reach probably ~1.0 vs fixture 1.21) | risk | Live test 2026-10-12: claw decent, **pinch a little rough**; the user rarely expects to use pinch, which matters if pinch stays the default knob grab (R4) |
 | **"One hand at a time" rule**: currently only blocks when two hands show command shapes inside the box | unresolved | Builder's reading; user to confirm or tighten |
 | **Quick shape switches** (index up → V): old shape lingers 120 ms, can tap-fire if its ring was full | risk | Surfaced in R2 |
 | **Gesture Recognizer labels may carry their own palm-orientation bias** | risk | Real 9/10 tests will show |
