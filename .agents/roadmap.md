@@ -2,7 +2,7 @@
 
 *Revised 2026-10-11 (v1; v1.1: R2 uses an on-screen command box instead of the above-head zone; v1.2: the box is mouse-editable, and calibration is wish-listed for R6+). Co-owned with the user: only the user approves changes. See [spec](../docs/spec.md) for gestures, knob, and stack, and [wish list](wishlist.md) for everything deferred.*
 
-Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (tag `r2-done`). R3 done 2026-10-12 (tag `r3-done`). R4 active 2026-10-12, split into R4a and R4b (user: "go").
+Checkpoints are done strictly in order. Exactly one is `active` at a time, and nothing is built past it. **Approved by the user 2026-10-11** ("okay lets start! let's get the r1 brought up"). R1 done 2026-10-11. R2 done 2026-10-12 (tag `r2-done`). R3 done 2026-10-12 (tag `r3-done`). R4 active 2026-10-12, split into R4a and R4b (user: "go"), then R4c added after knob testing (2026-10-12). R4a and R4b are built, not merged.
 
 | # | Checkpoint | Status |
 |---|---|---|
@@ -10,7 +10,8 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 | R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | done |
 | R3 | Audio + webcam together; play/pause/restart by gesture | done |
 | R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | **active** (R4a → R4b) |
-| R5 | Speed by rotation knob | planned |
+| R4c | Steering-wheel loop editing: left-hand shape picks the mode (palm = play+scrub, fist = pause+scrub, V = START, index = END), snappy steering, waveform | **active** |
+| R5 | Speed: toggle the whole track to 2× and back (redefined 2026-10-12) | planned |
 
 ---
 
@@ -130,6 +131,29 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 - If nudging turns out to be the same amount every time, an automatic pre-roll on the loop start (wish list) could replace most of it.
 - The knob experiments start here because this is where rotation is first needed. The winner carries into R5.
 - Research basis: Vidami loop cycle [market]; late-landing marks [workflows].
+
+---
+
+## R4c — Steering-wheel loop editing (added 2026-10-12)
+
+**Goal:** steer to the right spot quickly and precisely, and adjust each loop end, with a snappy two-hand steering wheel.
+
+**Scope in**
+- Default grab = two-hand steering wheel: the left hand is held up, and the right hand tilts like a wheel. Claw stays switchable.
+- The left-hand shape picks the mode while steering:
+  - **open palm** = playhead, playing (it plays from wherever you stop);
+  - **fist** = pause + playhead (stops exactly there; snippets while moving);
+  - **V** = loop START;
+  - **index** = loop END.
+  Switching palm ↔ fist mid-grab toggles play/pause without letting go.
+- **Snappy:** stop rotating → movement stops at once (diagnose and fix the steering lag vs claw).
+- **Waveform** on the timeline, with a zoomed view around whatever is being steered.
+
+**Scope out:** speed (R5), claw tuning, beat snap, saved loops.
+
+**Done means:** the user can shuttle to a part, pause there with the left fist, fine-steer, set or adjust START/END, and it feels as snappy as the claw did.
+
+**Status:** active (2026-10-12; branch `r4c-steer` on `r4b-knob`)
 
 ---
 
