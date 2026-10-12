@@ -139,7 +139,7 @@
         </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">Right hand: open palm = play/pause · index up = back to START (or 0:00) · V = clear · thumbs up = speed 2× / 1× (keys T, - and =). Left hand: V = set START (IN) · index up = set END (OUT) and loop · open palm = play/pause. <b>Steering wheel:</b> hold the LEFT open palm up with the right hand in its box, then tilt the right hand. While steering, the left hand picks what moves: open palm = playhead, music playing · fist = playhead, paused · V = loop START · index = loop END. Keys: Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · thumbs up = speed 2× / 1× (keys T, - and =); an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in its box, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END. Keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
@@ -149,13 +149,13 @@
           <div class="knob-col">
             <label class="field"><span>Moves (target)</span><select id="knob-target"></select></label>
             <label class="field"><span>Grab (clutch)</span><select id="knob-clutch"></select></label>
-            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT open palm (right hand in its box) and tilt the right hand. Left open palm = playhead, playing · fist = playhead, paused · V = loop START · index = loop END. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
+            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT hand as a palm, V or index (right hand in its box) and circle the right hand (or tilt it, if you pick Tilt below). Left open palm = playhead, music left as it is · fist = playhead, paused while closed (a palm resumes it) · V = loop START · index = loop END. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
             <label class="field"><span>Turning (motion)</span><select id="knob-motion"></select></label>
             <label class="field"><span>Mapping</span><select id="knob-mapping"></select></label>
             <label class="slider"><span>Gain <b id="knob-gain-value"></b></span><input id="knob-gain" type="range" /></label>
             <label class="slider"><span>Dead zone (joystick) <b id="knob-dead-value"></b></span><input id="knob-dead" type="range" /></label>
             <label class="check"><input id="knob-invert" type="checkbox" /> Flip direction (clockwise = earlier)</label>
-            <div class="note">With Joystick, where you grab is "centre"; Relative (the default) just follows the turn and stops when you do. Clockwise moves the target later, counter-clockwise earlier. Playhead: the music follows as you scrub (paused: short snippets, and it stays paused). START / END: only the marker moves; index up to hear it.</div>
+            <div class="note">Circling + Jog is the default: circle the hand clockwise for later, no limit, and it stops when you do. With Tilt: Joystick keeps moving while you stay tilted from where you grabbed; Relative just follows the turn and stops when you do. Clockwise moves the target later, counter-clockwise earlier. Playhead: the music follows as you scrub (paused: short snippets, and it stays paused). START / END: only the marker moves; index up to hear it.</div>
           </div>
           <div class="knob-col">
             <div class="note">Experiment log, for <b id="knob-variant"></b></div>

@@ -14,8 +14,9 @@ import { IDLE_KNOB, stepKnob, type KnobChoice } from "./knob";
 import type { KnobHand } from "./knobClutch";
 import { selectClutch, suppressFor } from "./knobClutch";
 import { NO_LOOP, type LoopState } from "./loop";
-import { IDLE_SCRUB, stepScrub, type ScrubMode } from "./scrub";
+import { IDLE_SCRUB, stepScrub } from "./scrub";
 import { IDLE_STEER, classifySteerShape, stepSteerMode, targetOf, type SteerMode } from "./steerMode";
+import { IDLE_STEER_AUDIO, stepSteerAudio } from "./steerAudio";
 import { actionForFire, runNudge, runTransport } from "./transport";
 
 const FRAME = 33;
@@ -67,6 +68,7 @@ class Wheel {
   clutch = initialClutchState();
   knob = IDLE_KNOB;
   steer = IDLE_STEER;
+  audio = IDLE_STEER_AUDIO;
   scrub = IDLE_SCRUB;
   machines = INITIAL_MACHINES;
   t = 1000;
@@ -131,7 +133,9 @@ class Wheel {
     if (k.out.released) this.releases++;
 
     // Apply the knob's movement to the target the mode picked (main.ts applyKnob).
-    const scrubMode: ScrubMode = sm.mode === "pause" ? "pause" : "play";
+    // What the left hand does to the music (R4d: steerAudio.ts).
+    this.audio = stepSteerAudio(this.audio, { grabbed: k.out.grabbed, mode: sm.mode, playing: this.playing });
+    const scrubMode = this.audio.scrub;
     if (k.out.target === "playhead") {
       const sr = stepScrub(
         this.scrub,
@@ -192,20 +196,110 @@ class Wheel {
 }
 
 describe("grabbing the wheel", () => {
-  it("left open palm up + right hand in its box = grabbed, and playing (palm = play)", () => {
-    const w = new Wheel(false);
+  it("left open palm up + right hand in its box = grabbed, and the music is left exactly as it was (R4d)", () => {
+    const paused = new Wheel(false);
+    paused.show(600, { left: PALM, tilt: 0 });
+    expect(paused.grabbed).toBe(true);
+    expect(paused.steer.mode).toBe("palm");
+    expect(paused.playing).toBe(false); // the left hand never starts playback
+    const playing = new Wheel(true);
+    playing.show(600, { left: PALM, tilt: 0 });
+    expect(playing.grabbed).toBe(true);
+    expect(playing.playing).toBe(true);
+  });
+
+  it("R4d: a grab starts with palm, V or index (any left mode shape but the fist) while the right hand is in its box, at once", () => {
+    for (const [left, mode] of [[PALM, "palm"], [V, "start"], [INDEX, "end"]] as const) {
+      const w = new Wheel(true);
+      w.loop = { start: 20, end: 40 };
+      w.show(FRAME * 3, { left, tilt: 0 });
+      expect(w.grabbed, mode).toBe(true);
+      expect(w.steer.mode).toBe(mode);
+    }
+  });
+
+  it("R4d: a fist can NOT start a grab (a loose hand hanging in view would pause the music), but it continues one", () => {
+    const w = new Wheel(true);
+    w.show(600, { left: FIST, tilt: 0 });
+    expect(w.grabbed).toBe(false);
+    expect(w.playing).toBe(true);
     w.show(300, { left: PALM, tilt: 0 });
+    w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
     expect(w.grabbed).toBe(true);
-    expect(w.steer.mode).toBe("play");
+    expect(w.steer.mode).toBe("fist");
+  });
+
+  it("the right hand must be in its box to start (outside it a V is just a mark)", () => {
+    const w = new Wheel(true);
+    w.show(600, { left: V, tilt: 0, right: { x: 0.3, y: 0.5 } });
+    expect(w.grabbed).toBe(false);
+  });
+});
+
+describe("R4d: what the left hand does to the music", () => {
+  it("palm never starts playback: paused stays paused through a whole steer; playing keeps playing", () => {
+    const paused = new Wheel(false, 30);
+    paused.show(300, { left: PALM, tilt: 0 });
+    paused.turn(1000, 0, 40, PALM);
+    paused.show(1000, { left: PALM, tilt: 40 });
+    expect(paused.playing).toBe(false);
+    expect(paused.player.currentTime).toBeGreaterThan(30.5); // it did scrub (in snippets) and ended paused
+    const playing = new Wheel(true, 30);
+    playing.show(300, { left: PALM, tilt: 0 });
+    playing.turn(1000, 0, 40, PALM);
+    expect(playing.playing).toBe(true);
+    expect(playing.media.calls.filter((c) => c === "pause")).toEqual([]);
+  });
+
+  it("fist pauses while closed and the palm resumes it (the fist did the pausing)", () => {
+    const w = new Wheel(true, 30);
+    w.show(300, { left: PALM, tilt: 0 });
+    w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
+    expect(w.playing).toBe(false);
+    expect(w.audio.fistOwns).toBe(true);
+    w.show(STEER.modeDebounceMs + 300, { left: PALM, tilt: 0 });
+    expect(w.playing).toBe(true);
+    expect(w.audio.fistOwns).toBe(false);
+  });
+
+  it("already paused: the fist changes nothing and opening to a palm does not start the music", () => {
+    const w = new Wheel(false, 30);
+    w.show(300, { left: PALM, tilt: 0 });
+    w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
+    expect(w.playing).toBe(false);
+    expect(w.audio.fistOwns).toBe(false);
+    w.show(STEER.modeDebounceMs + 300, { left: PALM, tilt: 0 });
+    expect(w.playing).toBe(false);
+    expect(w.media.calls.filter((c) => c === "play")).toEqual([]);
+  });
+
+  it("fist -> V -> palm: the pause stays through the loop-start steering, the palm then resumes", () => {
+    const w = new Wheel(true, 30);
+    w.loop = { start: 20, end: 40 };
+    w.show(300, { left: PALM, tilt: 0 });
+    w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
+    w.show(STEER.modeDebounceMs + 300, { left: V, tilt: 0 });
+    expect(w.steer.mode).toBe("start");
+    expect(w.playing).toBe(false);
+    w.show(STEER.modeDebounceMs + 300, { left: PALM, tilt: 0 });
     expect(w.playing).toBe(true);
   });
 
-  it("a grab can only START with the palm: a V or a fist held up with the right hand in the box is no grab", () => {
-    for (const left of [V, FIST, INDEX]) {
-      const w = new Wheel(true);
-      w.show(600, { left, tilt: 0 });
-      expect(w.grabbed).toBe(false);
-    }
+  it("letting go while the fist is closed leaves the music paused (a hand leaving the frame never starts it)", () => {
+    const w = new Wheel(true, 30);
+    w.show(300, { left: PALM, tilt: 0 });
+    w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
+    w.show(1500, {});
+    expect(w.grabbed).toBe(false);
+    expect(w.playing).toBe(false);
+    expect(w.audio.fistOwns).toBe(false);
+  });
+
+  it("a V started grab keeps the music as it was too", () => {
+    const w = new Wheel(true, 30);
+    w.loop = { start: 20, end: 40 };
+    w.show(600, { left: V, tilt: 0 });
+    expect(w.playing).toBe(true);
   });
 });
 
@@ -226,7 +320,7 @@ describe("the left hand picks the mode, live, while the grab continues", () => {
     const w = new Wheel(true, 30);
     w.show(300, { left: PALM, tilt: 0 });
     w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
-    expect(w.steer.mode).toBe("pause");
+    expect(w.steer.mode).toBe("fist");
     expect(w.playing).toBe(false);
     const at = w.player.currentTime;
     w.turn(1000, 0, 40, FIST);
@@ -335,11 +429,11 @@ describe("a flicker of the left hand's shape must not toggle play / pause or let
     const w = new Wheel(true, 30);
     w.show(300, { left: PALM, tilt: 0 });
     w.show(STEER.modeDebounceMs + 300, { left: FIST, tilt: 0 });
-    expect(w.steer.mode).toBe("pause");
+    expect(w.steer.mode).toBe("fist");
     const NONE = { shape: "None", clawExt: 1.6, score: 0.2 }; // not curled in, no label: no shape at all
     w.show(FRAME * 3, { left: NONE, tilt: 0 });
     expect(w.grabbed).toBe(true);
-    expect(w.steer.mode).toBe("pause");
+    expect(w.steer.mode).toBe("fist");
     expect(w.playing).toBe(false);
     // The wheel is frozen meanwhile: turning it moves nothing...
     const at = w.player.currentTime;
@@ -354,7 +448,7 @@ describe("a flicker of the left hand's shape must not toggle play / pause or let
     const w = new Wheel(true, 30);
     w.show(300, { left: PALM, tilt: 0 });
     w.show(STEER.modeDebounceMs + 300, { left: { shape: "None", clawExt: 1.0, score: 0 }, tilt: 0 });
-    expect(w.steer.mode).toBe("pause");
+    expect(w.steer.mode).toBe("fist");
     expect(w.playing).toBe(false);
   });
 
@@ -380,9 +474,9 @@ describe("marks vs. steering: left V / index set IN / OUT only when the right ha
     expect(w.loop.end).not.toBeNull();
   });
 
-  it("right hand in view but not steering (no left palm): marks still work", () => {
+  it("right hand in view but outside its box (not steering): marks still work", () => {
     const w = new Wheel(true, 30);
-    w.show(1000, { left: V, tilt: 0 });
+    w.show(1000, { left: V, tilt: 0, right: { x: 0.3, y: 0.5 } });
     expect(w.fires).toEqual(["Left Victory"]);
     expect(w.grabbed).toBe(false);
   });

@@ -218,15 +218,23 @@ describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and
   const left = (steerShape: ClutchHand["steerShape"], shape = "None"): ClutchHand => ch("Left", { shape, steerShape, palm: { x: 0.2, y: 0.5 } });
   const right = (x = 0.75): ClutchHand => ch("Right", { palm: { x, y: 0.5 } });
 
-  it("a grab starts only with the palm: V, index or fist held up do not grab", () => {
-    for (const shape of ["v", "index", "fist", null] as const) {
+  it("R4d: a grab starts with palm, V or index; a fist (or no steering shape) held up does not grab", () => {
+    for (const shape of ["fist", null] as const) {
       const b = new Bench();
       b.show(400, [left(shape), right()]);
       expect(b.view.twoHand).toBe(false);
     }
+    for (const shape of ["palm", "v", "index"] as const) {
+      const b = new Bench();
+      b.show(100, [left(shape), right()]);
+      expect(b.view.twoHand, shape).toBe(true);
+    }
+  });
+
+  it("R4d: ...but only with the right hand in its box (a V alone is a mark, not a grab)", () => {
     const b = new Bench();
-    b.show(100, [left("palm"), right()]);
-    expect(b.view.twoHand).toBe(true);
+    b.show(400, [left("v"), right(0.2)]);
+    expect(b.view.twoHand).toBe(false);
   });
 
   it("once grabbed it holds through palm, fist, V and index, in any order, with no release", () => {

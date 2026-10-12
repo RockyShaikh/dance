@@ -1,9 +1,11 @@
 /**
- * R4c: the steering mode of the two-hand wheel. While a grab is held, the LEFT hand's shape says what the
- * right hand's tilt moves, and the shape can change mid-grab without letting go:
+ * R4c/R4d: the steering mode of the two-hand wheel. While a grab is held, the LEFT hand's shape says what the
+ * right hand's wheel motion moves, and the shape can change mid-grab without letting go:
  *
- *   open palm = the playhead, music PLAYING   fist  = the playhead, music PAUSED
- *   V         = loop START                    index = loop END
+ *   open palm = the playhead (the music is left as it is)   fist  = the playhead, and pause while the fist is closed
+ *   V         = loop START                                  index = loop END
+ *
+ * (What the music does is steerAudio.ts: the left hand never starts playback by itself.)
  *
  * Two pure pieces, no DOM and no clock (time is passed in):
  *  - `classifySteerShape`: a detected hand to one of the four shapes, or null. The fist is the model's
@@ -16,7 +18,7 @@ import type { KnobTarget } from "./config";
 import { STEER } from "./config";
 
 export type SteerShape = "palm" | "fist" | "v" | "index";
-export type SteerMode = "play" | "pause" | "start" | "end";
+export type SteerMode = "palm" | "fist" | "start" | "end";
 
 /** The bits of a detected hand the classification needs. */
 export interface SteerHandObs {
@@ -38,15 +40,15 @@ export function classifySteerShape(h: SteerHandObs, cfg: typeof STEER = STEER): 
   return null;
 }
 
-export const MODE_OF: Record<SteerShape, SteerMode> = { palm: "play", fist: "pause", v: "start", index: "end" };
+export const MODE_OF: Record<SteerShape, SteerMode> = { palm: "palm", fist: "fist", v: "start", index: "end" };
 
 /** What the knob's movement is applied to in a mode. */
 export function targetOf(mode: SteerMode): KnobTarget {
   return mode === "start" ? "start" : mode === "end" ? "end" : "playhead";
 }
 
-/** Whether the mode steers the playhead (and so decides play / pause), as opposed to a loop end. */
-export const isPlayheadMode = (mode: SteerMode): mode is "play" | "pause" => mode === "play" || mode === "pause";
+/** Whether the mode steers the playhead, as opposed to a loop end. */
+export const isPlayheadMode = (mode: SteerMode): mode is "palm" | "fist" => mode === "palm" || mode === "fist";
 
 export interface SteerModeState {
   /** The committed mode; null when not grabbed. */
@@ -68,13 +70,13 @@ export interface SteerModeStep {
 /**
  * One frame. `grabbed` false resets. `shape` is the left hand's shape this frame (null = not a steering
  * shape, or no hand: the mode simply holds). The first mode of a grab is taken at once (a grab starts with
- * a palm); after that a different shape must be stable for `modeDebounceMs`.
+ * a palm, V or index; clutch.ts); after that a different shape must be stable for `modeDebounceMs`.
  */
 export function stepSteerMode(prev: SteerModeState, input: { t: number; grabbed: boolean; shape: SteerShape | null }, debounceMs: number = STEER.modeDebounceMs): SteerModeStep {
   if (!input.grabbed) return { state: IDLE_STEER, mode: null, changed: false };
   const { t, shape } = input;
   if (prev.mode === null) {
-    // The grab begins: the shape that started it is the mode (a palm; without a usable shape, play).
+    // The grab begins: the shape that started it is the mode (without a usable shape, the palm).
     const mode = MODE_OF[shape ?? "palm"];
     return { state: { mode, pending: null, since: t }, mode, changed: true };
   }

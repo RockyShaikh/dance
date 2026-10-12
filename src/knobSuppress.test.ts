@@ -82,7 +82,7 @@ const open = (clawExt = 1.95): TestHand => ({ hand: "Right", shape: "None", palm
 
 describe("commands are suppressed while the knob is grabbed (claw, the default)", () => {
   it("a claw that the recognizer reads as an open palm, a V or an index does not fire its own command", () => {
-    for (const shape of ["Open_Palm", "Victory", "Pointing_Up"]) {
+    for (const shape of ["Open_Palm", "Closed_Fist", "Victory", "Pointing_Up"]) {
       const c = new Chain("claw");
       c.show(300, [open()]);
       c.show(3000, [{ hand: "Right", shape, palm: RIGHT_SIDE, clawExt: 1.45 }]); // curled in: grabbed
@@ -94,7 +94,7 @@ describe("commands are suppressed while the knob is grabbed (claw, the default)"
   it("the test has teeth: with suppression off the same claw does fire", () => {
     const c = new Chain("claw", DEFAULT_BOXES, false);
     c.show(300, [open()]);
-    c.show(3000, [{ hand: "Right", shape: "Open_Palm", palm: RIGHT_SIDE, clawExt: 1.45 }]);
+    c.show(3000, [{ hand: "Right", shape: "Closed_Fist", palm: RIGHT_SIDE, clawExt: 1.45 }]);
     expect(c.knob.grabbed).toBe(true);
     expect(c.fires.length).toBeGreaterThan(0);
   });
@@ -129,18 +129,18 @@ describe("commands are suppressed while the knob is grabbed (claw, the default)"
 
   it("commands work again after the grab ends, once the short block has passed", () => {
     const c = new Chain("pinch");
-    c.show(1000, [{ hand: "Right", shape: "Open_Palm", palm: RIGHT_SIDE, pinchRatio: 0.1 }]);
+    c.show(1000, [{ hand: "Right", shape: "Closed_Fist", palm: RIGHT_SIDE, pinchRatio: 0.1 }]);
     expect(c.fires).toEqual([]);
     c.show(1000, []); // let go
     expect(c.knob.grabbed).toBe(false);
-    c.show(1500, [{ hand: "Right", shape: "Open_Palm", palm: RIGHT_SIDE }]);
-    expect(c.fires.map((f) => f.shape)).toEqual(["Open_Palm"]);
+    c.show(1500, [{ hand: "Right", shape: "Closed_Fist", palm: RIGHT_SIDE }]);
+    expect(c.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
   });
 
   it("right after the release the block still holds, so a hand that lets go while open doesn't fire at once", () => {
     const c = new Chain("pinch");
-    c.show(500, [{ hand: "Right", shape: "Open_Palm", palm: RIGHT_SIDE, pinchRatio: 0.1 }]);
-    c.show(COMMANDS.suppressCooldownMs, [{ hand: "Right", shape: "Open_Palm", palm: RIGHT_SIDE, pinchRatio: 0.9 }]);
+    c.show(500, [{ hand: "Right", shape: "Closed_Fist", palm: RIGHT_SIDE, pinchRatio: 0.1 }]);
+    c.show(COMMANDS.suppressCooldownMs, [{ hand: "Right", shape: "Closed_Fist", palm: RIGHT_SIDE, pinchRatio: 0.9 }]);
     expect(c.fires).toEqual([]);
   });
 });
@@ -157,9 +157,9 @@ describe("two-hand clutch (left open palm starts the grab)", () => {
     expect(c.grabbedFrames).toBeGreaterThan(100);
   });
 
-  it("the test has teeth: without suppression the modifier palm fires", () => {
+  it("the test has teeth: without suppression a modifier V fires its mark", () => {
     const c = new Chain("twoHand", { Left: PRESETS.whole, Right: PRESETS.whole }, false);
-    c.show(4000, [modifier, steering()]);
+    c.show(4000, [{ ...modifier, shape: "Victory" }, steering()]);
     expect(c.fires.length).toBeGreaterThan(0);
   });
 

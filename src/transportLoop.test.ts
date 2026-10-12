@@ -163,7 +163,7 @@ function rig() {
   const wait = (ms: number) => show(ms, []);
   /** Starts the music and lets it play for `sec`. */
   const play = (sec: number) => {
-    gesture("Right", "Open_Palm");
+    gesture("Right", "Closed_Fist");
     wait(sec * 1000);
   };
   return {
@@ -182,37 +182,40 @@ function rig() {
 }
 
 describe("per-hand routing", () => {
-  it("right hand: open palm plays, then pauses, then resumes from the same spot", () => {
+  it("right hand: the fist plays, then pauses, then resumes from the same spot", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Open_Palm")]);
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Closed_Fist")]);
     expect(r.last().stateAfter).toBe("playing");
     expect(r.last().fire.hand).toBe("Right");
     r.wait(1500);
     const playedTo = r.player.currentTime;
     expect(playedTo).toBeGreaterThan(1);
-    r.gesture("Right", "Open_Palm");
+    r.gesture("Right", "Closed_Fist");
     expect(r.last().stateAfter).toBe("paused");
     const pausedAt = r.last().timeAfter;
     r.wait(2000);
     expect(r.player.currentTime).toBe(pausedAt);
-    r.gesture("Right", "Open_Palm");
+    r.gesture("Right", "Closed_Fist");
     expect(r.last().stateAfter).toBe("playing");
     expect(r.last().timeAfter).toBe(pausedAt);
   });
 
-  it("left hand: open palm toggles play/pause too", () => {
+  it("R4d: the left hand never plays or pauses by a command (open palm, fist: no fire, no cooldown); the right open palm is inert too", () => {
     const r = rig();
-    r.gesture("Left", "Open_Palm");
+    r.show(5000, [hand("Left", "Open_Palm")]);
+    r.show(5000, [hand("Left", "Closed_Fist")]);
+    r.show(5000, [hand("Right", "Open_Palm")]);
+    expect(r.fires).toHaveLength(0);
+    expect(r.player.state).toBe("ready");
+    r.play(1);
     expect(r.player.state).toBe("playing");
-    expect(r.last().fire.hand).toBe("Left");
-    r.wait(1500);
-    r.gesture("Left", "Open_Palm");
-    expect(r.player.state).toBe("paused");
+    r.show(5000, [hand("Left", "Open_Palm"), hand("Right", "Open_Palm")]);
+    expect(r.player.state).toBe("playing"); // nothing paused it
   });
 
-  it("holding open palm a long time fires once (does not flip-flop)", () => {
+  it("holding the fist a long time fires once (does not flip-flop)", () => {
     const r = rig();
-    r.show(8000, [hand("Right", "Open_Palm")]);
+    r.show(8000, [hand("Right", "Closed_Fist")]);
     expect(r.fires).toHaveLength(1);
     expect(r.player.state).toBe("playing");
   });
@@ -237,7 +240,7 @@ describe("per-hand routing", () => {
   it("right index up restarts a paused track and starts it", () => {
     const r = rig();
     r.play(2);
-    r.gesture("Right", "Open_Palm"); // pause
+    r.gesture("Right", "Closed_Fist"); // pause
     r.wait(1500);
     expect(r.player.state).toBe("paused");
     r.gesture("Right", "Pointing_Up");
@@ -276,17 +279,17 @@ describe("per-hand command boxes", () => {
   it("a shape counts only when that hand's palm is in that hand's box", () => {
     const r = rig();
     // The right hand in the LEFT half (the left hand's box) does nothing...
-    r.show(2000, [hand("Right", "Open_Palm", LEFT_AT)]);
+    r.show(2000, [hand("Right", "Closed_Fist", LEFT_AT)]);
     // ...and so does the left hand in the right half.
-    r.show(2000, [hand("Left", "Open_Palm", RIGHT_AT)]);
+    r.show(2000, [hand("Left", "Victory", RIGHT_AT)]);
     expect(r.fires).toHaveLength(0);
-    r.show(1000, [hand("Right", "Open_Palm", RIGHT_AT)]);
+    r.show(1000, [hand("Right", "Closed_Fist", RIGHT_AT)]);
     expect(r.fires).toHaveLength(1);
   });
 
   it("the left hand in the left half counts, in either of the halves it is not blocked by the right hand's box", () => {
     const r = rig();
-    r.show(1000, [hand("Left", "Open_Palm", LEFT_AT)]);
+    r.show(1000, [hand("Left", "Victory", LEFT_AT)]);
     expect(r.fires).toHaveLength(1);
     expect(r.fires[0].fire.hand).toBe("Left");
   });
@@ -300,7 +303,7 @@ describe("per-hand command boxes", () => {
 
   it("a hand that fired puts the other hand on cooldown too (one command at a time)", () => {
     const r = rig();
-    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Open_Palm")]);
+    r.show(COMMANDS.dwellMs + 3 * FRAME, [hand("Right", "Closed_Fist")]);
     expect(r.fires).toHaveLength(1);
     r.show(COMMANDS.cooldownMs - 400, [hand("Left", "Victory")]); // starts inside the cooldown: no dwell begins
     r.show(100, []);
@@ -391,7 +394,7 @@ describe("mark offset rules", () => {
   it("while PAUSED: the exact playhead, no offset", () => {
     const r = rig();
     r.play(3);
-    r.gesture("Right", "Open_Palm"); // pause
+    r.gesture("Right", "Closed_Fist"); // pause
     r.wait(1500);
     const pausedAt = r.player.currentTime;
     r.gesture("Left", "Victory");

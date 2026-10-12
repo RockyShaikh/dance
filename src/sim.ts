@@ -25,6 +25,8 @@ export interface SimHand {
   palm?: { x: number; y: number };
   /** Recognizer confidence. Default 0.9. */
   score?: number;
+  /** Which fingers are really out, as five bits T I M R P (e.g. "10001" is a shaka), instead of the label's own pose: the label can disagree with the fingers, as the model's does. */
+  fingers?: string;
   /** Turn the back of the hand to the camera. */
   away?: boolean;
   /** Thumb-tip to index-tip gap in palm sizes; omit for the shape's natural pose. */
@@ -74,7 +76,7 @@ const FINGERS: Record<string, string> = {
 export function simReading(s: SimHand): HandReading {
   const { width, height } = SIM_SIZE;
   const hand = s.hand ?? "Right";
-  const bits = FINGERS[s.shape] ?? "00000";
+  const bits = s.fingers ?? FINGERS[s.shape] ?? "00000";
   const spec = {
     hand,
     fingers: {

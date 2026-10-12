@@ -46,9 +46,9 @@ describe("classifySteerShape: the left hand as one of the four steering shapes",
 });
 
 describe("mode and target", () => {
-  it("palm = play, fist = pause (both the playhead), V = START, index = END", () => {
-    expect(MODE_OF).toEqual({ palm: "play", fist: "pause", v: "start", index: "end" });
-    expect([targetOf("play"), targetOf("pause"), targetOf("start"), targetOf("end")]).toEqual(["playhead", "playhead", "start", "end"]);
+  it("palm and fist both steer the playhead, V = START, index = END", () => {
+    expect(MODE_OF).toEqual({ palm: "palm", fist: "fist", v: "start", index: "end" });
+    expect([targetOf("palm"), targetOf("fist"), targetOf("start"), targetOf("end")]).toEqual(["playhead", "playhead", "start", "end"]);
   });
 });
 
@@ -74,11 +74,11 @@ class Run {
 }
 
 describe("stepSteerMode: the debounced mode of a held grab", () => {
-  it("the grab's first shape sets the mode at once (a grab starts with a palm)", () => {
+  it("the grab first shape sets the mode at once", () => {
     const r = new Run();
     r.show(FRAME, "palm");
-    expect(r.mode).toBe("play");
-    expect(r.changes).toEqual(["play"]);
+    expect(r.mode).toBe("palm");
+    expect(r.changes).toEqual(["palm"]);
   });
 
   it("not grabbed: no mode", () => {
@@ -91,10 +91,10 @@ describe("stepSteerMode: the debounced mode of a held grab", () => {
     const r = new Run();
     r.show(300, "palm");
     r.show(STEER.modeDebounceMs - 2 * FRAME, "fist");
-    expect(r.mode).toBe("play"); // not yet
+    expect(r.mode).toBe("palm"); // not yet
     r.show(3 * FRAME, "fist");
-    expect(r.mode).toBe("pause");
-    expect(r.changes).toEqual(["play", "pause"]);
+    expect(r.mode).toBe("fist");
+    expect(r.changes).toEqual(["palm", "fist"]);
   });
 
   it("a flicker of fist inside a held palm (1-2 frames) does NOT toggle play / pause", () => {
@@ -104,40 +104,40 @@ describe("stepSteerMode: the debounced mode of a held grab", () => {
       r.show(2 * FRAME, "fist");
       r.show(400, "palm");
     }
-    expect(r.changes).toEqual(["play"]);
-    expect(r.mode).toBe("play");
+    expect(r.changes).toEqual(["palm"]);
+    expect(r.mode).toBe("palm");
   });
 
   it("a flicker of palm inside a held fist does not resume either", () => {
     const r = new Run();
     r.show(300, "palm");
     r.show(400, "fist");
-    expect(r.mode).toBe("pause");
+    expect(r.mode).toBe("fist");
     for (let i = 0; i < 10; i++) {
       r.show(FRAME, "palm");
       r.show(400, "fist");
     }
-    expect(r.changes).toEqual(["play", "pause"]);
+    expect(r.changes).toEqual(["palm", "fist"]);
   });
 
   it("frames with no usable shape (null: a hand between shapes) keep the mode, and also restart the debounce", () => {
     const r = new Run();
     r.show(300, "palm");
     r.show(400, null);
-    expect(r.mode).toBe("play");
+    expect(r.mode).toBe("palm");
     // fist, a gap, fist: the two stretches do not add up to a switch
     r.show(3 * FRAME, "fist");
     r.show(FRAME, null);
     r.show(3 * FRAME, "fist");
-    expect(r.mode).toBe("play");
+    expect(r.mode).toBe("palm");
     r.show(STEER.modeDebounceMs + 2 * FRAME, "fist");
-    expect(r.mode).toBe("pause");
+    expect(r.mode).toBe("fist");
   });
 
   it("V and index select START / END the same way, and palm <-> fist <-> V <-> index can chain without a release", () => {
     const r = new Run();
     r.show(300, "palm");
-    for (const [shape, mode] of [["v", "start"], ["index", "end"], ["fist", "pause"], ["palm", "play"], ["v", "start"], ["fist", "pause"]] as const) {
+    for (const [shape, mode] of [["v", "start"], ["index", "end"], ["fist", "fist"], ["palm", "palm"], ["v", "start"], ["fist", "fist"]] as const) {
       r.show(STEER.modeDebounceMs + 3 * FRAME, shape);
       expect(r.mode).toBe(mode);
     }
@@ -151,6 +151,6 @@ describe("stepSteerMode: the debounced mode of a held grab", () => {
     r.show(100, null, false);
     expect(r.mode).toBeNull();
     r.show(FRAME, "palm");
-    expect(r.mode).toBe("play");
+    expect(r.mode).toBe("palm");
   });
 });

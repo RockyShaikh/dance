@@ -13,6 +13,7 @@ export async function launch(port = 9333) {
       `--user-data-dir=${process.env.DANCE_E2E_PROFILE ?? "/tmp/dance-e2e-profile"}`,
       "--window-size=1400,900",
       "--autoplay-policy=no-user-gesture-required",
+      "--mute-audio",
       "--no-first-run",
       "about:blank",
     ],

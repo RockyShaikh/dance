@@ -12,7 +12,7 @@
  *    (the knob value would freeze meanwhile), then releases.
  */
 import { contains, type Box, type Vec2 } from "./box";
-import type { ClutchConfig } from "./config";
+import { STEER, type ClutchConfig } from "./config";
 import type { Handedness } from "./hand";
 import type { SteerShape } from "./steerMode";
 
@@ -132,7 +132,8 @@ function steerShapeOf(h: ClutchHand, cfg: ClutchConfig): SteerShape | null {
 /**
  * Two-hand (the steering wheel): the hand on the modifier side of the screen is held up while the other hand
  * (the "steering" hand) is present. Hands are told apart by screen side, not by the model's left/right label
- * (which can flip). To START, the modifier shows an open palm and the steering hand's palm centre is in the box.
+ * (which can flip). To START, the modifier shows an open palm, V or index (R4d; `STEER.startShapes`: not a fist,
+ * which a loose hand at rest also looks like, and a fist pauses the music) and the steering hand's palm centre is in the box.
  * Once started, the grab holds while the modifier shows ANY steering shape (palm, fist, V, index: R4c, they pick
  * the mode and must not release the grab) and the steering hand may be anywhere. A modifier that shows none of
  * them, or goes missing, releases after the grace period.
@@ -145,7 +146,7 @@ function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly Cl
   if (roles) {
     const shape = steerShapeOf(roles.modifier, cfg);
     present = shape !== null;
-    startOk = shape === "palm" && contains(boxes[roles.steering.hand], roles.steering.palm);
+    startOk = shape !== null && STEER.startShapes.includes(shape) && contains(boxes[roles.steering.hand], roles.steering.palm);
   }
   if (!s.grabbed) {
     s.grabbed = startOk;
