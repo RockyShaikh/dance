@@ -97,3 +97,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Loop wrap with HTMLAudioElement is timer-based** and may sound loose at the loop point | risk | Check by ear in R4; fallback is a Web Audio engine behind the same `AudioPlayer` interface |
 | **R3 makes Pointing_Up fire on ring-fill** (`PRACTICE.holdShapes` override) | risk | R4 must remove it to restore tap vs hold |
 | **Chrome needs one click/key before gesture-started audio** (handled with a hint; non-Chrome wording untested) | unresolved | Surfaced in R3 |
+| **Loop marks and Bluetooth/output latency**: should marks subtract the audio output delay? | unresolved | Surfaced by the tutor 2026-10-12; matters with Bluetooth speakers |
+| **Two-hand grab vs open palm**: with the whole-frame box, the open palm used as the two-hand modifier also toggles play/pause | risk | Surfaced 2026-10-12; relevant to R4b (suppress commands while grabbed) |
+| **Seek gap not measured on the user's machine** | unresolved | Check during R4a ear test |

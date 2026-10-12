@@ -234,6 +234,27 @@ dl.read dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabula
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .hint { font-size: 13px; color: var(--muted); }
 
+/* latency lab (R3) */
+.latlab { border: 1px solid var(--browser); border-radius: 10px; background: var(--tint-browser); padding: 18px; display: grid; gap: 14px; scroll-margin-top: 16px; }
+.latlab-grid { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 16px; align-items: start; }
+@media (max-width: 840px) { .latlab-grid { grid-template-columns: minmax(0, 1fr); } }
+.latlab .slider { grid-template-columns: 130px minmax(0, 1fr) 58px; }
+.latlab .slider input { accent-color: var(--browser); }
+.latlab button.opt[aria-pressed="true"] { background: var(--browser); border-color: var(--browser); }
+.latread { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.biggap { font-family: var(--f-display); font-weight: 700; font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.biggap small { font-family: var(--f-mono); font-size: 1rem; font-weight: 500; color: var(--muted); }
+.pill.good { color: var(--ok); } .pill.meh { color: var(--warn); } .pill.late { color: var(--bad); }
+#lt-chart { display: block; width: 100%; min-width: 560px; height: auto; }
+#lt-chart .axis { font-family: var(--f-mono); font-size: 11px; fill: var(--muted); }
+#lt-chart .grid { stroke: var(--line); stroke-width: 1; }
+#lt-chart .seglbl { font-family: var(--f-mono); font-size: 10.5px; fill: var(--ink); }
+#lt-chart .lane { font-family: var(--f-body); font-size: 13px; font-weight: 600; fill: var(--ink); }
+#lt-chart .thr { stroke: var(--bad); stroke-width: 1.4; stroke-dasharray: 5 4; }
+#lt-chart .thrlbl { font-family: var(--f-mono); font-size: 11px; fill: var(--bad); }
+#lt-chart .end { stroke: var(--ink); stroke-width: 2; }
+.latlab .legend i { border: 1px solid var(--line); }
+
 /* glossary + code + questions */
 dl.gloss { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 0 32px; margin: 0; }
 dl.gloss div { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 2px; }
@@ -270,6 +291,9 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
       <a class="sub" href="#autoplay">Autoplay policy</a>
       <a class="sub" href="#mainthread">Main thread and stutter</a>
       <a class="sub" href="#stretch">Preview: time-stretch (R5)</a>
+      <a href="#r4">Preview: R4</a>
+      <a class="sub" href="#loopwrap">Loop wrap timing</a>
+      <a class="sub" href="#later">Rate vs position</a>
       <a href="#r2">R2 as built</a>
       <a class="sub" href="#r2answers">Answers from the code</a>
       <a class="sub" href="#fsm">State machines</a>
@@ -286,7 +310,6 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
       <a class="sub" href="#chords">Pseudo-chords</a>
       <a class="sub" href="#camera">Camera pipeline</a>
       <a class="sub" href="#tooling">Vite, TypeScript, Vitest</a>
-      <a class="sub" href="#later">Later: R4–R5</a>
       <a href="#glossary">Glossary</a>
       <a href="#code">Where in the code</a>
       <a href="#questions">Suggested questions</a>
@@ -473,6 +496,392 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
       </figure>
     </section>
 
+    <!-- R3 -->
+    <section class="block" id="r3">
+      <div class="section-intro">
+        <span class="eyebrow">Checkpoint R3 · done · merged, tag r3-done</span>
+        <h2>R3: music under your hand</h2>
+        <p>R2 ends with a <code>FireEvent</code>: <code>{ t, shape, kind }</code>. R3 turns that into sound: load a local track, open palm plays and pauses, index up restarts from 0:00, with a big status word and a moving playhead. The hard part isn't calling <code>play()</code>. It's knowing what happens between that call and your ears, and what the browser does and doesn't allow. R3 is merged to main, so the pointers below are real files and lines.</p>
+      </div>
+
+      <div class="facts">
+        <div class="fact"><span class="k">Engine</span><p>An <code>HTMLAudioElement</code>, wrapped by <code>src/audioPlayer.ts</code>. Its header (L5–14) gives the reasons: decoding runs off the main thread, and <code>preservesPitch</code> covers R5.</p></div>
+        <div class="fact"><span class="k">One code path</span><p>Gestures, keys (Space, R, Home) and buttons all go through <code>runTransport</code> in <code>src/transport.ts</code> (L32–42). <code>actionForFire</code> (L13–22) maps open palm to toggle and index up to restart.</p></div>
+        <div class="fact"><span class="k">Measured</span><p>In the dev build, the element's audio event arrives <b>2–8 ms</b> after the frame where the ring filled (<code>recordTiming</code>, <code>main.ts:138–142</code>). That's the command reaching the element, not yet the sound reaching your ears; see Latency below.</p></div>
+        <div class="fact"><span class="k">Browser rule</span><p>Chrome needs one click or key press before a gesture can start audio. R3 detects that and shows a hint (<code>practice.ts:16</code>, L101–104).</p></div>
+      </div>
+
+      <!-- AUDIO API -->
+      <article class="concept" id="audioapi">
+        <div class="concept-head">
+          <span class="tag browser">R3 · The browser's audio</span>
+          <h3>Two ways to play a file: the audio element and Web Audio</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>An MP3 is compressed: a stream of small frames that must be decoded into raw samples (numbers between −1 and 1, 44,100 or 48,000 per second per channel) before a speaker can play them. Something has to read the file, decode it, keep the speaker fed without gaps, and let you pause and jump around.</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Decode the whole file yourself in JavaScript and push samples to the speaker from the frame loop. The speaker needs a fresh chunk every few milliseconds. The frame loop runs every 33 ms and sometimes stalls for 40 ms inside the model. Every stall is an audible gap.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p>Browsers give you two finished answers. Both keep the speaker fed from a separate audio thread, so your code only sends commands.</p>
+            <div class="tablewrap"><table class="lm">
+              <thead><tr><th></th><th><code>&lt;audio&gt;</code> / <code>HTMLAudioElement</code></th><th>Web Audio API</th></tr></thead>
+              <tbody>
+                <tr><td>Load</td><td><code>audio.src = URL.createObjectURL(file)</code>. The browser streams from the file and decodes a little ahead of the playhead.</td><td><code>ctx.decodeAudioData(await file.arrayBuffer())</code> decodes the <i>whole</i> track up front into an <code>AudioBuffer</code>: plain float arrays in memory.</td></tr>
+                <tr><td>Memory</td><td class="n">a few MB</td><td>4 bytes × 2 channels × 48,000 × seconds. A 3:30 song is about <b>80 MB</b>.</td></tr>
+                <tr><td>Play / pause</td><td><code>play()</code> (returns a Promise), <code>pause()</code></td><td>An <code>AudioBufferSourceNode</code> plays <b>once</b>. Pause = <code>stop()</code> and remember the position; resume = a new node with <code>start(0, offset)</code>.</td></tr>
+                <tr><td>Seek</td><td><code>audio.currentTime = 0</code>, asynchronous (<code>seeking</code> → <code>seeked</code> events)</td><td>Pick the offset in <code>start(when, offset)</code>, exact to the sample</td></tr>
+                <tr><td>Clock</td><td><code>currentTime</code>; the <code>timeupdate</code> event fires only about every 250 ms in Chrome</td><td><code>ctx.currentTime</code>, the audio hardware's own clock, advancing in 128-sample steps</td></tr>
+                <tr><td>Loop a section</td><td>Only the whole file (<code>loop</code>). A section loop means watching the time and seeking back yourself</td><td><code>loopStart</code> / <code>loopEnd</code> on the node: seamless, handled on the audio thread</td></tr>
+                <tr><td>Speed</td><td><code>playbackRate</code> with <code>preservesPitch</code> on by default: pitch stays put</td><td><code>playbackRate</code> resamples: faster = higher pitch</td></tr>
+              </tbody>
+            </table></div>
+            <p>They can also be combined: <code>ctx.createMediaElementSource(audio)</code> routes an audio element into a Web Audio graph, so you get streaming and pitch-preserved speed plus Web Audio effects. Section loops still have to be done by seeking.</p>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3 picked the <b>audio element</b> (<code>audioPlayer.ts:5–14</code>, created at L169–176 with <code>preload = "auto"</code> and an object URL for the file). The comment names the cost honestly: "R4's loop wrap is checked from a timer, not sample-exact. If that proves audibly loose, a Web Audio engine can replace this behind the same interface." That interface is the class's small API (<code>play</code>, <code>pause</code>, <code>toggle</code>, <code>seek</code>, events), and the element itself is injected as <code>MediaLike</code> (L20–31), so the tests in <code>audioPlayer.test.ts</code> drive a fake one. The R4 preview below picks up the loop-wrap question.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Element:</b> low memory, instant start on a long file, pitch-preserved speed for free. Loose control over timing: seeks take a moment, and section loops overshoot by however late your code notices the end.</li>
+            <li><b>Web Audio:</b> exact timing, gapless loops, everything on one clock. Costs a decode wait on load (around a second for a song) and tens of MB of memory. Pitch-preserved speed needs a library.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Suppose R3 had used Web Audio. You pause at 1:12.4 by calling <code>stop()</code> on the source node. Later you call <code>start()</code> on that same node to resume. What happens, and what should the code do instead?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>The browser throws an <code>InvalidStateError</code>: a buffer source node can only be started once. The code should create a new <code>AudioBufferSourceNode</code> on the same decoded buffer and call <code>start(0, 72.4)</code>. Nodes are cheap; the 80 MB buffer is shared and never decoded again. So "pause" in Web Audio is really "stop, and remember where".</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- LATENCY -->
+      <article class="concept" id="latency">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Timing</span>
+          <h3>Audio latency: from "ring full" to sound in your ears</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Roadmap R3's done means says "music reacts as soon as the ring completes, with no noticeable extra delay." To check that, you have to know where delay can come from, and turn "noticeable" into a number.</p></div></div>
+          <div class="step"><div class="k">Naive view</div><div class="v"><p>"<code>play()</code> runs, sound comes out." In reality, the audio thread renders samples into a buffer slightly ahead of the speaker, and the device adds its own buffering on top. A sample written now is heard later, by an amount that depends mostly on the output device.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p>Split the time into what happens before the fire and what happens after it.</p>
+            <ol>
+              <li><b>Before the fire (deliberate).</b> You hold the shape for the 0.6 s dwell. Each frame also arrives a camera frame late (about 33–50 ms) and spends one model call (10–40 ms) being read. The ring shows all of this, so it reads as "the system is confirming", not as lag.</li>
+              <li><b>The fire.</b> <code>stepCommands</code> returns a <code>FireEvent</code> on the frame where the ring fills. In the same JavaScript task, the R3 transport calls <code>play()</code> or <code>start()</code>. That step costs well under a millisecond.</li>
+              <li><b>Audio thread.</b> The audio thread works in chunks of 128 samples (a render quantum: 2.7 ms at 48 kHz). A start command takes effect at the next chunk.</li>
+              <li><b>Output buffer.</b> The browser keeps a few chunks queued so the speaker never runs dry. Web Audio reports this as <code>ctx.baseLatency</code>, typically a few to about 20 ms.</li>
+              <li><b>Device.</b> <code>ctx.outputLatency</code> is the operating system's estimate from there to the speaker. Built-in speakers and wired outputs add around 10–30 ms. A <b>Bluetooth</b> speaker compresses audio into packets and buffers them against radio dropouts, which typically adds 150–300 ms.</li>
+              <li><b>Air.</b> Sound travels 343 m/s: about 3 ms per metre.</li>
+            </ol>
+            <p><b>What "noticeable" means.</b> Your eyes see the ring complete after the next screen refresh and the display's own delay, roughly 20–40 ms after the fire. So the delay you feel is the <i>gap</i> between the ring filling on screen and the music starting. Broadcast standards (ITU-R BT.1359) put the point where people detect sound lagging the picture at around 125 ms. For a trigger like this, staying under about 50 ms feels instant. Wired output keeps the gap near zero. Bluetooth alone usually goes past 125 ms.</p>
+            <p><b>Making it measurable.</b> Log timestamps per command, all on the <code>performance.now()</code> clock. R3 does the first part in dev builds: <code>recordTiming</code> (<code>main.ts:138–142</code>) stores the frame time when the ring filled, when the transport was called and when it returned, and every player event is time-stamped (<code>main.ts:145–149</code>). That's where the measured <b>2–8 ms</b> comes from: frame to the element's <code>play</code> event. It stops at the element. Steps 4–6 (buffer, device, air) happen after it and aren't in that number. The browser can estimate them (<code>AudioContext.outputLatency</code>, which "Measure this device" in the lab reads), but only an outside check proves them: film the laptop with a phone in slow motion (240 fps = 4 ms per frame) and count frames between the ring filling and the sound in the video's audio track.</p>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">The fire is handled before anything is logged or drawn (<code>main.ts:105–111</code>: "The music reacts on the very frame the ring completes"), and the transport call is synchronous, so steps 2–3 are as small as they can be. Spec §2: laptop or external speakers. The Bluetooth delay is still an Unresolved thread in the wish list. There's no way to make sound arrive earlier than the device allows. In R4 it matters a second way: you hear the music late, so you also <i>mark</i> late, by the device delay on top of your reaction time. The spec's 0.15 s late-mark offset (§4.6) could then subtract <code>outputLatency</code> as well.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Smaller buffers</b> mean lower latency but a higher risk of running dry (an underrun: a click or dropout) when the machine is busy. Web Audio's default <code>latencyHint: "interactive"</code> picks the smallest buffer the system can sustain.</li>
+            <li><b>Bluetooth</b> trades latency for no cable. For drilling to music that's usually fine once it's playing; it's the start and the loop marks that feel late.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Same laptop, same code. You switch from the laptop speakers to a Bluetooth speaker. Which step in the chain changes, by roughly how much, and does the 0.6 s ring take any longer to fill?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Only the device step, by roughly 150–250 ms. The ring fills at exactly the same moment, since nothing before the fire touched audio. What changes is the silence after it: the ring completes, then about a fifth of a second passes before the music starts. Try it in the lab below.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- LATENCY LAB -->
+      <div class="latlab" id="latlab" aria-label="Latency lab">
+        <div class="section-intro">
+          <h3 style="font-size:1.15rem">Latency lab: when do you see it, when do you hear it?</h3>
+          <p class="hint">Time 0 is the frame where <code>stepCommands</code> fires. The top bar is your eyes, the bottom bar is your ears. The "to element" segment uses R3's measured 2–8 ms (midpoint 5). The rest are typical values, not measurements of your setup, until you press "Measure this device", which reads your browser's own estimates for the buffer and device steps.</p>
+        </div>
+        <div class="latlab-grid">
+          <div class="controls">
+            <div class="row"><span class="lbl">Output</span>
+              <button class="opt" id="lt-dev-lap" aria-pressed="true">Laptop speakers</button>
+              <button class="opt" id="lt-dev-wire" aria-pressed="false">Wired speaker</button>
+              <button class="opt" id="lt-dev-bt" aria-pressed="false">Bluetooth speaker</button>
+            </div>
+            <div class="row"><span class="lbl">Audio path</span>
+              <button class="opt" id="lt-path-res" aria-pressed="true">R3 element: play/pause</button>
+              <button class="opt" id="lt-path-seek" aria-pressed="false">R3 element: restart</button>
+              <button class="opt" id="lt-path-wa" aria-pressed="false">Web Audio buffer</button>
+            </div>
+            <label class="slider" for="lt-dist">Speaker distance <input type="range" id="lt-dist" min="0.5" max="5" step="0.5" value="2"><output id="lt-dist-o">2.0 m</output></label>
+            <label class="slider" for="lt-model">Model call <input type="range" id="lt-model" min="10" max="60" step="5" value="25"><output id="lt-model-o">25 ms</output></label>
+            <div class="row">
+              <button class="play" id="lt-measure">Measure this device</button>
+              <span class="hint" id="lt-measure-note">Plays a short click and reads <code>baseLatency</code> and <code>outputLatency</code>.</span>
+            </div>
+          </div>
+          <div class="latread">
+            <div class="eyebrow">Gap you feel</div>
+            <div class="biggap"><span id="lt-gap">13</span><small> ms</small></div>
+            <span class="pill" id="lt-verdict">feels instant</span>
+            <dl class="read">
+              <dt>ring seen</dt><dd id="lt-eye">20 ms</dd>
+              <dt>sound heard</dt><dd id="lt-ear">33 ms</dd>
+              <dt>since shape made</dt><dd id="lt-total">0.70 s</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="chartwrap"><svg id="lt-chart" viewBox="0 0 760 210" role="img" aria-label="Two bars from the fire moment: when the ring is seen on screen and when the sound is heard, with each delay as a segment"></svg></div>
+        <div class="legend" id="lt-legend"></div>
+        <p class="hint" id="lt-before"></p>
+      </div>
+
+      <!-- SEEK -->
+      <article class="concept" id="seek">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Timing</span>
+          <h3>Seeking: how exactly can you land on a moment?</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Restart means "jump to 0:00 and play". R4 will mean "jump to 1:31.20 and play", over and over. How precisely does a jump land, and how long does it take?</p></div></div>
+          <div class="step"><div class="k">Naive view</div><div class="v"><p>"Time 91.2 s is just a position in the file." That's true only for uncompressed audio. In a compressed file, the browser has to work out where 91.2 s starts.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>WAV</b> is raw samples after a short header. The byte for time t is <code>header + t × sampleRate × channels × bytesPerSample</code>. The jump is exact and instant.</li>
+              <li><b>MP3</b> is a chain of frames of 1,152 samples each (26 ms at 44.1 kHz). In a <b>constant-bitrate</b> file every frame is the same size, so the arithmetic still works, to the frame. In a <b>variable-bitrate</b> file, frame sizes differ. The browser relies on a small table in the header (often only 100 entries, one per 1% of the song) or scans the file. Depending on the browser, a VBR seek can land slightly off.</li>
+              <li><b>Encoder delay.</b> MP3 encoders put a few dozen milliseconds of silence at the very start. A restart to 0:00 includes it. Harmless for R3.</li>
+              <li><b>Decoded buffer (Web Audio).</b> Once the track is decoded, time is an array index: 91.2 s × 48,000 = sample 4,377,600. Exact to a 48,000th of a second, with no decoding at seek time.</li>
+              <li><b>Seek time.</b> An element seek is asynchronous: it finds the frame, refills the decoder and resumes. On a local file that's usually tens of milliseconds, and it adds directly to the "gap you feel". A buffer-source start costs nothing extra.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3 restarts with <code>player.seek(0)</code> then <code>play()</code> (<code>transport.ts:39–40</code>). <code>seek</code> clamps to the track and sets <code>currentTime</code> (<code>audioPlayer.ts:160–165</code>). 0:00 is exact in every format. Precision starts to matter in R4: the loop start is mid-song, you jump to it on every repeat, and "looping from end back to start is clean (no noticeable gap or overshoot)" is a done-means line.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li>Decoding up front buys exact, instant seeks with a wait on load and tens of MB of memory.</li>
+            <li>Streaming buys a quick start with seeks that are fast enough for a restart but loose for tight loops.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Your track is a variable-bitrate MP3, played through the audio element as in R3. Is the R3 restart to 0:00 affected by VBR seeking? What about an R4 loop start at 1:31.20?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>0:00 is always exact: it's the first frame, with no estimating needed. 1:31.20 is mid-file, so the browser has to locate it, and with a coarse table it may land a little off and take a moment. A decoded Web Audio buffer would land exactly on sample 4,377,600 (at 48 kHz) with no wait.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- AUTOPLAY -->
+      <article class="concept" id="autoplay">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Browser rules</span>
+          <h3>The autoplay policy: why the page needs one click first</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Web pages that blast sound the moment they open are hostile, so browsers block audible playback until the person has actually interacted with the page. Dance wants to be hands-free. Where does that leave the first play?</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Call <code>play()</code> when the first open-palm gesture fires. The ring fills, the banner shows, and there's silence. <code>play()</code>'s Promise rejects with <code>NotAllowedError</code>, or the <code>AudioContext</code> sits in the <code>"suspended"</code> state.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>User activation.</b> The browser keeps a per-page flag that only real input events set: a key press, a mouse button press, a tap. The events must be trusted: produced by the operating system, never by script. Once set, Chrome keeps this "sticky" activation for the life of the page.</li>
+              <li><b>The camera doesn't count.</b> To the browser, a gesture Dance recognizes is just JavaScript calling <code>play()</code>, with no input event behind it. Neither does mouse movement, scrolling, or a drag-and-drop from Finder (the mouse press happened in Finder, not in the page).</li>
+              <li><b>Web Audio</b>: a context created before any activation starts <code>"suspended"</code>, and <code>ctx.resume()</code> works only after one. <b>Element</b>: <code>play()</code> returns a rejected Promise until then.</li>
+              <li>Chrome sometimes relaxes the rule for sites where you play a lot of media (the Media Engagement Index), so behaviour can differ between your profile and a fresh one. Don't rely on it.</li>
+            </ul>
+            <div class="pre"><span class="c">// R2 does this for its beeps (src/sound.ts:8–15, src/bench.ts:63–65)</span>
+document.addEventListener("pointerdown", unlock);
+document.addEventListener("keydown", unlock);
+function unlock() { ctx ??= new AudioContext(); if (ctx.state === "suspended") ctx.resume(); }</div>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3 handles it in two places. <code>AudioPlayer.play()</code> catches the rejection and turns <code>NotAllowedError</code> into a <code>"blocked"</code> event; <code>AbortError</code> (a pause arrived first) is ignored (<code>audioPlayer.ts:126–139</code>). <code>Practice</code> checks <code>navigator.userActivation.hasBeenActive</code> when a track loads (<code>practice.ts:101–104</code>) and shows "Click anywhere on the page once, so Chrome lets your hand start the music" (L16) until the first pointer or key press clears it (L67–73). Clicking "Open track" sets the activation itself; a drag-and-drop doesn't, which is exactly the case the hint covers. Non-Chrome wording is untested (wish list).</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li>One click per page load costs almost nothing, since you're at the laptop to pick the track anyway.</li>
+            <li>Failure mode: the gesture looks like it worked (ring, banner) but no sound plays. Without an on-screen message, it looks like an audio bug.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>You open Dance, drag a track from Finder onto the page, step back to your spot and show an open palm in the box. You haven't clicked or pressed anything in the page. What happens?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>The ring fills and the gesture fires, but there's no sound: a drop isn't an activation-triggering event, so <code>play()</code> rejects with <code>NotAllowedError</code>. In R3 you'd already have seen the hint, because <code>hasBeenActive</code> was false when the track loaded. The player emits <code>"blocked"</code>, so the hint stays up. One click or key press anywhere fixes it for the rest of the session.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- MAIN THREAD -->
+      <article class="concept" id="mainthread">
+        <div class="concept-head">
+          <span class="tag browser">R3 · Threads</span>
+          <h3>One main thread, two jobs: where stutter comes from</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>The roadmap warns: "watch for audio stutter while the hand model runs every frame." To know whether that's a real risk, you need to know which thread does what.</p></div></div>
+          <div class="step"><div class="k">Naive view</div><div class="v"><p>"JavaScript is single-threaded, so while the model runs, the music must stop." That's half right. Your code runs on one thread, but the browser renders audio somewhere else.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>The main thread</b> runs one task at a time: your frame callback, input events, layout, painting. <code>recognizeForVideo</code> is synchronous (<code>main.ts:265</code>), so the page is busy for its whole duration, 10–40 ms per frame. Nothing else on the main thread runs in that time.</li>
+              <li><b>The audio thread</b> is a separate high-priority thread that pulls samples from the already-decoded buffer or the element's decoder and hands them to the output buffer, chunk by chunk. It doesn't wait for the main thread. A track that is already playing keeps playing smoothly through a 40 ms model call, and even through a 300 ms freeze.</li>
+              <li><b>What does suffer</b> is anything that needs the main thread at a precise moment:
+                <ol>
+                  <li><i>Commands land late.</i> A key press during a model call waits for it to finish. A gesture fire is computed right after the call, so it doesn't wait twice.</li>
+                  <li><i>Loops timed from the main thread.</i> "Check <code>currentTime</code> every frame; if past the loop end, seek back" overshoots by up to a frame plus a model call. With <code>timeupdate</code> it can be 250 ms. That's the R4 concern previewed below. Web Audio's <code>loopEnd</code>, or scheduling ahead on the audio clock with <code>start(when)</code>, avoids it.</li>
+                  <li><i>Audio processing on the wrong thread.</i> The old <code>ScriptProcessorNode</code> ran your sample code on the main thread, and glitched whenever the page was busy. Its replacement, <code>AudioWorklet</code>, runs on the audio thread, but must finish each 128-sample chunk in time (2.7 ms at 48 kHz) or the buffer runs dry and you hear a click. That's the R5 time-stretch risk.</li>
+                  <li><i>The whole machine is overloaded.</i> Video decoding, the model on the GPU, and thermal throttling can, in bad cases, starve even the audio thread. Rare on a modern laptop.</li>
+                </ol>
+              </li>
+              <li><b>Visual stutter is separate.</b> The playhead and status word repaint only when the main thread is free. At 22 fps the playhead moves in steps, but the sound is still smooth.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3's play, pause and restart are one-off commands, so the main-thread cost is the measured 2–8 ms. The playhead is drawn the right way: <code>Practice</code> runs its own <code>requestAnimationFrame</code> loop (<code>practice.ts:75–79</code>) that reads <code>player.currentTime</code>, the audio element's own clock, on every repaint (<code>render</code>, L184–202), rather than counting frames. So a slow model call makes the playhead move in steps but never drift. If stutter shows up anyway, the bigger fix is moving the model into a Web Worker, so the main thread only paints and handles input.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Model on the main thread:</b> simple, and fine while the audio is a few commands. <b>In a worker:</b> frames have to be transferred between threads, and the code gets more complex.</li>
+            <li><b>Schedule ahead on the audio clock</b> for anything rhythmic (loops, count-ins). <b>React on the main thread</b> for one-off commands.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>The model call takes 40 ms per frame. A track is playing. Does the music stutter? What does get worse, and by how much?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>The music doesn't stutter: the audio thread keeps pulling samples on its own. The fps drops to about 22, so the playhead moves in visible steps. A key press can land up to 40 ms late. And if R4 did loops by checking <code>currentTime</code> once per frame, each repeat could overshoot the loop end by up to about 45 ms (one frame interval plus the model call), audibly different on every pass.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- STRETCH -->
+      <article class="concept" id="stretch">
+        <div class="concept-head">
+          <span class="tag tool">Preview · R5, not in R3</span>
+          <h3>Changing speed without chipmunks: pitch-preserving time-stretch</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>R5: turn the hand to slow the music down to 0.5× or speed it up to 1.25×, "pitch preserved" (roadmap R5, spec §9 Q3).</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Play the samples faster or slower (resampling). Every frequency scales with the speed: 1.25× raises the pitch by 12 × log₂(1.25) ≈ <b>3.9 semitones</b>; 0.5× drops it a full octave. That's the chipmunk effect, and it's what Web Audio's <code>playbackRate</code> does.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <ul>
+              <li><b>Grains.</b> Cut the audio into short overlapping windows, around 20–50 ms. Read them from the input at one spacing and lay them down in the output at another. Spacing them out makes the music longer without changing the waveform inside each grain, so the pitch stays the same.</li>
+              <li><b>The catch:</b> where two grains overlap, their waves may be out of step and partly cancel, which you hear as warble. <b>WSOLA</b> (waveform-similarity overlap-add) fixes that by sliding each new grain a few milliseconds to wherever it best lines up with what's already written, then crossfading. Chrome's audio element uses a WSOLA algorithm for <code>playbackRate</code> with <code>preservesPitch</code>.</li>
+              <li><b>Phase vocoder.</b> The other family: take each grain into the frequency domain (FFT), keep the strength of each frequency, and adjust their phases to match the new spacing. Smooth on sustained notes, but drum hits get smeared. High-end stretchers such as Rubber Band combine both and treat drum hits specially.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R3 picked the audio element partly for this (<code>audioPlayer.ts:10–12</code>), so R5 can set <code>playbackRate</code> and rely on <code>preservesPitch</code>. If R4 ever swaps in a Web Audio engine for tighter loops, R5 would need a stretcher library compiled to WebAssembly in an <code>AudioWorklet</code> (SoundTouch, Rubber Band), which brings back the "finish each chunk in 2.7 ms" risk from the threads section. That is the wish list's "live speed changes may clash with precise looping" thread. At the 1.0× detent, the element plays the file untouched.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li>Artifacts grow with distance from 1.0×. At 0.5× each grain is used about twice, and drum hits can sound doubled.</li>
+            <li>Built-in stretch is free but its quality is fixed. A library is configurable but costs CPU on the audio thread, plus licence terms to check.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>A song's main note is A at 440 Hz. At 0.8× with plain resampling, what frequency do you hear? With WSOLA, what frequency, and how long does a 3:00 song take?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Resampling: 440 × 0.8 = 352 Hz, about 3.9 semitones flat, and the song takes 3:45. WSOLA: still 440 Hz, and the song also takes 3:45. Both stretch time by 1 / 0.8 = 1.25; only WSOLA keeps the pitch.</p>
+          </div>
+        </details>
+      </article>
+    </section>
+
+    <!-- R4 PREVIEW -->
+    <section class="block" id="r4">
+      <div class="section-intro">
+        <span class="eyebrow">Checkpoint R4 · active · R4a on branch r4a-loops</span>
+        <h2>Preview: R4 loops and the knob</h2>
+        <p>R4 is split in two (roadmap, approved 2026-10-12). <b>R4a</b>, being built now on <code>r4a-loops</code>: mark a loop with V taps while the music plays, restart to the loop start, nudge the start with keys, and wrap from the end back to the start cleanly. <b>R4b</b>, next on <code>r4b-knob</code>: nudge the start by turning your hand, with claw as the default grab. Two ideas carry most of the weight. Look for the code in <code>src/</code> once R4a lands.</p>
+      </div>
+
+      <!-- LOOP WRAP -->
+      <article class="concept" id="loopwrap">
+        <div class="concept-head">
+          <span class="tag browser">R4a · Timing</span>
+          <h3>Loop wrap: why a timer-based seek overshoots, and how look-ahead helps</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>Done means for R4: "Looping from end back to start is clean (no noticeable gap or overshoot), repeatedly." With the R3 audio element, nothing in the browser jumps back for you. Your code has to notice the playhead reached the loop end and seek to the start.</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Listen for <code>timeupdate</code> and seek when <code>currentTime ≥ loopEnd</code>. Chrome fires <code>timeupdate</code> only about every 250 ms, so the music runs up to a quarter of a second past the end: an extra half-beat at 120 BPM, different on every pass.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p><b>Overshoot = how late the check notices + how long the seek takes.</b> A check that runs once per frame notices up to one frame late: 33 ms at 30 fps, 67 ms if a dim room drops the camera to 15 fps. If the check shares the main thread with a 25 ms model call, it can be that much later again. Then the seek itself leaves a short gap while the element finds the new spot and refills its decoder.</p>
+            <p><b>Look-ahead</b> moves the decision earlier. Each check asks "will the end arrive before my next check?" rather than "have I passed it?". If yes, it sets a one-shot timer for exactly the time left, <code>(loopEnd − currentTime) / playbackRate</code>. The timer usually fires within a millisecond or two of the end. Its limit is the main thread: if a model call is running when the timer is due, the timer waits for it.</p>
+            <p><b>Scheduling on the audio clock</b> removes the main thread from the timing altogether. Web Audio does this with <code>loopStart</code>/<code>loopEnd</code> on a buffer source, or with <code>start(when)</code> on the audio clock, fed by a coarse JavaScript timer that only has to wake up before the deadline (the "two clocks" pattern). The audio element has no equivalent for seeks. That's the tradeoff the comment in <code>audioPlayer.ts:13–14</code> names.</p>
+          </div></div>
+        </div>
+        <figure class="fig narrow">
+          <svg viewBox="0 0 720 262" role="img" aria-label="Four ways to wrap a loop, on a time axis from 60 ms before the loop end to 90 ms after it. timeupdate overshoots up to 250 ms. A per-frame check at 30 fps notices 16 ms late here, then a seek gap. Look-ahead fires a timer at the end, give or take a couple of milliseconds. Web Audio loopEnd is exact.">
+            <text class="t-lane" x="20" y="20">AROUND THE LOOP END · 4 PX = 1 MS · CHECKS EVERY 33 MS (30 FPS)</text>
+            <line x1="300" y1="30" x2="300" y2="226" style="stroke:var(--ours);stroke-width:2"/>
+            <text class="t-mono t-ours" x="306" y="40">loop end</text>
+
+            <text class="t-head" x="20" y="62" style="font-size:13px">timeupdate</text>
+            <rect x="60" y="70" width="600" height="14" rx="3" style="fill:var(--tint-browser);stroke:var(--line)"/>
+            <rect x="300" y="70" width="360" height="14" style="fill:color-mix(in srgb, var(--bad) 30%, transparent)"/>
+            <text class="t-sub" x="520" y="62">overshoot up to 250 ms →</text>
+
+            <text class="t-head" x="20" y="110" style="font-size:13px">Check every frame</text>
+            <rect x="60" y="118" width="600" height="14" rx="3" style="fill:var(--tint-browser);stroke:var(--line)"/>
+            <rect x="300" y="118" width="64" height="14" style="fill:color-mix(in srgb, var(--bad) 30%, transparent)"/>
+            <rect x="364" y="118" width="80" height="14" style="fill:var(--paper);stroke:var(--muted);stroke-dasharray:3 3"/>
+            <line x1="100" y1="114" x2="100" y2="136" style="stroke:var(--ink);stroke-width:1.5"/>
+            <line x1="232" y1="114" x2="232" y2="136" style="stroke:var(--ink);stroke-width:1.5"/>
+            <line x1="364" y1="114" x2="364" y2="136" style="stroke:var(--ink);stroke-width:2.5"/>
+            <text class="t-sub" x="370" y="110">sees "past end" → seek; gap</text>
+
+            <text class="t-head" x="20" y="158" style="font-size:13px">Look-ahead timer</text>
+            <rect x="60" y="166" width="600" height="14" rx="3" style="fill:var(--tint-browser);stroke:var(--line)"/>
+            <line x1="232" y1="162" x2="232" y2="184" style="stroke:var(--ink);stroke-width:2.5"/>
+            <path class="arrow-back" d="M232 173 H296"/>
+            <rect x="300" y="166" width="8" height="14" style="fill:color-mix(in srgb, var(--warn) 45%, transparent)"/>
+            <rect x="308" y="166" width="80" height="14" style="fill:var(--paper);stroke:var(--muted);stroke-dasharray:3 3"/>
+            <text class="t-sub" x="150" y="158">"end in 17 ms" → timer</text>
+            <text class="t-sub" x="396" y="178">seek gap remains (element)</text>
+
+            <text class="t-head" x="20" y="206" style="font-size:13px">Web Audio loopEnd</text>
+            <rect x="60" y="214" width="240" height="14" rx="3" style="fill:var(--tint-browser);stroke:var(--line)"/>
+            <rect x="300" y="214" width="360" height="14" rx="3" style="fill:var(--tint-ours);stroke:var(--ours)"/>
+            <text class="t-sub" x="310" y="246">back at loop start on the exact sample, no gap</text>
+            <text class="t-mono" x="60" y="252">−60 ms</text>
+            <text class="t-mono" x="610" y="252">+90 ms</text>
+          </svg>
+          <figcaption>Teal bars are the music before the end. Red is music played past the loop end (overshoot). Dashed boxes are the seek gap, which is shown at an assumed 20 ms; measure it on your machine. Vertical ticks are the per-frame checks.</figcaption>
+        </figure>
+        <div class="steps">
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R4a keeps the R3 audio element, so expect a per-frame check, ideally with look-ahead. Things to look for in the R4a code: where the check runs (the camera's frame callback, the practice view's <code>requestAnimationFrame</code> loop, or a timer), whether it divides by <code>playbackRate</code> (R5 will change it), and whether R4a logs the actual wrap time against <code>loopEnd</code>, like R3's <code>recordTiming</code>. If clean wraps can't be had by ear, the escape hatch is a Web Audio engine behind the same <code>AudioPlayer</code> interface.</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Element + look-ahead:</b> keeps streaming and built-in pitch-preserved speed. Wraps are close but not sample-exact, and still have a seek gap.</li>
+            <li><b>Web Audio:</b> exact, gapless wraps; costs the decode wait, memory, and a time-stretch library for R5.</li>
+            <li><b>Failure mode:</b> a check that lives only in <code>requestAnimationFrame</code> stops when the window is hidden or minimized, and the music runs straight past the loop end.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>R4a checks the loop end once per camera frame, with no look-ahead. The room gets dim and the camera drops to 15 fps. What happens to the worst-case overshoot? Would look-ahead still help?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Worst case doubles, from about 33 ms to about 67 ms past the end, plus the seek gap, and it varies from pass to pass, which the ear notices more than a constant offset. Look-ahead still helps: at the last check before the end, it sees "end in under 67 ms" and sets a timer for the exact remainder, so the frame rate stops mattering. Only a model call that happens to be running when the timer is due can delay it.</p>
+          </div>
+        </details>
+      </article>
+
+      <!-- RATE VS POSITION -->
+      <article class="concept" id="later">
+        <div class="concept-head">
+          <span class="tag ours">R4b · The knob</span>
+          <h3>Rate vs position control: how turning becomes a value</h3>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="k">Problem</div><div class="v"><p>R4b turns a hand tilt into a nudge of the loop start (R5 reuses it for speed). Your wrist tilts maybe 60–80° each way (spec §5.1). How should an angle map onto seconds so it's quick, precise, and never runs out of wrist?</p></div></div>
+          <div class="step"><div class="k">Naive fix</div><div class="v"><p>Map the angle straight to the value: 1° = 0.1 s. Fine for a few seconds of nudge, but every pixel of landmark jitter moves the marker, and a bigger range needs a bigger sweep than the wrist has.</p></div></div>
+          <div class="step"><div class="k">Mechanism</div><div class="v">
+            <p>The tilt is the angle of the wrist → middle-knuckle needle from straight up (spec §5.3), <code>atan2</code> of that vector. The clutch (claw by default, roadmap R4) says when the angle counts. Then one of four mappings (spec §5.4):</p>
+            <div class="tablewrap"><table class="lm">
+              <thead><tr><th>Mapping</th><th>Each frame</th><th>Runs out?</th></tr></thead>
+              <tbody>
+                <tr><td>Position (absolute wiper)</td><td><code>value = f(angle)</code></td><td>yes: the whole range must fit one sweep</td></tr>
+                <tr><td>Relative + ratchet</td><td><code>value = v₀ + k·(angle − angle₀)</code>, from the grab</td><td>re-grab to go further</td></tr>
+                <tr><td>Rate (spring-loaded joystick)</td><td><code>value += gain·(angle − centre)·dt</code>, zero inside a dead zone</td><td>never</td></tr>
+                <tr><td>Jog (circling)</td><td><code>value += k·Δangle</code>, unwrapped around ±180°</td><td>never</td></tr>
+              </tbody>
+            </table></div>
+            <ul>
+              <li><b><code>dt</code> is the clock lesson again.</b> Without the time since the last frame, the joystick moves twice as fast at 60 fps as at 30. Same reason R2 times the dwell by clock, not by frames (<code>commands.test.ts:436</code>).</li>
+              <li><b>Rate control integrates.</b> Small jitter in the angle adds up over time, so it needs a dead zone. You also react late: you hear "that's the spot" and release about 0.2 s later, so the value overshoots by rate × 0.2 s. That's why the spec keeps the nudge gain low and shows the start time huge while nudging (§5.5).</li>
+              <li><b>Position control</b> passes jitter straight through, so it usually needs smoothing, which adds lag.</li>
+              <li><b>Unwrapping.</b> <code>atan2</code> jumps from +180° to −180°. Tilt never gets near that (the hand would point down), but circling crosses it on every lap: if one frame's change is over 180°, subtract 360°.</li>
+            </ul>
+          </div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R4b builds all four behind a settings switch, joystick tilt first. Claw is the default grab because the user found pinch rough (roadmap, 2026-10-12). Claw detection is R2's <code>stepClaw</code> (<code>clutch.ts:85–99</code>): it releases when the fingers leave the half-curled band, and a tracking drop holds the grab for 300 ms. Knob values should freeze, never jump, while tracking is lost (spec §5.2).</p></div></div>
+          <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
+            <li><b>Position:</b> fast and direct, limited range, shows jitter.</li>
+            <li><b>Rate:</b> unlimited range and steady, but slower to arrive and prone to overshoot. It needs a dead zone and low gain.</li>
+          </ul></div></div>
+        </div>
+        <details class="check">
+          <summary>Joystick mapping with assumed numbers: dead zone 5°, gain 0.05 s per degree per second. You grab, tilt to 15° and hold for 2 s, then release. How far does the loop start move? What if the code forgot <code>dt</code> and added <code>gain·(angle − centre)</code> per frame at 30 fps?<span class="reveal">Reveal</span></summary>
+          <div class="ans">
+            <p>Only the 10° beyond the dead zone counts: 10 × 0.05 × 2 = 1.0 s. Without <code>dt</code> it adds 10 × 0.05 = 0.5 s per frame, 60 frames in 2 s: 30 s. The marker would fly off, and twice as fast on a 60 fps camera.</p>
+          </div>
+        </details>
+      </article>
+    </section>
+
     <!-- LESSON -->
     <section class="block" id="lesson">
       <div class="lesson">
@@ -555,7 +964,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <figcaption>The middle and right panels put the knuckles in the same places, so the cross product comes out the same. Only the hand label tells the code which one it is looking at, through the sign choice on <code>src/palmFacing.ts:43</code>. Feed it the wrong label and every answer flips. The tiny curved arrow is the whole calculation: <code>normal.z = a.x·b.y − a.y·b.x</code>, and its sign is the turning direction.</figcaption>
         </figure>
         <p><b>Why the unit tests didn't catch it.</b> The tests check <code>palmFacing</code> <i>given</i> a correct label. One even proves the dependency: same landmarks, wrong hand, opposite answer (<code>src/palmFacing.test.ts:43</code>). What was wrong was an assumption about the outside world (how MediaPipe labels an un-mirrored frame), and only a real hand in front of a real camera can test that.</p>
-        <p class="in-dance"><b>For R2:</b> the spec's two-hand clutch tells the hands apart by which side of the screen they're on, not by the model's label (spec §5.2). This incident is the evidence for that choice. <code>analyze.ts:58</code> already sorts hands by wrist x, which is the same idea.</p>
+        <p class="in-dance"><b>For R2:</b> the spec's two-hand clutch tells the hands apart by which side of the screen they're on, not by the model's label (spec §5.2). This incident is the evidence for that choice. <code>analyze.ts:94</code> already sorts hands by wrist x, which is the same idea.</p>
         <details class="check">
           <summary>Suppose <code>swapHandedness</code> were wrong again. You show a V with your right palm to the camera. What do the three readouts show: hand label, palm facing, and the chord?<span class="reveal">Reveal</span></summary>
           <div class="ans">
@@ -568,38 +977,50 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
     <!-- R2 -->
     <section class="block" id="r2">
       <div class="section-intro">
-        <span class="eyebrow">Checkpoint R2 · active</span>
-        <h2>R2: turning shapes into commands</h2>
-        <p>R1 answers "what shape is this frame?" R2 has to answer "did the dancer deliberately make this shape, once, in the right place?" That second question is about history, time and space, not about one frame. Seven ideas make it work. The R2 code is being written on another branch, so this section is grounded in <code>docs/spec.md</code> §4.2–4.4 and §5.2 and the roadmap; look for the code in <code>src/</code> once R2 lands.</p>
+        <span class="eyebrow">Checkpoint R2 · done · merged, tag r2-done</span>
+        <h2>R2 as built: turning shapes into commands</h2>
+        <p>R1 answers "what shape is this frame?" R2 answers "did the dancer deliberately make this shape, once, in the right place?" That second question is about history, time and space, not about one frame. Seven ideas make it work. R2 is merged to main (145 tests), so this section now points at the real code. Where the build differs from what v2 of this page predicted, the text says so.</p>
+      </div>
+
+      <div class="facts" id="r2answers">
+        <div class="fact"><span class="k">Where the box lives</span><p>In <b>display</b> coordinates, as you see the mirrored picture (<code>box.ts:4–9</code>). The raw → display flip happens in exactly one place, <code>palmCentre</code>: <code>x: 1 − mean</code> (<code>handFeatures.ts:16–25</code>). The HUD is a second canvas that is <i>not</i> mirrored (<code>hud.ts:4–8</code>), so the box, rings and text are drawn straight in display coordinates.</p></div>
+        <div class="fact"><span class="k">Dwell timing</span><p>By the clock, not by counting frames. <code>stepCommands</code> takes the frame's <code>performance.now()</code> as <code>t</code>, and a test proves the ring fires at the same moment at 10, 30 and 120 fps (<code>commands.test.ts:436–465</code>).</p></div>
+        <div class="fact"><span class="k">Hand lost mid-gesture</span><p>Gone for over 120 ms (<code>dropoutGraceMs</code>) counts as released. Before the ring fills: nothing fires. After it fills (ARMED): it fires a <b>TAP</b>. After a hold already fired: nothing more. Coming back doesn't bank the earlier time (<code>commands.ts:157–163</code>; tests at <code>commands.test.ts:467–500</code>). Clutches hold for 300 ms, then release (<code>clutch.ts:102–105</code>).</p></div>
+        <div class="fact"><span class="k">Fist vs pinch</span><p>A fist has its thumb on the index too. A pinch can only <i>start</i> if the middle, ring and pinky reach out at least 1.3 (<code>othersReach</code>, <code>clutch.ts:72</code>; open ≈ 1.9, fist ≈ 1.0). Test: "a fist is not a pinch" (<code>clutch.test.ts:225</code>).</p></div>
+        <div class="fact"><span class="k">Claw vs relaxed hand</span><p>Told apart by the <b>change</b>: the hand must have been clearly open (reach ≥ 1.75) within 500 ms before it enters the half-curled band 1.25–1.65 (<code>clutch.ts:85–99</code>, <code>config.ts:181</code>). A hand that's just half-curled at rest never grabs (<code>clutch.test.ts:269</code>).</p></div>
+        <div class="fact"><span class="k">Which thresholds got hysteresis</span><p>Pinch: grab ≤ 0.30, release only ≥ 0.48 (× 1.6). Claw: the band widens by 0.08 each side once grabbed. <b>Not</b> the shape score (a single 0.5 floor; the 120 ms grace absorbs flicker) and <b>not</b> the box edge (edges count as inside, <code>box.ts:42–44</code>).</p></div>
       </div>
 
       <!-- FSM -->
       <article class="concept" id="fsm">
         <div class="concept-head">
           <span class="tag ours">R2 · Gesture logic</span>
-          <h3>Finite state machines: idle → arming → fired → cooldown</h3>
+          <h3>Finite state machines: idle → dwell → armed → spent</h3>
         </div>
         <div class="steps">
           <div class="step"><div class="k">Problem</div><div class="v"><p>Each frame, <code>analyze()</code> hands you a fresh reading with no memory of the last one. A command needs memory: how long has this shape been up, did it already fire, has the hand dropped since?</p></div></div>
           <div class="step"><div class="k">Naive fix</div><div class="v"><p>Put <code>if (shape === "Open_Palm") togglePlay()</code> in the frame loop. At 30 fps a one-second palm toggles play 30 times. The next naive fix is a handful of booleans (<code>isHolding</code>, <code>hasFired</code>, <code>inCooldown</code>, <code>startedAt</code>). Five booleans allow 32 combinations, most of which should be impossible, and bugs live in those combinations.</p></div></div>
           <div class="step"><div class="k">Mechanism</div><div class="v">
             <p>A <b>finite state machine</b> keeps the gesture in exactly one named state. Once per frame a <b>step function</b> looks at three things (the current state, this frame's input, the current time) and either stays put or follows one of a few allowed arrows. Side effects, such as firing a command or playing a sound, happen only on particular arrows.</p>
-            <div class="pre">         shape present (in box, palm facing, one hand)
-  <span class="h">IDLE</span> ───────────────────────────────────────────► <span class="h">ARMING</span>   t0 = now, ring fills
-   ▲                                                     │ shape lost longer than grace ──► IDLE
-   │                                                     │ now − t0 ≥ 0.6 s
-   │                                                     ▼
-   │                                              <span class="h">FIRE</span>  (one frame: banner, sound, log)
-   │                                                     │
-   └──────── 1.0 s passed AND shape released ◄──── <span class="h">COOLDOWN</span></div>
+            <div class="pre"><span class="c">// src/commands.ts:7–16, as built</span>
+         command shape · palm centre in box · palm facing · score ≥ 0.5 · only command hand · not cooling down
+  <span class="h">IDLE</span> ─────────────────────────────────────────────────────────────► <span class="h">DWELL</span>   since = t, inner ring fills
+   ▲                                                                  │ gone &gt; 120 ms ──► IDLE (nothing fires)
+   │                                                                  │ t − since ≥ 600 ms
+   │                                     ┌────────────────────────────┴──────────────┐
+   │                           open palm: fire TAP now                     index / V: <span class="h">ARMED</span>
+   │                                     │                       gone &gt; 120 ms → fire TAP · t − since ≥ 1500 ms → fire HOLD
+   │                                     ▼                                             │
+   └────────── shape gone &gt; 120 ms ◄── <span class="h">SPENT</span> ◄──────────────────────────────────────┘
+  every fire sets cooldownUntil = t + 1000 ms: no new DWELL may start before then</div>
             <ul>
-              <li><b>Time comes from timestamps, not frame counts.</b> <code>main.ts:79</code> already computes <code>ts = performance.now()</code> for the model. "18 frames" is 0.6 s at 30 fps, but 1.2 s at 15 fps in a dim room.</li>
-              <li><b>"No hand" is an input.</b> When the hand leaves the view, frames keep arriving with an empty result. The step function must treat that as "shape lost". If it only ran when a hand was present, the machine would sit in ARMING forever.</li>
-              <li><b>Cooldown exits on two conditions.</b> Time alone is not enough: a palm held for 4 s would fire again at 1.6 s. Requiring a release too gives "holding a shape a long time fires exactly once" (roadmap R2 done means).</li>
-              <li><b>Keep it pure.</b> <code>step(state, input, now) → { state, events }</code> touches no camera and no DOM, so Vitest can feed it a scripted timeline and assert exactly one event, in the same style as <code>src/pseudoChord.test.ts</code>.</li>
+              <li><b>Time comes from timestamps, not frame counts.</b> <code>main.ts:261</code> computes <code>ts = performance.now()</code> once per frame, for both the model and the machine. "18 frames" is 0.6 s at 30 fps, but 1.2 s at 15 fps in a dim room.</li>
+              <li><b>"No hand" is an input.</b> Frames keep arriving with an empty result when the hand leaves. The release rule at <code>commands.ts:157–163</code> runs every frame, hand or not, so the machine can't get stuck in DWELL or ARMED.</li>
+              <li><b>"Fires exactly once" comes from SPENT, not from the cooldown.</b> v2 of this page predicted a COOLDOWN state that needs both time and a release. The build splits the two jobs: SPENT waits for the release, and the cooldown is just a timestamp, <code>cooldownUntil</code>, that blocks a new DWELL from starting (<code>commands.ts:149–152</code>, L166). Fewer states, same behaviour.</li>
+              <li><b>Pure.</b> <code>stepCommands(prev, input, cfg) → { state, fired, view }</code> (<code>commands.ts:141</code>) touches no camera and no DOM. The 500-line test file replays scripted timelines through it.</li>
             </ul>
           </div></div>
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">Spec §4.2 sets the guards: palm centre in the command box, shape held 0.6 s, palm facing, 1.0 s cooldown, only one hand showing a command shape. The optional stillness rule (off by default) is one more guard on the IDLE → ARMING arrow, not a new boolean. Remembering <code>t0</code> pays off in R4, where loop marks are stamped at the moment the ring <i>started</i>, minus 0.15 s (spec §4.6).</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">The guards live in <code>evaluateHands</code> (<code>commands.ts:123–133</code>), checked in this order: command shape, palm centre in the box, only one such hand in the box, score ≥ 0.5, palm facing. The first one that fails becomes the "Not counting: …" message on the HUD. The optional stillness rule (off by default) restarts the dwell if the palm drifts more than 6% of the frame height (L174–183). <code>since</code>, when the ring started, pays off in R4, where loop marks are stamped at the ring's start minus 0.15 s (spec §4.6).</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
             <li><b>Cost:</b> more structure up front than a single <code>if</code>. <b>Gain:</b> every behaviour is an arrow you can point at, and impossible combinations can't happen.</li>
             <li><b>Failure mode:</b> a missing arrow becomes a stuck state, for example a lost hand that never returns the machine to IDLE. It shows up as "it stopped responding until I reloaded".</li>
@@ -608,7 +1029,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
         <details class="check">
           <summary>You hold an open palm in the box for 4 seconds, then drop it. How many times does play/pause toggle, and which part of which arrow blocks a second fire?<span class="reveal">Reveal</span></summary>
           <div class="ans">
-            <p>Once, at 0.6 s. The machine enters COOLDOWN. At 1.6 s the "1.0 s passed" half of the exit arrow is satisfied, but the "shape released" half is not, so it stays in COOLDOWN until you drop the hand at 4 s. Try the "Long hold" preset in the timeline lab with the gesture set to Open palm.</p>
+            <p>Once, at 0.6 s. The machine goes to SPENT and sets <code>cooldownUntil</code> to 1.6 s. Holding on does nothing: SPENT only ends when the palm has been gone for over 120 ms, at about 4.12 s. By then the cooldown is long over, so a new palm could start a dwell straight away. Test: "open palm held for 10 s fires exactly once" (<code>commands.test.ts:126</code>).</p>
           </div>
         </details>
       </article>
@@ -631,7 +1052,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
               <li><b>Grace period.</b> One or two dropped frames in the middle of a real hold shouldn't reset the ring. A short grace (around 0.1 s) lets the shape vanish briefly without counting as lost. Too long, and two separate gestures merge into one.</li>
             </ul>
           </div></div>
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">0.6 s minimum dwell, tunable up with a slider (spec §4.2, roadmap R2 scope). The roadmap's informational test (dance about 2 minutes with no commands intended, count false fires in the log) is the data for tuning it.</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance"><code>dwellMs: 600</code>, slider range 0.6–1.2 s, saved with the box in <code>localStorage</code> (<code>config.ts:107–120</code>, <code>settings.ts</code>). The grace is <code>dropoutGraceMs: 120</code>, about 3–4 frames. The bench's "Start 2-minute test" button counts false fires while you dance (<code>bench.ts</code>), which is the data for tuning it.</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
             <li><b>Latency on purpose:</b> every command arrives at least 0.6 s after you make the shape. In R3 that dominates the delay budget by design. The ring makes the wait visible, so it feels deliberate rather than laggy.</li>
             <li><b>Longer dwell:</b> fewer false fires, slower commands. <b>Shorter:</b> the reverse.</li>
@@ -663,7 +1084,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
             </ul>
             <p>Distance makes all of this worse. Two metres back, your hand is a few dozen pixels tall and the model's pixel-level jitter is a bigger fraction of every ratio.</p>
           </div></div>
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">Spec §5.2 asks for hysteresis on pinch: "below a threshold = grabbed; it must clearly open again to release". The same idea applies to a palm centre sitting on the edge of the command box, and to the shape score. R1's chord readout has none yet; check whether R2 adds it anywhere besides pinch.</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">As built, hysteresis is on the clutches only. Pinch grabs at ≤ 0.30 and releases at ≥ 0.30 × 1.6 = 0.48 (<code>clutch.ts:73</code>, <code>config.ts:180</code>). Claw enters the band 1.25–1.65 and stays until it leaves the band widened by 0.08 each side (<code>clutch.ts:95</code>). The shape score has a single 0.5 floor, and the box edge is a hard edge. For those, the 120 ms grace (a debounce on the off edge) does the flicker-fighting. If the real-hand test shows a ring that keeps restarting near the box edge or at a borderline score, those are the two places a dead band would go.</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
             <li><b>Too narrow a dead band:</b> flicker returns. <b>Too wide:</b> sticky. A pinch that is hard to release, or a readout that lags the truth.</li>
             <li><b>Debounce</b> always adds latency equal to its window.</li>
@@ -697,7 +1118,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
             </ul>
             <p>A mouse does the same thing for single vs double click: it can't report "single" until the double-click window has passed.</p>
           </div></div>
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">Open palm: fires at the ring (spec §4.3). Index: tap = restart (song start in R3, loop start in R4), hold = song start. V: tap cycles the loop, hold clears it (R4). In R2 these only fire into the banner and log; nothing is controlled yet. Done means: tap and hold are told apart correctly on 9 of 10 attempts.</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance"><code>holdShapes: ["Pointing_Up", "Victory"]</code> (<code>config.ts:109</code>); open palm has no hold, so it skips ARMED. Hold fires at <code>max(1500, dwell + 400)</code> ms (<code>effectiveHoldMs</code>, <code>commands.ts:108–110</code>), so a long dwell can't squash the tap window. <b>R3 changed this for the practice view:</b> <code>PRACTICE.holdShapes</code> is just <code>["Victory"]</code> (<code>config.ts:194–196</code>, applied by <code>practiceConfig</code> in <code>transport.ts:45–47</code>), so index up restarts the moment the ring fills instead of on release. R4a must undo that to bring back index tap = loop start, hold = song start (wish list).</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
             <li>Taps are slower than they look. The wishlist tracks this as "tap vs hold adds a short delay"; probably fine between attempts.</li>
             <li>Lingering by accident turns a tap into a hold. The ring label (what will fire) is the defence.</li>
@@ -706,7 +1127,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
         <details class="check">
           <summary>Index up. The inner ring fills at 0.6 s; you keep holding until 1.2 s, then drop. Grace is 0.1 s. What fires, and when? And if you had dropped at 0.5 s?<span class="reveal">Reveal</span></summary>
           <div class="ans">
-            <p>TAP, at about 1.3 s (1.2 s release plus 0.1 s grace). Dropping at 0.5 s fires nothing: the machine was still ARMING, so losing the shape sends it back to IDLE.</p>
+            <p>On the R2 bench: TAP, at about 1.32 s (released at 1.2 s, plus the 120 ms grace). Dropping at 0.5 s fires nothing: the machine was still in DWELL, so losing the shape sends it back to IDLE. In R3's practice view, index has no hold, so it fires at 0.6 s whatever you do next.</p>
           </div>
         </details>
       </article>
@@ -715,7 +1136,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
       <div class="fsm" id="timeline" aria-label="Gesture timeline lab">
         <div class="section-intro">
           <h3 style="font-size:1.15rem">Timeline lab: watch the state machine react</h3>
-          <p class="hint">Five seconds of a fake shape-confidence signal, a stand-in for MediaPipe's score for one shape (say <code>Open_Palm</code> 0.83). Drag the playhead (or press Play) to scrub through time. Drag across the top of the chart to redraw the signal. The machine is the one described above: hysteresis, grace, dwell, tap/hold, cooldown.</p>
+          <p class="hint">Five seconds of a fake shape-confidence signal, a stand-in for MediaPipe's score for one shape (say <code>Open_Palm</code> 0.83). Drag the playhead (or press Play) to scrub through time. Drag across the top of the chart to redraw the signal. The lab is a teaching model, built before R2 existed. Two differences from the real code: the real machine has no score hysteresis (turn it off here to match: one line, 0.5 in the code), and its grace is 0.12 s. The lab's "arming" is the code's DWELL, and its cooldown strip covers what the code splits into SPENT plus <code>cooldownUntil</code>.</p>
         </div>
         <div class="row"><span class="lbl">Presets</span>
           <button class="pre-btn" data-preset="tap" aria-pressed="true">Clean tap</button>
@@ -792,12 +1213,13 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <div class="step"><div class="k">Naive fix</div><div class="v"><p>Store the default box as "right half": <code>x ≥ 0.5</code>, and compare the landmark's <code>x</code> to it. The landmark is in the raw, un-mirrored frame, where x ≥ 0.5 is the <i>left</i> half of what you see. The box is drawn on your right, your hand there does nothing, and your left hand fires. Same family of bug as the handedness flip.</p></div></div>
           <div class="step"><div class="k">Mechanism</div><div class="v">
             <div class="tablewrap"><table class="lm">
-              <thead><tr><th>Space</th><th>Units</th><th>Mirrored?</th><th>Where in R1</th></tr></thead>
+              <thead><tr><th>Space</th><th>Units</th><th>Mirrored?</th><th>Where in the code</th></tr></thead>
               <tbody>
                 <tr><td>Landmark (raw)</td><td class="n">0..1 of the frame</td><td>no</td><td>model output; <code>analyze.ts</code>, all geometry</td></tr>
-                <tr><td>Canvas backing store</td><td class="n">video px, 1280×720</td><td>no (CSS flips it)</td><td><code>main.ts:68–71</code> sizes it; <code>draw.ts:30</code> multiplies by width, height</td></tr>
-                <tr><td>Display (what you see)</td><td class="n">0..1 of the picture</td><td>yes</td><td><code>#mirror { transform: scaleX(-1) }</code>, <code>style.css:87</code></td></tr>
-                <tr><td>Mouse (client)</td><td class="n">CSS px from the viewport</td><td>as displayed</td><td>pointer events (new in R2)</td></tr>
+                <tr><td>Canvas backing store</td><td class="n">video px, 1280×720</td><td>no (CSS flips it)</td><td><code>main.ts:86–93</code> sizes it; <code>draw.ts:30</code> multiplies by width, height</td></tr>
+                <tr><td>Display (what you see)</td><td class="n">0..1 of the picture</td><td>yes</td><td><code>#mirror { transform: scaleX(-1) }</code>, <code>style.css:109</code></td></tr>
+                <tr><td>HUD canvas (R2)</td><td class="n">video px</td><td>no; drawn in display space</td><td><code>hud.ts</code>; a second canvas outside <code>#mirror</code> (<code>index.html:32–33</code>)</td></tr>
+                <tr><td>Mouse (client)</td><td class="n">CSS px from the viewport</td><td>as displayed</td><td><code>boxEditor.ts:25–31</code> divides by the canvas's bounding box</td></tr>
               </tbody>
             </table></div>
             <ol>
@@ -806,7 +1228,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
               <li><b>Mouse → display:</b> <code>u = (clientX − rect.left) / rect.width</code>, same for v, where <code>rect = el.getBoundingClientRect()</code>. A <code>scaleX(-1)</code> around the element's centre leaves its bounding box where it was, so u is already in display space. R1's video isn't letterboxed (<code>#mirror</code> shrinks to fit the video), so no extra offset is needed.</li>
               <li><b>Pick one home for the box</b> and convert everything else into it once. Display space is the natural home: it is what the mouse gives you and what "right half" means to you.</li>
               <li><b>The test:</b> <code>dx ≥ L &amp;&amp; dx ≤ L + W &amp;&amp; dy ≥ T &amp;&amp; dy ≤ T + H</code>.</li>
-              <li><b>Drawing it:</b> on the mirrored overlay canvas, draw at raw coordinates: raw left edge = <code>1 − (L + W)</code>. Any text drawn on that canvas comes out backwards, which is why R1 keeps readouts in HTML.</li>
+              <li><b>Drawing it:</b> one option was to draw on the mirrored skeleton canvas at raw coordinates (raw left edge = <code>1 − (L + W)</code>), where any text comes out backwards. R2 instead added a second, unmirrored canvas, the HUD, layered on top. It draws the box, palm markers and rings directly in display coordinates, and its text reads normally (<code>hud.ts:75–159</code>).</li>
             </ol>
           </div></div>
         </div>
@@ -837,7 +1259,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <figcaption>The same hand and the same box in two coordinate systems. Each picture is right on its own; comparing a number from one with a box from the other is the bug.</figcaption>
         </figure>
         <div class="steps">
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">Default box: the right half of the mirrored view; presets right half, left half, whole frame (spec §4.2). Store it as fractions, not pixels: fractions survive a window resize and a change of camera resolution.</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">As predicted: the box is stored as display fractions (<code>box.ts:4–9</code>), with presets right half, left half and whole frame (L25–29), and the flip happens once, in <code>palmCentre</code> (<code>handFeatures.ts:24</code>). The test is <code>contains</code> (<code>box.ts:42–44</code>), edges included. Fractions survive a window resize and a change of camera resolution.</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
             <li><b>Hard edge:</b> a palm centre sitting on the box edge flickers in and out. A small margin (enter at the edge, leave a little outside it) is hysteresis applied to space.</li>
             <li><b>Palm centre vs wrist:</b> the centre is steadier but costs a five-point average. That is trivial next to the model call.</li>
@@ -870,7 +1292,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
             <p>On hover, set the cursor to match the zone (<code>move</code>, <code>ew-resize</code>, <code>ns-resize</code>, <code>nwse-resize</code>, <code>nesw-resize</code>) so you can see what a drag will do. Measure handle sizes in CSS pixels and convert with <code>rect.width</code>, so handles feel the same at any window size.</p>
             <p><b>The mirror again.</b> If the box were stored in raw space, dragging right would have to <i>decrease</i> its x. Forget the sign and the box slides the opposite way from your mouse. Storing it in display space avoids the whole problem.</p>
           </div></div>
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">The state machine reads the box every frame, so an edit takes effect on the next frame, about 33 ms later. Presets just replace the rectangle. The spec doesn't ask for the box to be remembered across reloads; per-session calibration is wish-listed for R6+.</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">As built: <code>hitTest</code> (<code>box.ts:59–73</code>) grabs an edge within 14 CSS px on <i>either</i> side of it, and caps that zone at a third of the box so a small box still has a middle to move. <code>applyDrag</code> (L80–98) always works from the box as it was at <code>pointerdown</code>, and stops a dragged edge at the 8% minimum size. <code>attachBoxEditor</code> (<code>boxEditor.ts:33–64</code>) captures the pointer and calls <code>setBox</code> on every move, so an edit takes effect on the next frame. The box is also saved in <code>localStorage</code>, so it survives a reload (<code>settings.ts:4</code>), more than the spec asked for.</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
             <li>The mouse is a setup tool: you're at the laptop when you edit the box and away from it while dancing. Precision matters less than "obvious and hard to break".</li>
             <li>Larger handles are easier to grab but steal area from "move".</li>
@@ -879,7 +1301,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
         <details class="check">
           <summary>You grab the box's left edge and drag it past the right edge, with no clamp. What happens to W, and what does the hit-test <code>dx ≥ L &amp;&amp; dx ≤ L + W</code> do afterwards?<span class="reveal">Reveal</span></summary>
           <div class="ans">
-            <p>W goes negative, so L + W is less than L. No number can be both ≥ L and ≤ L + W, and the box can never contain the hand. Gestures silently stop working, though the outline may still look plausible. A minimum-size clamp (or swapping edges when they cross) prevents it.</p>
+            <p>W goes negative, so L + W is less than L. No number can be both ≥ L and ≤ L + W, and the box can never contain the hand. Gestures silently stop working, though the outline may still look plausible. R2's clamp prevents it: the left edge stops at the right edge minus 0.08 (<code>box.ts:93</code>).</p>
           </div>
         </details>
       </article>
@@ -895,15 +1317,15 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <div class="step"><div class="k">Naive fix</div><div class="v"><p>Pinch = "thumb tip within 30 px of index tip". At 1 m that might work. At 3 m the whole hand is about 30 px across, and everything reads as a pinch.</p></div></div>
           <div class="step"><div class="k">Mechanism</div><div class="v">
             <ul>
-              <li><b>Pinch</b> (spec §5.2): <code>dist(4, 8) / dist(0, 9)</code>, thumb tip to index tip divided by wrist to middle knuckle. That denominator is the same "palm size" R1's thumb rule already uses (<code>src/pseudoChord.ts:57</code>). Dividing makes the number independent of distance. Add hysteresis: grab below a low value, release only above a clearly higher one. The roadmap gives pinch a slider.</li>
-              <li><b>Claw</b> (spec §5.2): a splayed hand whose four fingertips curl partway within about 0.5 s, "grabbing a ball". Curl per finger can be the same tip/PIP ratio R1 uses (<code>config.ts:39</code>; extended is about 1.3, curled under 1.0), with claw meaning all four sit in a middle band. The catch: a relaxed hand is naturally half curled. So claw is a <i>temporal</i> pattern: "was fully open within the last 0.5 s, and is now in the band". That is a small state machine of its own.</li>
-              <li><b>Two-hand</b> (spec §5.2): one hand showing the canned <code>Open_Palm</code> is the modifier; while it's up, the other hand is the knob. The hands are told apart by screen side, never by label (see the live-test lesson above).</li>
-              <li><b>Tracking drops while grabbed:</b> the value freezes, never jumps, and the clutch releases after about 0.3 s with no hand. That is another grace timer.</li>
+              <li><b>Pinch</b>: <code>pinchRatio</code> = thumb tip to index tip ÷ wrist to middle knuckle (<code>handFeatures.ts:36–40</code>), so it doesn't depend on distance. Grab at ≤ 0.30 (slider 0.10–0.60), release at ≥ 0.48, and only start if the other three fingers reach out (the fist rule) and the palm is in the box (<code>clutch.ts:66–77</code>).</li>
+              <li><b>Claw</b>: <code>clawExtension</code> = mean over index to pinky of (tip to wrist) ÷ (knuckle to wrist) (<code>handFeatures.ts:55–57</code>): open ≈ 1.9, claw 1.3–1.6, fist ≈ 1.0. The build uses this reach measure rather than R1's tip/PIP ratio. It's a <i>temporal</i> rule, as predicted: open (≥ 1.75) within the last 500 ms, now in the band (<code>clutch.ts:85–99</code>). It's the default grab for R4b.</li>
+              <li><b>Two-hand</b>: the screen-left hand (as you see it) showing <code>Open_Palm</code> is the modifier, and the other hand must start in the box (<code>clutch.ts:113–136</code>). Hands are told apart by screen side, never by label (tested at <code>clutch.test.ts:176</code>).</li>
+              <li><b>Tracking drops while grabbed:</b> the grab holds for <code>releaseGraceMs: 300</code>, then releases (<code>clutch.ts:102–105</code>). R4b's knob value should freeze during that time.</li>
             </ul>
           </div></div>
-          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R2 only shows GRABBED / released for each clutch; nothing is controlled until R4 (roadmap). Done means: grabs show correctly, or failures are noted. The wishlist's "can pinch and claw be read reliably farther away?" risk gets its first data here.</p></div></div>
+          <div class="step"><div class="k">In Dance</div><div class="v"><p class="in-dance">R2 only shows GRABBED / released for each clutch, in the bench's clutch panel; nothing is controlled until R4b. One interaction to keep in mind: the two-hand modifier is an open palm, and an open palm in the box is also play/pause. With the default right-half box and the modifier on the left, they don't meet. With the whole-frame preset, a modifier palm held 0.6 s would toggle the music.</p></div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
-            <li><b>Pinch:</b> simplest rule, but fingertips are small in the image, and when the thumb hides behind the index finger the model has to guess where the tips are. A fist can also bring the thumb tip close to the index finger; watch whether a fist reads as a pinch.</li>
+            <li><b>Pinch:</b> simplest rule, but fingertips are small in the image, and when the thumb hides behind the index finger the model has to guess where the tips are. The user found it rough in practice, which is why R4b defaults to claw.</li>
             <li><b>Claw:</b> most natural feel, most tuning.</li>
             <li><b>Two-hand:</b> uses the most reliable shape, but needs both hands free.</li>
           </ul></div></div>
@@ -949,7 +1371,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
               </tbody>
             </table></div>
             <p><b>Landmark numbering.</b> 0 is the wrist. Each finger then gets four points running from the base to the tip: thumb 1–4, index 5–8, middle 9–12, ring 13–16, pinky 17–20. On the four fingers the names are MCP (the big knuckle), PIP (middle joint), DIP (last joint) and TIP. The constants live in <code>src/hand.ts:18–40</code>.</p>
-            <p><b>Why it runs every frame.</b> Each frame is a new photo. The model remembers nothing between frames except the crop box from tracking. Video mode also needs a strictly increasing timestamp: <code>main.ts:79–81</code> nudges it up by 1 ms if two frames land on the same <code>performance.now()</code>.</p>
+            <p><b>Why it runs every frame.</b> Each frame is a new photo. The model remembers nothing between frames except the crop box from tracking. Video mode also needs a strictly increasing timestamp: <code>main.ts:261–263</code> nudges it up by 1 ms if two frames land on the same <code>performance.now()</code>.</p>
             <p><b>WASM.</b> MediaPipe is written in C++, compiled to WebAssembly, a compact binary format the browser runs at close to native speed. <code>FilesetResolver.forVisionTasks(path)</code> fetches those files; R1 serves them from <code>public/wasm</code>, copied there by <code>scripts/copy-wasm.mjs</code> before dev and build. The model weights are a separate <code>.task</code> file, vendored at <code>public/models/gesture_recognizer.task</code>.</p>
             <p><b>GPU vs CPU delegate.</b> The "delegate" decides where the neural-network maths runs. <code>"GPU"</code> turns it into WebGL shader programs, so thousands of multiply-adds run in parallel on the graphics chip. <code>"CPU"</code> runs it in WASM on the processor. GPU is usually faster per frame but pays a start-up cost and varies across machines. R1 tries GPU and falls back to CPU (<code>recognizer.ts:29–34</code>); the status bar shows which one won.</p>
           </div></div>
@@ -981,7 +1403,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
             <ul>
               <li><b>Distance ratio.</b> An extended finger's tip is far from the wrist; a curled one folds back toward it. Compare <code>dist(wrist, tip)</code> with <code>dist(wrist, pip)</code>. Turning the hand doesn't change a distance, and dividing one distance by another cancels out how big the hand looks.</li>
               <li><b>Joint angle.</b> At a joint, the angle between the two bone vectors: straight is about 180°, folded is well under.</li>
-              <li><b>Equal units first.</b> Raw landmarks are fractions of width and height, and a 1280×720 frame is wider than tall, so a "distance" in fractions is stretched. <code>analyze.ts:26–28</code> converts to pixels on both axes (and scales z by the width) before any geometry.</li>
+              <li><b>Equal units first.</b> Raw landmarks are fractions of width and height, and a 1280×720 frame is wider than tall, so a "distance" in fractions is stretched. <code>analyze.ts:36–38</code> converts to pixels on both axes (and scales z by the width) before any geometry.</li>
             </ul>
             <p><b>The thumb</b> swings across the palm instead of curling toward it, so the ratio rule fails for it. R1's rule (<code>pseudoChord.ts:56–69</code>): the thumb is out when its tip is at least 0.5 palm sizes from the index knuckle <i>and</i> the angle at its IP joint is at least 125°.</p>
             <p><b>Palm facing</b> uses a cross product of two knuckle vectors and needs the hand label. The live-test lesson above explains why.</p>
@@ -1032,7 +1454,7 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
         <details class="check">
           <summary>Point your index finger straight at the camera. What will rule C in the lab say, and why might R1's real rule do a little better?<span class="reveal">Reveal</span></summary>
           <div class="ans">
-            <p>In 2D the tip lands almost on top of the PIP joint, so the ratio sits near 1.0 and the finger reads down, or flickers. R1 measures in 3D using the model's z estimate (<code>analyze.ts:27</code>), so a straight finger pointing at the camera still has some length along z. Since z is the noisiest output, expect it to help only partly.</p>
+            <p>In 2D the tip lands almost on top of the PIP joint, so the ratio sits near 1.0 and the finger reads down, or flickers. R1 measures in 3D using the model's z estimate (<code>analyze.ts:37</code>), so a straight finger pointing at the camera still has some length along z. Since z is the noisiest output, expect it to help only partly.</p>
           </div>
         </details>
       </article>
@@ -1048,12 +1470,12 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <div class="step"><div class="k">Mechanism</div><div class="v">
             <p><b>1. Open the camera.</b> <code>getUserMedia</code> asks permission and resolves to a <code>MediaStream</code>. Browsers only allow this in a secure context: HTTPS or <code>localhost</code>. R1 asks for 1280×720 at 30 fps as "ideal" values, which the camera may lower (<code>camera.ts:41–49</code>), and turns each failure into a plain instruction (<code>camera.ts:13–32</code>).</p>
             <p><b>2. Show it.</b> <code>video.srcObject = stream; video.play()</code>. The video element always holds the most recent frame; the model reads pixels from it.</p>
-            <p><b>3. Pace the loop.</b> <code>requestAnimationFrame</code> fires before every repaint (60 or 120 Hz) whether or not there's a new frame. <code>requestVideoFrameCallback</code> fires once per new video frame. R1 uses the second, falls back to the first (<code>main.ts:103–109</code>), and also skips a frame whose <code>currentTime</code> hasn't changed (<code>main.ts:73–77</code>).</p>
-            <p><b>4. Mirror correctly.</b> R1 picked the "flip both layers with CSS" option: <code>#mirror</code> holds the video and the canvas and is flipped with <code>scaleX(-1)</code> (<code>style.css:87</code>). <code>draw.ts</code> draws raw coordinates with no flipping, and the canvas's pixel grid is kept equal to the video's (<code>main.ts:68–71</code>) so dots don't drift off joints.</p>
-            <p><b>5. fps is not latency.</b> fps is how often you get an update. Latency is how old each update is. R1 averages fps over a 1 s window (<code>main.ts:15–27</code>). R3 will care about latency.</p>
+            <p><b>3. Pace the loop.</b> <code>requestAnimationFrame</code> fires before every repaint (60 or 120 Hz) whether or not there's a new frame. <code>requestVideoFrameCallback</code> fires once per new video frame. R1 uses the second, falls back to the first (<code>main.ts:282–288</code>), and also skips a frame whose <code>currentTime</code> hasn't changed (<code>main.ts:254–259</code>).</p>
+            <p><b>4. Mirror correctly.</b> R1 picked the "flip both layers with CSS" option: <code>#mirror</code> holds the video and the canvas and is flipped with <code>scaleX(-1)</code> (<code>style.css:109</code>). <code>draw.ts</code> draws raw coordinates with no flipping, and the canvas's pixel grid is kept equal to the video's (<code>main.ts:86–93</code>) so dots don't drift off joints.</p>
+            <p><b>5. fps is not latency.</b> fps is how often you get an update. Latency is how old each update is. R1 averages fps over a 1 s window (<code>main.ts:27–39</code>). R3 cares about latency; see the R3 section.</p>
           </div></div>
           <div class="step"><div class="k">Tradeoff</div><div class="v"><ul>
-            <li><b>Model on the main thread:</b> simple, but it blocks the page while it runs. That matters once audio and UI share the thread in R3. A Web Worker keeps the page responsive but means moving frames between threads.</li>
+            <li><b>Model on the main thread:</b> simple, but it blocks the page while it runs. R3 shows why that doesn't stutter the music (the audio thread is separate). A Web Worker keeps the page responsive but means moving frames between threads.</li>
             <li><b>1280×720:</b> sharper fingertips at a distance, more pixels to decode every frame. The landmark model works on a small crop anyway, so resolution mainly helps the palm detector find small, far hands. Detection still worked at 3–5 m in the live test.</li>
           </ul></div></div>
         </div>
@@ -1092,36 +1514,45 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
         </details>
       </article>
 
-      <article class="concept" id="later">
-        <div class="concept-head">
-          <span class="tag tool">5 · Preview, not in R2</span>
-          <h3>Later in R4–R5: rate vs position control</h3>
-        </div>
-        <div class="steps">
-          <div class="step"><div class="k">Two mappings</div><div class="v">
-            <ul>
-              <li><b>Position control</b> (the "absolute wiper"): the tilt angle <i>is</i> the value. Quick and exact for small ranges, but the whole range must fit one wrist sweep.</li>
-              <li><b>Rate control</b> (the "spring-loaded joystick", the favourite): the angle sets how fast the value changes. Each frame does <code>value += gain × (angle − centre) × dt</code>. It never runs out of wrist. It also adds up jitter, so it needs a dead zone.</li>
-            </ul>
-            <p>Watch for <code>dt</code> (time since the last frame) in the R4 code. Without it, the knob would move faster on a faster laptop. R2's clutch shapes are the "grab" half of this knob.</p>
-          </div></div>
-        </div>
-      </article>
     </section>
 
     <!-- GLOSSARY -->
     <section class="block" id="glossary">
       <h2>Glossary</h2>
-      <p>Terms you'll see in R2 diffs and reports, then the R1 terms.</p>
+      <p>Terms you'll see in R3 and R4 diffs and reports, then R2, then R1.</p>
+      <div class="gloss-group">
+        <h3>R3 and R4 terms</h3>
+        <dl class="gloss">
+          <div><dt>HTMLAudioElement</dt><dd>The browser's built-in player behind <code>&lt;audio&gt;</code>. Streams and decodes a file for you. R3's engine.</dd></div>
+          <div><dt>Web Audio API</dt><dd>A graph of audio nodes on an <code>AudioContext</code>, with its own clock. Precise timing; you manage decoding and playback yourself.</dd></div>
+          <div><dt>AudioBuffer / buffer source</dt><dd>A fully decoded track in memory, and the single-use node that plays it.</dd></div>
+          <div><dt>object URL</dt><dd><code>blob:</code> URL from <code>URL.createObjectURL(file)</code>, letting the audio element read a local file. Freed with <code>revokeObjectURL</code>.</dd></div>
+          <div><dt>transport</dt><dd>The play / pause / restart controls. In Dance, <code>runTransport</code>, shared by gestures, keys and buttons.</dd></div>
+          <div><dt>audio thread</dt><dd>A separate high-priority thread that feeds samples to the speaker. Not blocked by the hand model.</dd></div>
+          <div><dt>render quantum</dt><dd>The 128-sample chunk the audio thread works in: 2.7 ms at 48 kHz.</dd></div>
+          <div><dt>output latency</dt><dd>Time from a sample leaving the browser to the speaker. Small when wired, roughly 150–300 ms over Bluetooth.</dd></div>
+          <div><dt>underrun</dt><dd>The output buffer ran dry because audio work was late. Heard as a click or dropout.</dd></div>
+          <div><dt>seek / seek gap</dt><dd>Jumping the playhead (<code>currentTime = t</code>), and the short silence while the element finds the new spot.</dd></div>
+          <div><dt>CBR / VBR</dt><dd>Constant or variable bitrate MP3. Seeking in VBR needs a table or a scan.</dd></div>
+          <div><dt>user activation</dt><dd>The browser's record that a real click or key press happened on the page. Needed before audible playback.</dd></div>
+          <div><dt>autoplay policy</dt><dd>The rule that blocks sound until user activation. <code>play()</code> rejects with <code>NotAllowedError</code>.</dd></div>
+          <div><dt>overshoot (loop)</dt><dd>Music played past the loop end before the jump back. How late the check noticed, plus the seek.</dd></div>
+          <div><dt>look-ahead</dt><dd>Checking whether a deadline falls before the next check, and scheduling it exactly instead of noticing it late.</dd></div>
+          <div><dt>rate / position control</dt><dd>The tilt sets how fast the value changes (joystick), or the tilt is the value (wiper).</dd></div>
+          <div><dt>dead zone</dt><dd>A small range around centre where the joystick does nothing, so jitter doesn't drift the value.</dd></div>
+          <div><dt>time-stretch / WSOLA</dt><dd>Changing speed without changing pitch, by overlapping short grains; WSOLA aligns each grain to the waveform first.</dd></div>
+          <div><dt>preservesPitch</dt><dd>Audio element flag, on by default: <code>playbackRate</code> changes speed, not pitch.</dd></div>
+        </dl>
+      </div>
       <div class="gloss-group">
         <h3>R2 terms</h3>
         <dl class="gloss">
           <div><dt>finite state machine</dt><dd>Code that is always in exactly one named state and moves between states only along defined transitions.</dd></div>
           <div><dt>transition / guard</dt><dd>An allowed move between two states, and the condition that must be true for it to happen.</dd></div>
           <div><dt>step function</dt><dd>The per-frame function that takes state, input and time and returns the next state plus any events.</dd></div>
-          <div><dt>dwell</dt><dd>How long a shape must be held before it counts. 0.6 s in R2.</dd></div>
+          <div><dt>dwell</dt><dd>How long a shape must be held before it counts (0.6 s), and the code's name for the state while the inner ring fills.</dd></div>
           <div><dt>grace period</dt><dd>How long a shape may vanish without counting as released. Forgives dropped frames.</dd></div>
-          <div><dt>cooldown</dt><dd>The time after a fire during which nothing else can fire. 1.0 s, plus a release.</dd></div>
+          <div><dt>cooldown / spent</dt><dd>After a fire, no new dwell may start for 1.0 s (<code>cooldownUntil</code>). SPENT is the state that waits for the hand to drop.</dd></div>
           <div><dt>debounce</dt><dd>Accept a change only after it has lasted a set time.</dd></div>
           <div><dt>hysteresis</dt><dd>Separate on and off thresholds, so a value near the line doesn't flicker.</dd></div>
           <div><dt>dead band</dt><dd>The gap between the on and off thresholds, where the output keeps its previous value.</dd></div>
@@ -1134,7 +1565,8 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           <div><dt>pointer capture</dt><dd><code>setPointerCapture</code>: keep sending move events to one element during a drag, even off it.</dd></div>
           <div><dt>drag handle</dt><dd>A small zone at an edge or corner that resizes instead of moving.</dd></div>
           <div><dt>clutch</dt><dd>The "I'm grabbing now" signal for the knob: pinch, claw or two-hand.</dd></div>
-          <div><dt>pinch ratio</dt><dd>Thumb tip to index tip, divided by wrist to middle knuckle.</dd></div>
+          <div><dt>pinch ratio</dt><dd>Thumb tip to index tip, divided by wrist to middle knuckle. Grab ≤ 0.30, release ≥ 0.48.</dd></div>
+          <div><dt>finger reach (clawExt)</dt><dd>Fingertip-to-wrist ÷ knuckle-to-wrist, averaged. Open ≈ 1.9, claw 1.3–1.6, fist ≈ 1.0.</dd></div>
           <div><dt>false fire</dt><dd>A command fired that you didn't intend. R2 logs them during a 2-minute dance.</dd></div>
         </dl>
       </div>
@@ -1164,36 +1596,36 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
     <!-- CODE MAP -->
     <section class="block" id="code">
       <h2>Where in the code</h2>
-      <p>R1 is merged to main (6d0fdff), so these are real paths and line numbers. R2 is on another branch; its rows give a read-only search to run once it lands.</p>
+      <p>R1, R2 and R3 are merged to main (tags <code>r1-done</code>, <code>r2-done</code>, <code>r3-done</code>), so these are real paths and line numbers on main as of 2026-10-12. R4a is on a branch; its rows give a read-only search to run once it lands.</p>
       <div class="codemap">
         <div class="group">
-          <h3>Startup and the frame loop <span class="status now">on main</span></h3>
+          <h3>R1 · Startup and the frame loop <span class="status now">on main</span></h3>
           <ul>
-            <li><code>src/main.ts</code><span>Opens the camera and loads the model in parallel (L48); <code>frame()</code> (L65–89) sizes the canvas, skips duplicate frames, makes timestamps strictly increasing, calls the model, analyzes, draws; the loop picks rVFC or rAF (L103–109).</span></li>
+            <li><code>src/main.ts</code><span>Opens the camera and loads the model in parallel (L225); <code>frame()</code> (L250–268) sizes the canvas, skips duplicate frames, makes timestamps strictly increasing, calls the model, then <code>processFrame</code> (L96–135); the loop picks rVFC or rAF (L282–288).</span></li>
             <li><code>src/recognizer.ts</code><span>Builds the Gesture Recognizer: VIDEO mode, <code>numHands</code> from config (L19–27); GPU first, CPU fallback (L29–34).</span></li>
             <li><code>src/camera.ts</code><span><code>getUserMedia</code> at 1280×720 ideal (L41–49), friendly error messages (L13–32), and dev test modes <code>?video=</code> and <code>?image=</code> (L60–80).</span></li>
             <li><code>src/config.ts</code><span>Every threshold in one place: finger ratio 1.08, thumb 0.5 palm sizes and 125°, palm-facing cosine 0.5 (L38–47); <code>numHands: 2</code> (L54); <code>swapHandedness: false</code> (L66).</span></li>
           </ul>
         </div>
         <div class="group">
-          <h3>Per-frame analysis and geometry <span class="status now">on main</span></h3>
+          <h3>R1 · Per-frame analysis and geometry <span class="status now">on main</span></h3>
           <ul>
-            <li><code>src/analyze.ts</code><span>Turns a model result into one <code>HandReading</code> per hand. <code>toIsotropic</code> (L26–28) puts x, y, z in pixels; <code>userHand</code> (L30–34) applies <code>swapHandedness</code>; hands are sorted left to right as you see them (L58).</span></li>
+            <li><code>src/analyze.ts</code><span>Turns a model result into one <code>HandReading</code> per hand. <code>toIsotropic</code> (L36–38) puts x, y, z in pixels; <code>userHand</code> (L40–44) applies <code>swapHandedness</code>; R2 added palm centre, pinch and reach (L69–72); hands are sorted left to right as you see them (L94).</span></li>
             <li><code>src/pseudoChord.ts</code><span>Finger ratio rule (L46–50); thumb rule from palm size and IP angle (L56–69); <code>formatChord</code> for the readout.</span></li>
             <li><code>src/palmFacing.ts</code><span>Palm normal as a cross product (L38); sign chosen by hand (L43). The function the handedness flip inverted.</span></li>
             <li><code>src/hand.ts</code><span>Landmark index names (L18–40) and vector helpers: <code>sub</code>, <code>dist</code>, <code>dot</code>, <code>cross</code>.</span></li>
           </ul>
         </div>
         <div class="group">
-          <h3>Drawing and readout <span class="status now">on main</span></h3>
+          <h3>R1 · Drawing and readout <span class="status now">on main</span></h3>
           <ul>
             <li><code>src/draw.ts</code><span>Skeleton in raw coordinates (L30 scales fractions to canvas pixels); fingertips green when up, red when curled (L49–58).</span></li>
-            <li><code>src/style.css:87</code><span><code>#mirror { transform: scaleX(-1) }</code>: flips video and canvas together.</span></li>
+            <li><code>src/style.css:109</code><span><code>#mirror { transform: scaleX(-1) }</code>: flips video and skeleton canvas together. The HUD canvas sits outside it.</span></li>
             <li><code>src/readout.ts</code><span>The HTML hand cards (chord, label, palm facing) and the fps and status bar.</span></li>
           </ul>
         </div>
         <div class="group">
-          <h3>Tests <span class="status now">on main</span></h3>
+          <h3>R1 · Tests <span class="status now">on main</span></h3>
           <ul>
             <li><code>src/pseudoChord.test.ts</code><span>All 32 finger combinations for both hands (L31); unchanged when rolled (L51) or scaled (L61); back of hand (L68).</span></li>
             <li><code>src/palmFacing.test.ts</code><span>Facing, back, side-on, tilted; and "the wrong hand flips the answer" (L43).</span></li>
@@ -1201,23 +1633,47 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
           </ul>
         </div>
         <div class="group">
-          <h3>R2 gesture logic <span class="status soon">see src/ once R2 lands</span></h3>
+          <h3>R3 · Audio and the practice view <span class="status now">on main</span></h3>
           <ul>
-            <li><code>grep -rn "dwell\|cooldown\|arming" src</code><span>The state machine. Check: time from timestamps, not frame counts; what "no hand" does; cooldown needs a release.</span></li>
-            <li><code>grep -rn "hold\|tap" src --include=*.ts</code><span>Tap vs hold: does a tap fire on release, and does open palm skip the wait?</span></li>
-            <li><code>grep -rn "1 -\|mirror" src</code><span>Where raw and display coordinates convert, for the box hit-test and drawing.</span></li>
-            <li><code>grep -rn "pointerdown\|setPointerCapture" src</code><span>Box drag and resize: zones, clamping, computing from the start rect.</span></li>
-            <li><code>grep -rn "pinch\|claw" src</code><span>Clutch geometry and its two thresholds (hysteresis).</span></li>
-            <li><code>grep -rln "describe" src --include=*.test.ts</code><span>New tests: is the state machine tested with scripted timelines?</span></li>
+            <li><code>src/audioPlayer.ts</code><span>The engine: an <code>AudioPlayer</code> class over an injected <code>MediaLike</code> (L20–31). Why the element, not Web Audio (L5–14). <code>play()</code> turns <code>NotAllowedError</code> into a "blocked" event (L126–139); <code>seek</code> clamps (L160–165); the real element is made at L169–176.</span></li>
+            <li><code>src/transport.ts</code><span>The one code path for gestures, keys and buttons. <code>actionForFire</code> (L13–22), <code>runTransport</code> (L32–42), <code>practiceConfig</code> (L45–47) which drops index's hold for R3.</span></li>
+            <li><code>src/practice.ts</code><span>File picker and drag-and-drop (L48–53, L135–160), keys Space / R / Home (L114–133), the "click once" hint from <code>userActivation</code> (L16, L67–73, L101–104), and the per-repaint playhead (L75–79, L184–202).</span></li>
+            <li><code>src/main.ts:105–111</code><span>The fire reaches the transport before any drawing. <code>recordTiming</code> (L138–142) and <code>devAudioHooks</code> (L145–156) give the dev-build timing data behind "2–8 ms".</span></li>
+            <li><code>src/config.ts:194–196</code><span><code>PRACTICE.holdShapes</code>: only V keeps a hold in R3.</span></li>
+            <li><code>src/sound.ts</code><span>R2's beeps: a Web Audio <code>AudioContext</code>, unlocked on the first click or key (L8–15).</span></li>
+            <li><code>src/audioPlayer.test.ts</code>, <code>src/transport.test.ts</code><span>The player against a fake element (blocked play at L139); wiring tests such as "index up restarts on the frame the ring completes, not on release" (<code>transport.test.ts:169</code>).</span></li>
           </ul>
         </div>
         <div class="group">
-          <h3>Plans that define R2</h3>
+          <h3>R2 · Gesture logic <span class="status now">on main</span></h3>
+          <ul>
+            <li><code>src/commands.ts</code><span>The state machine as a pure reducer. Flow comment (L7–16); <code>evaluateHands</code> gates (L123–133); <code>stepCommands</code> (L141–200), with release (L157–163), new dwell (L166), stillness (L174–183), hold (L193).</span></li>
+            <li><code>src/box.ts</code><span>Display-space rule (L4–9); presets (L25–29); <code>contains</code> (L42–44); <code>hitTest</code> for handles (L59–73); <code>applyDrag</code> from the start box with clamps (L80–98).</span></li>
+            <li><code>src/handFeatures.ts</code><span><code>palmCentre</code>, the one raw → display flip (L16–25); <code>pinchRatio</code> (L36–40); <code>clawExtension</code> and <code>othersReach</code> (L55–65).</span></li>
+            <li><code>src/clutch.ts</code><span>Pinch with the fist rule and hysteresis (L66–77); claw open-then-curl (L85–99); hand-lost grace (L102–105); two-hand by screen side (L113–136).</span></li>
+            <li><code>src/hud.ts</code><span>The unmirrored HUD canvas: box and handles (L87–106), palm markers (L111–128), dwell and hold rings (L139–158).</span></li>
+            <li><code>src/boxEditor.ts</code><span>Pointer events to display coordinates (L25–31), pointer capture (L38), drag from the saved box (L47).</span></li>
+            <li><code>src/config.ts</code><span><code>COMMANDS</code> (L107–120), <code>BOX</code> (L123–128), <code>CLUTCH</code> (L179–184).</span></li>
+            <li><code>src/commands.test.ts</code><span>Clock-not-frames (L436), hand leaving view (L467), long hold fires once (L126).</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>R4a · Loops <span class="status soon">branch r4a-loops, in progress</span></h3>
+          <ul>
+            <li><code>git grep -n "loopEnd\|loopStart" r4a-loops -- src</code><span>Where the loop wrap is checked: frame callback, <code>requestAnimationFrame</code>, or a timer? Is there look-ahead?</span></li>
+            <li><code>git grep -n "playbackRate" r4a-loops -- src</code><span>Does the wrap timing divide by the playback rate (R5 will change it)?</span></li>
+            <li><code>git grep -n "holdShapes" r4a-loops -- src</code><span>Is R3's index-hold override gone, so tap = loop start, hold = song start?</span></li>
+            <li><code>git grep -n "since\|0.15\|lateMark" r4a-loops -- src</code><span>The late-mark fix: marks stamped at the ring's start minus 0.15 s.</span></li>
+          </ul>
+        </div>
+        <div class="group">
+          <h3>Plans</h3>
           <ul>
             <li><code>docs/spec.md §4.2</code><span>What makes a shape count: box, 0.6 s dwell, palm facing, 1.0 s cooldown, one hand.</span></li>
             <li><code>docs/spec.md §4.3–4.4</code><span>The three shapes plus pinch; tap vs hold.</span></li>
             <li><code>docs/spec.md §5.2</code><span>Pinch, claw and two-hand clutches; freeze and release on tracking loss.</span></li>
-            <li><code>.agents/roadmap.md → R2</code><span>Scope and done means: 9 of 10, never outside the box, fires once, box edits take effect immediately.</span></li>
+            <li><code>docs/spec.md §4.5–4.6, §5</code><span>Restart rules, loop marking and late marks; the knob's clutch, motion and mapping.</span></li>
+            <li><code>.agents/roadmap.md → R4</code><span>R4a / R4b split; "looping from end back to start is clean" is a done-means line.</span></li>
           </ul>
         </div>
       </div>
@@ -1226,20 +1682,20 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
     <!-- QUESTIONS -->
     <section class="block" id="questions">
       <h2>Suggested questions</h2>
-      <p>Bring these to <code>claude --agent tutor</code> or ask them about the R2 report. Ordered from basic to deep.</p>
+      <p>Bring these to <code>claude --agent tutor</code>, or ask them about the R4a report. Ordered from basic to deep.</p>
       <ol class="qs">
-        <li>Why did a wrong Left/Right label flip palm-facing but leave the finger readout alone?<span class="lvl">basic</span></li>
-        <li>What are the states in R2's gesture machine, and which transition actually fires the command?<span class="lvl">basic</span></li>
-        <li>Where does R2 store the command box (raw, display or pixel coordinates), and where does it convert the palm centre?<span class="lvl">middle</span></li>
-        <li>Does R2 measure the dwell from timestamps or by counting frames? What would change at 15 fps?<span class="lvl">middle</span></li>
-        <li>Which thresholds got hysteresis in R2 (pinch, shape score, box edge), and how far apart are the two values?<span class="lvl">middle</span></li>
-        <li>An index tap is pending (ARMED) and the hand leaves the camera's view. What fires, and is that what you'd want?<span class="lvl">deep</span></li>
-        <li>How does R2 tell a claw from a relaxed, naturally half-curled hand?<span class="lvl">deep</span></li>
-        <li>If the 2-minute dance test logs false fires, which lever would you pull first (longer dwell, smaller box, stillness rule), and what does each cost?<span class="lvl">deep</span></li>
+        <li>Why did R3 choose the audio element over Web Audio, and what does that make harder in R4?<span class="lvl">basic</span></li>
+        <li>Why can't the very first play be a hand gesture? What counts as a user activation, and does a drag-and-drop?<span class="lvl">basic</span></li>
+        <li>R3 measured 2–8 ms from the fire to the audio event. What does that number include, and what does it leave out before the sound reaches you?<span class="lvl">middle</span></li>
+        <li>The hand model blocks the main thread for 25 ms every frame. Why doesn't the music stutter, and what <i>would</i> make it stutter?<span class="lvl">middle</span></li>
+        <li>In R4a, where is the loop end checked, how late can it notice, and does it use look-ahead?<span class="lvl">middle</span></li>
+        <li>An armed index tap fires TAP if your hand leaves the frame. Once R4a restores tap vs hold, is that what you want when you walk away mid-gesture?<span class="lvl">deep</span></li>
+        <li>With a Bluetooth speaker, should R4 subtract <code>outputLatency</code> from loop marks, on top of the 0.15 s late-mark offset?<span class="lvl">deep</span></li>
+        <li>For the R4b knob, what does the joystick need that the wiper doesn't (dead zone, <code>dt</code>, low gain), and why?<span class="lvl">deep</span></li>
       </ol>
     </section>
 
-    <footer>Grounded in src/ on main (R1 merge 6d0fdff, handedness fix 50517b6), docs/spec.md v1.2 §4.2–4.4 and §5.2, and .agents/roadmap.md R2 (2026-10-11). R2 code was not yet merged when this was written; the R2 section describes the planned behaviour. Built by the tutor agent.</footer>
+    <footer>v3, 2026-10-12. Grounded in src/ on main after the R3 merge (tags r1-done, r2-done, r3-done), docs/spec.md v1.2, and .agents/roadmap.md (R4 split approved 2026-10-12). R4a was still on branch r4a-loops, so its section describes the plan. Latency figures other than R3's measured 2–8 ms are typical values, not measurements of this setup. Built by the tutor agent.</footer>
   </main>
 </div>
 
@@ -1613,5 +2069,124 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
   svg.addEventListener('pointercancel', end);
 
   setPreset('tap');
+})();
+/* R3 latency lab */
+(function () {
+  const svg = document.getElementById('lt-chart');
+  if (!svg) return;
+  const $ = (id) => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = { dev: 'lap', path: 'res', dist: 2, model: 25, measured: null };
+  const DEV = { lap: 20, wire: 12, bt: 200 };
+  const DEV_NAME = { lap: 'laptop speakers', wire: 'wired speaker', bt: 'Bluetooth' };
+  const PATH = { res: 5, seek: 5, wa: 1 };
+  const SEEK_EXTRA = 20; // assumed: the element refilling its decoder after a seek to 0:00
+  const COLORS = ['--accent', '--browser', '--warn', '--ours', '--muted', '--ok'];
+  function segs() {
+    const eye = [
+      { k: 'draw + next refresh', v: 10, c: 0 },
+      { k: 'display', v: 15, c: 4 },
+    ];
+    const ear = [{ k: S.path === 'wa' ? 'start()' : 'to element (measured)', v: PATH[S.path], c: 0 }];
+    if (S.path === 'seek') ear.push({ k: 'seek refill (assumed)', v: SEEK_EXTRA, c: 2 });
+    ear.push({ k: 'next chunk', v: 1.5, c: 4 });
+    if (S.measured) {
+      ear.push({ k: 'buffer (measured)', v: S.measured.base, c: 1 });
+      ear.push({ k: 'device (measured)', v: S.measured.out, c: 3 });
+    } else {
+      ear.push({ k: 'output buffer', v: 10, c: 1 });
+      ear.push({ k: 'device: ' + DEV_NAME[S.dev], v: DEV[S.dev], c: 3 });
+    }
+    ear.push({ k: 'air', v: S.dist * 2.9, c: 5 });
+    return { eye, ear };
+  }
+  function el(n, a, t) { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; return e; }
+  function draw() {
+    const { eye, ear } = segs();
+    const sum = (a) => a.reduce((x, y) => x + y.v, 0);
+    const te = sum(eye), ta = sum(ear);
+    const max = Math.max(300, Math.ceil((ta + 20) / 50) * 50);
+    const X0 = 120, X1 = 740, sx = (ms) => X0 + (ms / max) * (X1 - X0);
+    svg.textContent = '';
+    for (let m = 0; m <= max; m += 50) {
+      svg.appendChild(el('line', { class: 'grid', x1: sx(m), y1: 14, x2: sx(m), y2: 172 }));
+      svg.appendChild(el('text', { class: 'axis', x: sx(m), y: 190, 'text-anchor': 'middle' }, m + ' ms'));
+    }
+    const lane = (y, name, arr) => {
+      svg.appendChild(el('text', { class: 'lane', x: 8, y: y + 22 }, name));
+      let t = 0;
+      arr.forEach((g) => {
+        const w = Math.max(1.5, sx(t + g.v) - sx(t));
+        const r = el('rect', { x: sx(t), y: y, width: w, height: 34, rx: 3 });
+        r.style.fill = 'color-mix(in srgb, var(' + COLORS[g.c] + ') 38%, var(--surface))';
+        r.style.stroke = 'var(' + COLORS[g.c] + ')';
+        const tt = el('title', {}, g.k + ': ' + g.v.toFixed(1) + ' ms'); r.appendChild(tt);
+        svg.appendChild(r);
+        if (w > 64) svg.appendChild(el('text', { class: 'seglbl', x: sx(t) + 5, y: y + 21 }, g.k));
+        t += g.v;
+      });
+      svg.appendChild(el('line', { class: 'end', x1: sx(t), y1: y - 4, x2: sx(t), y2: y + 38 }));
+      return t;
+    };
+    lane(28, 'Eyes: ring', eye);
+    lane(104, 'Ears: music', ear);
+    const thr = te + 125;
+    if (thr <= max) {
+      svg.appendChild(el('line', { class: 'thr', x1: sx(thr), y1: 90, x2: sx(thr), y2: 172 }));
+      svg.appendChild(el('text', { class: 'thrlbl', x: sx(thr) + 4, y: 98 }, '~125 ms after the ring: lag is noticeable'));
+    }
+    const gap = Math.max(0, ta - te);
+    $('lt-gap').textContent = Math.round(gap);
+    const v = $('lt-verdict');
+    if (gap < 50) { v.textContent = 'feels instant'; v.className = 'pill good'; }
+    else if (gap < 125) { v.textContent = 'slight, often fine'; v.className = 'pill meh'; }
+    else { v.textContent = 'noticeably late'; v.className = 'pill late'; }
+    $('lt-eye').textContent = Math.round(te) + ' ms';
+    $('lt-ear').textContent = Math.round(ta) + ' ms';
+    const before = 600 + 40 + S.model;
+    $('lt-total').textContent = ((before + ta) / 1000).toFixed(2) + ' s';
+    $('lt-before').textContent = 'Before time 0 (not drawn): you held the shape for the 0.6 s dwell, each frame reached the page about 40 ms after it happened, and the model spent ' + S.model + ' ms reading it. That ' + (before / 1000).toFixed(2) + ' s is deliberate and shown by the ring. Hover a segment for its value.';
+    const lg = $('lt-legend'); lg.textContent = '';
+    ear.forEach((g) => { const sp = document.createElement('span'); const i = document.createElement('i'); i.style.background = 'color-mix(in srgb, var(' + COLORS[g.c] + ') 38%, var(--surface))'; sp.appendChild(i); sp.appendChild(document.createTextNode(g.k + ' ' + g.v.toFixed(1) + ' ms')); lg.appendChild(sp); });
+  }
+  function group(ids, key, vals) {
+    ids.forEach((id, n) => $(id).addEventListener('click', () => {
+      S[key] = vals[n];
+      if (key === 'dev') S.measured = null;
+      ids.forEach((j) => $(j).setAttribute('aria-pressed', j === id ? 'true' : 'false'));
+      if (key === 'dev') $('lt-measure-note').textContent = 'Using typical values for ' + DEV_NAME[S.dev] + '.';
+      draw();
+    }));
+  }
+  group(['lt-dev-lap', 'lt-dev-wire', 'lt-dev-bt'], 'dev', ['lap', 'wire', 'bt']);
+  group(['lt-path-res', 'lt-path-seek', 'lt-path-wa'], 'path', ['res', 'seek', 'wa']);
+  $('lt-dist').addEventListener('input', (e) => { S.dist = +e.target.value; $('lt-dist-o').textContent = S.dist.toFixed(1) + ' m'; draw(); });
+  $('lt-model').addEventListener('input', (e) => { S.model = +e.target.value; $('lt-model-o').textContent = S.model + ' ms'; draw(); });
+  let ctx = null;
+  $('lt-measure').addEventListener('click', async () => {
+    const note = $('lt-measure-note');
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { note.textContent = 'This browser has no Web Audio, so nothing to measure.'; return; }
+      ctx = ctx || new AC({ latencyHint: 'interactive' });
+      if (ctx.state === 'suspended') await ctx.resume();
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+      o.frequency.value = 1000; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.08);
+      await new Promise((r) => setTimeout(r, 300));
+      const base = typeof ctx.baseLatency === 'number' ? ctx.baseLatency * 1000 : null;
+      const out = typeof ctx.outputLatency === 'number' ? ctx.outputLatency * 1000 : null;
+      if (base == null || out == null || out === 0) {
+        note.textContent = 'Your browser reports baseLatency ' + (base == null ? 'n/a' : base.toFixed(1) + ' ms') + ', outputLatency ' + (out == null || out === 0 ? 'not reported' : out.toFixed(1) + ' ms') + '. Keeping typical values.';
+        return;
+      }
+      S.measured = { base, out };
+      note.textContent = 'Measured at ' + ctx.sampleRate + ' Hz: baseLatency ' + base.toFixed(1) + ' ms, outputLatency ' + out.toFixed(1) + ' ms (the operating system\'s estimate; Bluetooth is sometimes under-reported). Pick an output to go back to typical values.';
+      draw();
+    } catch (err) {
+      note.textContent = 'Could not measure here: ' + (err && err.message ? err.message : String(err));
+    }
+  });
+  draw();
 })();
 </script>

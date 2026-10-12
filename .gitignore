@@ -9,3 +9,4 @@ dist/
 public/wasm/
 # local test media for ?image= / ?video= (not committed)
 public/test/
+.agents/*.tmp

@@ -6,7 +6,6 @@ Updated: 2026-10-11
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
 | B4a | R4a: V-cycle loops, late-mark fix, restart to loop start, keyboard nudge, loop visuals | ship | branch `r4a-loops` (worktree TBD) | 2026-10-12 |
-| T3 | Dashboard: R2/R3 code on main + R4 preview (resumed) | tutor | n/a | 2026-10-12 |
 
 ## Waiting on user
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
@@ -14,6 +13,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- T3 — dashboard v3: R2/R3 code on main, latency lab, R4 preview — same link — 2026-10-12
 - R3 — accepted ("it seems to be working"), merged --no-ff, tag `r3-done` — 2026-10-12
 - B3 — R3 built: 186 tests + build pass, 26/26 sim e2e checks; audio reacts 2–8 ms after fire; real hand/ears unverified — branch `r3-audio` (pushed, NOT merged; only R3 commits on top of r2-gestures) — 2026-10-12
 - R2 — accepted by the user, merged to main (--no-ff), tag `r2-done` — 2026-10-12
