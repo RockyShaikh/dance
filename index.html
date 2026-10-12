@@ -105,6 +105,7 @@
     <footer id="transport">
       <div id="timeline" role="slider" aria-label="playhead" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" tabindex="-1">
         <div id="tl-fill"></div>
+        <canvas id="tl-wave" aria-hidden="true"></canvas>
         <div id="loop-region" hidden></div>
         <div id="flag-start" class="flag" hidden><span class="flag-label">START <b id="flag-start-time"></b></span></div>
         <div id="flag-end" class="flag" hidden><span class="flag-label">END <b id="flag-end-time"></b></span></div>
@@ -130,7 +131,7 @@
         </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">Right hand: open palm = play/pause · index up = back to START (or 0:00) · V = clear · claw + tilt = scrub. Left hand: V = set START (IN) · index up = set END (OUT) and loop · open palm = play/pause · keys: Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">Right hand: open palm = play/pause · index up = back to START (or 0:00) · V = clear. Left hand: V = set START (IN) · index up = set END (OUT) and loop · open palm = play/pause. <b>Steering wheel:</b> hold the LEFT open palm up with the right hand in its box, then tilt the right hand. While steering, the left hand picks what moves: open palm = playhead, music playing · fist = playhead, paused · V = loop START · index = loop END. Keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
@@ -140,13 +141,13 @@
           <div class="knob-col">
             <label class="field"><span>Moves (target)</span><select id="knob-target"></select></label>
             <label class="field"><span>Grab (clutch)</span><select id="knob-clutch"></select></label>
-            <div id="knob-twohand-warning" class="note warn" hidden>Two-hand uses your LEFT open palm as the modifier, so the left-hand marks (START / END) are switched off while it is selected.</div>
+            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT open palm (right hand in its box) and tilt the right hand. Left open palm = playhead, playing · fist = playhead, paused · V = loop START · index = loop END. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
             <label class="field"><span>Turning (motion)</span><select id="knob-motion"></select></label>
             <label class="field"><span>Mapping</span><select id="knob-mapping"></select></label>
             <label class="slider"><span>Gain <b id="knob-gain-value"></b></span><input id="knob-gain" type="range" /></label>
             <label class="slider"><span>Dead zone (joystick) <b id="knob-dead-value"></b></span><input id="knob-dead" type="range" /></label>
             <label class="check"><input id="knob-invert" type="checkbox" /> Flip direction (clockwise = earlier)</label>
-            <div class="note">Where you grab (right hand, starting in the right-hand box) is "centre". Clockwise moves the target later, counter-clockwise earlier. Playhead: the music follows as you scrub (paused: short snippets, and it stays paused). START / END: only the marker moves; index up to hear it.</div>
+            <div class="note">With Joystick, where you grab is "centre"; Relative (the default) just follows the turn and stops when you do. Clockwise moves the target later, counter-clockwise earlier. Playhead: the music follows as you scrub (paused: short snippets, and it stays paused). START / END: only the marker moves; index up to hear it.</div>
           </div>
           <div class="knob-col">
             <div class="note">Experiment log, for <b id="knob-variant"></b></div>

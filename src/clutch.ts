@@ -14,6 +14,7 @@
 import { contains, type Box, type Vec2 } from "./box";
 import type { ClutchConfig } from "./config";
 import type { Handedness } from "./hand";
+import type { SteerShape } from "./steerMode";
 
 /** What the clutch detectors need to know about one detected hand. */
 export interface ClutchHand {
@@ -28,6 +29,11 @@ export interface ClutchHand {
   clawExt: number;
   /** From `othersReach`: low in a fist, which must not read as a pinch. */
   othersReach: number;
+  /**
+   * R4c: the hand as one of the four steering shapes (steerMode.classifySteerShape), null when it is none of them.
+   * Left out: only an open palm (`shape` equal to the config's modifier shape) counts, as in R4b.
+   */
+  steerShape?: SteerShape | null;
 }
 
 /** State of a clutch that follows one hand. */
@@ -117,11 +123,19 @@ export function twoHandRoles<H extends { palm: Vec2 }>(hands: readonly H[], cfg:
   return cfg.twoHand.modifierSide === "left" ? { modifier: leftMost, steering: rightMost } : { modifier: rightMost, steering: leftMost };
 }
 
+/** The modifier hand's steering shape: the classified one, or (R4b callers) an open palm by label. */
+function steerShapeOf(h: ClutchHand, cfg: ClutchConfig): SteerShape | null {
+  if (h.steerShape !== undefined) return h.steerShape;
+  return h.shape === cfg.twoHand.modifierShape ? "palm" : null;
+}
+
 /**
- * Two-hand: the hand on the modifier side of the screen holds an open palm up while
- * the other hand (the "steering" hand) is present. Hands are told apart by screen
- * side, not by the model's left/right label (which can flip). To start, the steering
- * hand's palm centre must be in the box; once started it may be anywhere.
+ * Two-hand (the steering wheel): the hand on the modifier side of the screen is held up while the other hand
+ * (the "steering" hand) is present. Hands are told apart by screen side, not by the model's left/right label
+ * (which can flip). To START, the modifier shows an open palm and the steering hand's palm centre is in the box.
+ * Once started, the grab holds while the modifier shows ANY steering shape (palm, fist, V, index: R4c, they pick
+ * the mode and must not release the grab) and the steering hand may be anywhere. A modifier that shows none of
+ * them, or goes missing, releases after the grace period.
  */
 function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly ClutchHand[], boxes: Record<Handedness, Box>, cfg: ClutchConfig): ClutchState["twoHand"] {
   const s = { ...prev };
@@ -129,8 +143,9 @@ function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly Cl
   let startOk = false;
   const roles = twoHandRoles(hands, cfg);
   if (roles) {
-    present = roles.modifier.shape === cfg.twoHand.modifierShape;
-    startOk = present && contains(boxes[roles.steering.hand], roles.steering.palm);
+    const shape = steerShapeOf(roles.modifier, cfg);
+    present = shape !== null;
+    startOk = shape === "palm" && contains(boxes[roles.steering.hand], roles.steering.palm);
   }
   if (!s.grabbed) {
     s.grabbed = startOk;

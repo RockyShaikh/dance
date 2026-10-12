@@ -145,7 +145,7 @@ describe("commands are suppressed while the knob is grabbed (claw, the default)"
   });
 });
 
-describe("two-hand clutch (left open palm = modifier)", () => {
+describe("two-hand clutch (left open palm starts the grab)", () => {
   const modifier: TestHand = { hand: "Left", shape: "Open_Palm", palm: LEFT_SIDE };
   const steering = (tiltDeg = 0, shape = "None"): TestHand => ({ hand: "Right", shape, palm: RIGHT_SIDE, tiltDeg });
 
@@ -163,11 +163,12 @@ describe("two-hand clutch (left open palm = modifier)", () => {
     expect(c.fires.length).toBeGreaterThan(0);
   });
 
-  it("selecting two-hand switches the left hand's marks off even when nothing is grabbed", () => {
+  it("R4c: with two-hand selected the left hand still MARKS when the right hand is not steering (V = IN, index = OUT)", () => {
     const c = new Chain("twoHand");
     c.show(2000, [{ hand: "Left", shape: "Victory", palm: LEFT_SIDE }]);
-    expect(c.fires).toEqual([]);
-    expect(suppressFor("twoHand", false, null)).toEqual({ Left: true, Right: false });
+    expect(c.fires.map((f) => `${f.hand} ${f.shape}`)).toEqual(["Left Victory"]);
+    expect(suppressFor("twoHand", false, null)).toEqual({ Left: false, Right: false });
+    expect(suppressFor("twoHand", true, "Right")).toEqual({ Left: true, Right: true });
   });
 
   it("the hand opposite the modifier steers, and tilting it moves the value; tilting the modifier does nothing", () => {

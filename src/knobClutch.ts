@@ -8,6 +8,7 @@ import type { Vec2 } from "./box";
 import { twoHandRoles, type ClutchView } from "./clutch";
 import { KNOB, type ClutchConfig, type ClutchKind } from "./config";
 import type { Handedness } from "./hand";
+import type { SteerShape } from "./steerMode";
 
 /** The bits of a detected hand the knob needs. */
 export interface KnobHand {
@@ -27,10 +28,20 @@ export interface ClutchPick {
 /**
  * Pinch and claw: the hand that is pinching / clawing steers. Two-hand: the hand on the side opposite
  * the modifier steers; with fewer than two hands in view it can't be told which is which, so none does.
+ * R4c: while the modifier shows none of the steering shapes (`modifierShape` null: a hand between shapes, or
+ * relaxed) nothing steers either, so the value is held at once and the grab lets go after the grace period;
+ * it does not keep moving while the clutch waits.
  */
-export function selectClutch(kind: ClutchKind, view: ClutchView, hands: readonly KnobHand[], cfg: ClutchConfig, steeringHand: Handedness = KNOB.steeringHand): ClutchPick {
+export function selectClutch(
+  kind: ClutchKind,
+  view: ClutchView,
+  hands: readonly KnobHand[],
+  cfg: ClutchConfig,
+  steeringHand: Handedness = KNOB.steeringHand,
+  modifierShape: SteerShape | null = "palm",
+): ClutchPick {
   if (kind === "twoHand") {
-    return { grabbed: view.twoHand, steering: twoHandRoles(hands, cfg)?.steering ?? null };
+    return { grabbed: view.twoHand, steering: modifierShape === null ? null : (twoHandRoles(hands, cfg)?.steering ?? null) };
   }
   // Only the steering hand's claw or pinch is a grab: the other hand marks, and must not grab the knob.
   const who = view[kind] === steeringHand ? steeringHand : null;
@@ -41,11 +52,12 @@ export function selectClutch(kind: ClutchKind, view: ClutchView, hands: readonly
  * Which hands' commands are blocked this frame (R4b). While the knob is grabbed the STEERING hand's
  * commands are blocked (a claw can read as an open palm or a V; its own shapes must not fire). The other
  * hand keeps working: with claw or pinch the left hand can still mark while the right hand scrubs.
- * The two-hand clutch is different: the left open palm is the modifier, so every left-hand command is
- * off (they would fight the modifier), and while grabbed the right hand's are blocked too.
+ * The two-hand clutch (R4c): while grabbed BOTH hands' commands are blocked (the left hand's shapes are
+ * steering modes and the right hand is the wheel). When nothing is grabbed the left hand's V / index
+ * set IN / OUT as always.
  */
 export function suppressFor(kind: ClutchKind, grabbed: boolean, steering: Handedness | null, steeringHand: Handedness = KNOB.steeringHand): Record<Handedness, boolean> {
-  if (kind === "twoHand") return { Left: true, Right: grabbed };
+  if (kind === "twoHand") return { Left: grabbed, Right: grabbed };
   const steer = steering ?? steeringHand;
   return { Left: grabbed && steer === "Left", Right: grabbed && steer === "Right" };
 }

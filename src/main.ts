@@ -4,9 +4,9 @@ import { Bench } from "./bench";
 import { normalizeBox, type Box } from "./box";
 import { attachBoxEditor } from "./boxEditor";
 import { CameraError, openCamera, openImage, openVideoFile, type FrameSource } from "./camera";
-import { initialClutchState, stepClutches, type ClutchView } from "./clutch";
+import { initialClutchState, stepClutches, twoHandRoles, type ClutchView } from "./clutch";
 import type { MachineView } from "./commands";
-import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
+import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
 import { drawHands } from "./draw";
 import type { Handedness } from "./hand";
 import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
@@ -23,7 +23,9 @@ import { selectClutch, suppressFor, type KnobHand } from "./knobClutch";
 import type { KnobDraw } from "./knobHud";
 import { KnobPanel } from "./knobPanel";
 import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, TARGET_NAMES, loadKnobSettings } from "./knobSettings";
-import { IDLE_SCRUB, stepScrub } from "./scrub";
+import { IDLE_SCRUB, stepScrub, type ScrubMode } from "./scrub";
+import { IDLE_STEER, classifySteerShape, stepSteerMode, targetOf, type SteerMode } from "./steerMode";
+import type { ZoomDraw } from "./waveDraw";
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const still = document.getElementById("still") as HTMLImageElement;
@@ -70,11 +72,15 @@ let valueAtGrab: number | null = null;
 let grabMovedSec = 0;
 let knobPanel: KnobPanel;
 
+/** R4c: the steering wheel's mode (the left hand's shape, debounced). */
+let steer = IDLE_STEER;
+/** Claw / pinch have no modes: the music keeps doing what it was doing when the grab began. */
+let grabScrubMode: ScrubMode = "play";
+
 /** Audible scrub of the playhead. */
 let scrub = IDLE_SCRUB;
 /** The last frame time at which a scrub was running (-Infinity if never): marks right after a scrub are exact. */
 let lastScrubT = -Infinity;
-let lastFrameT = 0;
 
 // --- R3: the music ------------------------------------------------------------------
 
@@ -88,6 +94,8 @@ knobPanel = new KnobPanel(knobSettings, () => {
   if (knob.grabbed) practice.setNudgeHold(false);
   knob = IDLE_KNOB;
   knobDraw = null;
+  steer = IDLE_STEER;
+  practice.setZoomActive(false);
   valueAtGrab = null;
 });
 
@@ -137,8 +145,6 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   sizeCanvases(width, height);
   drawHands(ctx, hands);
   const aspect = width / height;
-  const dtSec = lastFrameT > 0 ? Math.max(0, (ts - lastFrameT) / 1000) : 0;
-  lastFrameT = ts;
 
   // The clutches and the knob come first: while the knob is grabbed, the steering hand's commands are blocked.
   const c = stepClutches(
@@ -146,23 +152,43 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     {
       t: ts,
       box: settings.boxes,
-      hands: hands.map((h) => ({ hand: h.hand, shape: h.shape, palm: h.palm, pinchRatio: h.pinchRatio, clawExt: h.clawExt, othersReach: h.othersReach })),
+      hands: hands.map((h) => ({
+        hand: h.hand,
+        shape: h.shape,
+        palm: h.palm,
+        pinchRatio: h.pinchRatio,
+        clawExt: h.clawExt,
+        othersReach: h.othersReach,
+        steerShape: classifySteerShape(h),
+      })),
     },
     clutchCfg(),
   );
   clutch = c.state;
   clutchView = c.view;
   const knobHands: KnobHand[] = hands.map((h) => ({ hand: h.hand, palm: h.palm, tiltDeg: h.tiltDeg }));
-  const pick = selectClutch(knobSettings.clutch, clutchView, knobHands, clutchCfg());
+  // R4c, the steering wheel: the left (modifier) hand's shape picks the mode, debounced, while the grab continues.
+  const wheel = knobSettings.clutch === "twoHand";
+  const roles = wheel ? twoHandRoles(knobHands, clutchCfg()) : null;
+  const modifierShape = roles ? classifySteerShape(hands[knobHands.indexOf(roles.modifier)]) : null;
+  const pick = selectClutch(knobSettings.clutch, clutchView, knobHands, clutchCfg(), KNOB.steeringHand, modifierShape);
+  const sm = stepSteerMode(steer, { t: ts, grabbed: wheel && pick.grabbed, shape: modifierShape });
+  steer = sm.state;
   const k = stepKnob(
     knob,
-    { t: ts, grabbed: pick.grabbed, hand: pick.steering ? { tiltDeg: pick.steering.tiltDeg, palm: pick.steering.palm } : null, aspect },
+    {
+      t: ts,
+      grabbed: pick.grabbed,
+      hand: pick.steering ? { tiltDeg: pick.steering.tiltDeg, palm: pick.steering.palm } : null,
+      aspect,
+      target: sm.mode ? targetOf(sm.mode) : undefined,
+    },
     knobSettings,
     KNOB,
     CLUTCH.releaseGraceMs,
   );
   knob = k.state;
-  applyKnob(k.out, pick.steering, ts, dtSec);
+  applyKnob(k.out, pick.steering, ts, wheel ? sm.mode : null);
   const grabbed = pick.grabbed || k.out.grabbed;
 
   // Per-hand commands. The steering hand is blocked while grabbed; with the two-hand clutch the left hand is
@@ -202,7 +228,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   redrawHud();
   if (import.meta.env.DEV) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    Object.assign(dance, { hands, views, clutchView, boxes: settings.boxes, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub });
+    Object.assign(dance, { hands, views, clutchView, boxes: settings.boxes, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer });
   }
 }
 
@@ -211,8 +237,14 @@ function targetValue(target: KnobTarget): number | null {
   return target === "playhead" ? player.currentTime : practice.loopState[target];
 }
 
-/** R4b: one frame of the knob's result: the target moves, the readout and the dial follow, the tally counts. */
-function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec: number): void {
+/** The target the last frame's grab was moving, to notice the left hand switching it mid-grab (R4c). */
+let lastTarget: KnobTarget | null = null;
+
+/**
+ * One frame of the knob's result: the target moves, the readout and the dial follow, the tally counts.
+ * `mode` is the steering wheel's mode (null for claw / pinch, which have none).
+ */
+function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode: SteerMode | null): void {
   const target = out.target;
   const sinceGrab = (): string => {
     const now = targetValue(target);
@@ -223,22 +255,31 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec
   if (out.started) {
     valueAtGrab = targetValue(target);
     grabMovedSec = 0;
+    grabScrubMode = player.state === "playing" ? "play" : "pause";
+    practice.setNudgeHold(true, valueAtGrab === null ? `no loop ${target.toUpperCase()} yet` : "no change yet", target);
+  } else if (out.grabbed && lastTarget !== null && target !== lastTarget) {
+    // The left hand switched what the wheel moves: measure "since" from here, and show the new target's time.
+    valueAtGrab = targetValue(target);
     practice.setNudgeHold(true, valueAtGrab === null ? `no loop ${target.toUpperCase()} yet` : "no change yet", target);
   }
+  lastTarget = out.grabbed ? target : null;
   grabMovedSec += Math.abs(out.applySec);
 
+  // What the music should be doing while the playhead is steered: the left hand's palm / fist, or (claw, pinch) what it was doing.
+  const scrubMode: ScrubMode = mode ? (mode === "pause" ? "pause" : "play") : grabScrubMode;
   if (target === "playhead") {
-    // Audible scrub: seek the playhead live (rate-limited); paused, play short snippets.
+    // Audible scrub: the music follows the hand (see scrub.ts for the seek policy).
     const sr = stepScrub(
       scrub,
       {
         t: ts,
-        dtSec,
         active: out.grabbed && player.loaded,
+        mode: scrubMode,
         deltaSec: out.applySec,
         playing: player.state === "playing",
         current: player.currentTime,
         duration: player.duration,
+        seeking: player.seeking,
       },
       SCRUB,
     );
@@ -248,10 +289,14 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec
       practice.runScrub(sr.actions);
       if (import.meta.env.DEV) recordScrub(ts, sr.actions.filter((a) => a.type === "seek").length);
     }
-    if (out.grabbed) practice.setNudgeNote(sinceGrab());
+    if (out.grabbed) practice.setNudgeNote("");
   } else {
     // A grab with a different target ends any scrub that was running (the target was switched mid-grab).
-    if (scrub.active) practice.runScrub(stepScrub(scrub, { t: ts, dtSec, active: false, deltaSec: 0, playing: player.state === "playing", current: player.currentTime, duration: player.duration }, SCRUB).actions);
+    if (scrub.active) {
+      practice.runScrub(
+        stepScrub(scrub, { t: ts, active: false, mode: scrubMode, deltaSec: 0, playing: player.state === "playing", current: player.currentTime, duration: player.duration }, SCRUB).actions,
+      );
+    }
     scrub = IDLE_SCRUB;
     if (out.applySec !== 0) {
       const note = (limited: boolean) => `${sinceGrab()}${limited ? "  LIMIT" : ""}`;
@@ -268,6 +313,22 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec
   }
   if (steering) lastKnobPalm = steering.palm;
   const value = targetValue(target);
+  const loop = practice.loopState;
+  const zoom: ZoomDraw | null =
+    out.view && player.loaded && practice.waveform
+      ? {
+          peaks: practice.waveform,
+          target,
+          centre: value ?? player.currentTime,
+          halfWindow: WAVE.zoomHalfWindowSec,
+          playhead: player.currentTime,
+          start: loop.start,
+          end: loop.end,
+          title: target === "playhead" ? `PLAYHEAD · ${scrubMode === "play" ? "PLAYING" : "PAUSED"}` : target === "start" ? "LOOP START" : "LOOP END",
+          note: target === "playhead" ? "" : value === null ? `no loop ${target.toUpperCase()} yet` : sinceGrab(),
+        }
+      : null;
+  practice.setZoomActive(zoom !== null);
   knobDraw = out.view
     ? {
         view: out.view,
@@ -276,6 +337,8 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec
         deadZoneDeg: knobSettings.deadZoneDeg,
         // The huge readout (DOM) already shows the value; here only what is missing.
         note: value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
+        modes: mode ? { active: mode, pending: steer.pending } : null,
+        zoom,
       }
     : null;
 }
@@ -397,6 +460,9 @@ async function main(): Promise<void> {
   }
 
   const meter = new FpsMeter();
+  // DEV ?sim&simfps=30: process simulated frames at a camera's rate instead of every animation frame (60+ Hz).
+  const simFps = sim ? Number(new URLSearchParams(location.search).get("simfps")) || 0 : 0;
+  let lastSimFrame = -Infinity;
   let lastTs = -1;
   let lastVideoTime = -1;
 
@@ -412,6 +478,8 @@ async function main(): Promise<void> {
     }
     // MediaPipe needs strictly increasing timestamps (and so does the classifier's clock).
     let ts = performance.now();
+    if (simFps > 0 && ts - lastSimFrame < 1000 / simFps - 2) return;
+    lastSimFrame = ts;
     if (ts <= lastTs) ts = lastTs + 1;
     lastTs = ts;
 

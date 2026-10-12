@@ -4,7 +4,8 @@ import { normalizeChoice, type KnobChoice } from "./knob";
 /** The knob's chosen variant and sliders, kept in localStorage so they survive a reload. Defaults: claw + tilt + joystick. */
 export type KnobSettings = KnobChoice;
 
-const KEY = "dance.r4b.knob";
+// Bumped in R4c so the new defaults (two-hand steering wheel, relative mapping) apply once instead of the saved R4b choice.
+const KEY = "dance.r4c.knob";
 
 export const CLUTCHES: readonly ClutchKind[] = ["claw", "pinch", "twoHand"];
 export const MOTIONS: readonly MotionKind[] = ["tilt", "circling"];
