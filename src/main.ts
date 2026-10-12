@@ -210,6 +210,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
       lastScrubT,
       t: ts,
       duration: player.duration,
+      rate: player.rate,
     });
     const result = action ? practice.perform(action, { markAt }) : null;
     if (import.meta.env.DEV) recordTiming(`${fired.hand} ${fired.shape}`, ts, before, result?.label ?? null, markAt);

@@ -25,6 +25,10 @@ export interface MediaLike {
   readonly ended: boolean;
   /** True while a seek has not finished (R4c: the scrub does not stack seeks on one that is still in flight). */
   readonly seeking?: boolean;
+  /** R5: playback speed (1 = normal). The browser resets it to the default whenever a new source loads. */
+  playbackRate: number;
+  /** R5: keep the pitch when the speed changes (the browser time-stretches). */
+  preservesPitch?: boolean;
   play(): Promise<void>;
   pause(): void;
   load(): void;
@@ -47,6 +51,7 @@ export type PlayerEvent =
   | { type: "pause" }
   | { type: "ended" }
   | { type: "seeked"; time: number }
+  | { type: "rate"; rate: number }
   | { type: "error"; message: string }
   /** The browser refused to start playback (no user activation yet). */
   | { type: "blocked" };
@@ -67,7 +72,31 @@ export class AudioPlayer {
     forward("pause", () => ({ type: "pause" }));
     forward("ended", () => ({ type: "ended" }));
     forward("seeked", () => ({ type: "seeked", time: this.currentTime }));
+    forward("ratechange", () => ({ type: "rate", rate: this.rate }));
     forward("error", () => ({ type: "error", message: "This file can't be played. Try an MP3 or WAV." }));
+  }
+
+  /** Playback speed now (1 = normal). */
+  get rate(): number {
+    return this.media.playbackRate;
+  }
+
+  /**
+   * Sets the playback speed for the whole track (R5), pitch preserved, and returns what was set (clamped to 0.25..4,
+   * the range browsers keep audible). It applies at once, while playing or paused, and stays through seeks and loop
+   * wraps; loading another track puts it back to 1x (the browser resets it).
+   */
+  setRate(rate: number): number {
+    const r = Math.min(4, Math.max(0.25, Number.isFinite(rate) ? rate : 1));
+    this.keepPitch();
+    this.media.playbackRate = r;
+    return r;
+  }
+
+  private keepPitch(): void {
+    const m = this.media as MediaLike & { webkitPreservesPitch?: boolean };
+    m.preservesPitch = true;
+    if ("webkitPreservesPitch" in m) m.webkitPreservesPitch = true;
   }
 
   /** Subscribes to events; returns the unsubscribe function. */
@@ -92,6 +121,7 @@ export class AudioPlayer {
     if (owned) this.url = url;
     this.media.src = url;
     this.media.load();
+    this.media.playbackRate = 1; // a new track starts at normal speed (loading resets it anyway)
   }
 
   private releaseUrl(): void {

@@ -11,6 +11,9 @@ export class FakeMedia implements MediaLike {
   private _paused = true;
   private _ended = false;
   private _duration = NaN;
+  private _rate = 1;
+  /** Like the real element: the pitch is kept when the speed changes (the player turns it on). */
+  preservesPitch = false;
   private handlers = new Map<string, Set<() => void>>();
   /** What the next play() does: resolve, or reject with this error name. */
   playError: string | null = null;
@@ -37,6 +40,14 @@ export class FakeMedia implements MediaLike {
   }
   get duration() {
     return this._duration;
+  }
+  get playbackRate() {
+    return this._rate;
+  }
+  set playbackRate(v: number) {
+    if (v === this._rate) return;
+    this._rate = v;
+    this.fire("ratechange");
   }
   get paused() {
     return this._paused;
@@ -66,10 +77,10 @@ export class FakeMedia implements MediaLike {
     this._paused = true;
     this.fire("pause");
   }
-  /** Test helper: playback advances. */
+  /** Test helper: `seconds` of real time pass; the music moves `seconds * playbackRate`. */
   advance(seconds: number) {
     if (this._paused) return;
-    this._time = Math.min(this._duration, this._time + seconds);
+    this._time = Math.min(this._duration, this._time + seconds * this._rate);
     if (this._time >= this._duration) {
       this._ended = true;
       this._paused = true;

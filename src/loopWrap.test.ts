@@ -112,6 +112,40 @@ describe("LoopWrapper", () => {
     expect(player.state).toBe("playing");
   });
 
+  it("R5: wraps cleanly at 2x: lands on START, keeps the speed, overshoot is at most one poll of REAL time (twice that in music), and twice as many passes", async () => {
+    const one = setup({ start: 5, end: 8 });
+    one.player.seek(5);
+    await one.player.play();
+    one.run(15, 0.01);
+    const two = setup({ start: 5, end: 8 });
+    two.player.setRate(2);
+    two.player.seek(5);
+    await two.player.play();
+    two.run(15, 0.01);
+    expect(two.wrapper.wraps).toBeGreaterThanOrEqual(2 * one.wrapper.wraps - 1);
+    expect(two.player.rate).toBe(2);
+    expect(two.player.state).toBe("playing");
+    for (const w of two.wrapper.history) {
+      expect(w.landedAt).toBe(5);
+      expect(w.overshootSec).toBeGreaterThanOrEqual(0);
+      expect(w.overshootSec).toBeLessThan(0.0201); // one 10 ms poll at 2x
+    }
+  });
+
+  it("R5: the speed can change in the middle of a loop without upsetting the wrap", async () => {
+    const { player, wrapper, run } = setup({ start: 5, end: 8 });
+    player.seek(5);
+    await player.play();
+    run(2, 0.01);
+    player.setRate(2);
+    run(2, 0.01);
+    player.setRate(0.5);
+    run(8, 0.01);
+    expect(wrapper.wraps).toBeGreaterThanOrEqual(2);
+    expect(player.currentTime).toBeGreaterThanOrEqual(5);
+    expect(player.currentTime).toBeLessThan(8.02);
+  });
+
   it("keeps the history capped", async () => {
     const { player, wrapper, run } = setup({ start: 1, end: 1.6 });
     player.seek(1);

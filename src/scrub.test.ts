@@ -11,6 +11,8 @@ class Rig {
   t = 5000;
   current: number;
   playing: boolean;
+  /** R5: playback speed (the music moves this many seconds per second). */
+  rate = 1;
   /** Seeks stay "in flight" this long (0 = instant). */
   seekMs = 0;
   seekingUntil = 0;
@@ -34,8 +36,8 @@ class Rig {
     this.t += FRAME;
     // The audio element plays on by itself between frames.
     if (this.playing) {
-      this.current += FRAME / 1000;
-      this.playedSec += FRAME / 1000;
+      this.current += (FRAME / 1000) * this.rate;
+      this.playedSec += (FRAME / 1000) * this.rate;
     }
     this.handTotal += deltaSec;
     const r = stepScrub(
@@ -289,6 +291,55 @@ describe("palm <-> fist: the mode switches under a held grab", () => {
     b.frame(0, false, "pause");
     expect(b.playing).toBe(false);
     expect(b.current).toBeCloseTo(pos, 6);
+  });
+});
+
+describe("at 2x speed (R5)", () => {
+  it("playing: the scrub still lands where the hand put the music, whatever the speed, and keeps playing", () => {
+    for (const rate of [0.5, 1, 2]) {
+      const r = new Rig(true, 30);
+      r.rate = rate;
+      r.run(1500, -1.5);
+      r.run(300, 0);
+      r.frame(0, false);
+      expect(r.current).toBeCloseTo(r.start + r.playedSec + r.handTotal, 1);
+      expect(r.playing).toBe(true);
+    }
+  });
+
+  it("playing: fewer, bigger seeks than frames, and never over the rate limit", () => {
+    const r = new Rig(true, 30);
+    r.rate = 2;
+    r.run(3000, 0.3);
+    const seeks = r.seeks();
+    expect(seeks.length).toBeGreaterThan(0);
+    expect(seeks.length).toBeLessThan(3000 / FRAME / 4);
+    for (let i = 0; i + SCRUB.maxSeeksPerSec < seeks.length; i++) expect(seeks[i + SCRUB.maxSeeksPerSec].t - seeks[i].t).toBeGreaterThanOrEqual(1000 - FRAME);
+  });
+
+  it("paused: snippets play at 2x, and it still stops and lands exactly on the scrub position", () => {
+    const r = new Rig(false, 30);
+    r.rate = 2;
+    r.run(1200, 1.5);
+    expect(r.playing).toBe(true);
+    r.run(SCRUB.snippetMs + 3 * FRAME, 0);
+    expect(r.playing).toBe(false);
+    expect(r.current).toBeCloseTo(r.start + r.handTotal, 6);
+  });
+
+  it("palm -> fist at 2x pauses exactly where the hand has put the music; fist -> palm resumes from there", () => {
+    const r = new Rig(true, 30);
+    r.rate = 2;
+    r.run(600, -1, true, "play");
+    const expected = r.start + r.playedSec + r.handTotal;
+    r.frame(0, true, "pause");
+    expect(r.playing).toBe(false);
+    expect(Math.abs(r.current - expected)).toBeLessThan(0.1);
+    const at = r.current;
+    r.frame(0, true, "play");
+    expect(r.playing).toBe(true);
+    r.run(500, 0, true, "play");
+    expect(r.current - at).toBeCloseTo(1, 0); // 0.5 s of real time at 2x
   });
 });
 

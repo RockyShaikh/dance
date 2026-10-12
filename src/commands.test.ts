@@ -115,10 +115,26 @@ describe("dwell: a shape must be held", () => {
 
   it("shapes that are not commands never fire", () => {
     const b = new Bench();
-    for (const shape of ["Closed_Fist", "Thumb_Up", "Thumb_Down", "ILoveYou", "None"]) {
+    for (const shape of ["Closed_Fist", "Thumb_Down", "ILoveYou", "None"]) {
       b.show(5000, [hand(shape)]);
     }
     expect(b.fires).toHaveLength(0);
+  });
+
+  it("R5: Thumb_Up is a command (it toggles the speed), and fires once when its ring fills", () => {
+    const b = new Bench();
+    b.show(5000, [hand("Thumb_Up")]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Thumb_Up"]);
+  });
+
+  it("R5: a thumbs up does not show the palm, so the palm-facing rule does not apply to it (it still applies to the others)", () => {
+    const b = new Bench();
+    b.show(2000, [hand("Thumb_Up", INSIDE, { palmFacing: false })]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Thumb_Up"]);
+    const c = new Bench();
+    c.show(2000, [hand("Victory", INSIDE, { palmFacing: false })]);
+    expect(c.fires).toHaveLength(0);
+    expect(c.view.blocked).toBe("palm not facing");
   });
 });
 
@@ -275,7 +291,7 @@ describe("the command box", () => {
       b.show(2000, [hand(shape, INSIDE)]);
       b.idle(1500);
     }
-    expect(b.fires.map((f) => f.shape)).toEqual(["Open_Palm", "Pointing_Up", "Victory"]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Open_Palm", "Pointing_Up", "Victory", "Thumb_Up"]);
   });
 
   it("the palm centre decides, edges included", () => {

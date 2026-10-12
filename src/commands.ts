@@ -121,7 +121,8 @@ export function evaluateHands(hands: readonly HandObs[], box: Box, cfg: CommandC
   if (inBox.length > 1) return { hand: null, blocked: "two hands" };
   const hand = inBox[0];
   if (hand.shapeScore < cfg.minShapeScore) return { hand: null, blocked: "low confidence" };
-  if (cfg.requirePalmFacing && !hand.palmFacing) return { hand: null, blocked: "palm not facing" };
+  // A thumbs up shows the back of the fingers, not the palm: the facing rule does not apply to it.
+  if (cfg.requirePalmFacing && !hand.palmFacing && !cfg.palmFacingExempt.includes(hand.shape)) return { hand: null, blocked: "palm not facing" };
   return { hand, blocked: null };
 }
 

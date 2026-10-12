@@ -53,10 +53,12 @@ export function stepHandCommands(prev: HandMachines, input: HandStepInput, cfg: 
   const views = {} as Record<Handedness, MachineView>;
   const fired: HandFire[] = [];
   for (const h of HANDS) {
+    // Right-hand-only shapes (the thumbs up) are not armed on the left hand: it would fire nothing and still cool the right hand down.
+    const handCfg = h === "Right" ? cfg : { ...cfg, shapes: cfg.shapes.filter((s) => !cfg.rightOnlyShapes.includes(s)) };
     const r = stepCommands(
       prev[h],
       { t: input.t, hands: input.hands.filter((o) => o.hand === h), box: input.boxes[h], aspect: input.aspect, suppress: input.suppress[h] },
-      cfg,
+      handCfg,
     );
     state[h] = r.state;
     views[h] = r.view;
