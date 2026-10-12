@@ -5,9 +5,10 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B4c | R4c steering redesign (left-shape modes, lag fix, waveform) on `r4c-steer`, then R5 2× toggle on `r5-speed` | ship | branches `r4c-steer` → `r5-speed` | 2026-10-12 |
 
 ## Waiting on user
-- Knob testing (R4b) at http://localhost:5177/?track=/test/click-track.wav; paste "Copy results". Then merge r4a-loops → r4a-done, r4b-knob → r4b-done on the user's word.
+- Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
