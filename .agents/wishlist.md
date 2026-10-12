@@ -54,6 +54,10 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Mute or change the confirm beep during practice** (plays over the music) | QoL | Surfaced in R3; needs ears |
 | **Volume control; show track name / recent files** | QoL | Surfaced in R3 |
 | **Commit the e2e browser driver** (`?sim` checks) under `scripts/` | overlooked | Surfaced in R3; currently lives in /tmp only |
+| **Ring says what will fire** (e.g. "V: SET START / hold: CLEAR") | QoL | Surfaced in R4a; spec §4.7 |
+| **Nudge readout and banner overlap** on short windows | QoL | Surfaced in R4a |
+| **Late-mark offset as a bench slider** (config-only now, 0.15 s) | QoL | Surfaced in R4a |
+| **Wrap look-ahead tune** (`LOOP.wrapLookaheadSec`, now 0) | QoL | Surfaced in R4a; one-line tune if the loop end feels late |
 
 ## Unresolved threads
 
@@ -100,3 +104,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Loop marks and Bluetooth/output latency**: should marks subtract the audio output delay? | unresolved | Surfaced by the tutor 2026-10-12; matters with Bluetooth speakers |
 | **Two-hand grab vs open palm**: with the whole-frame box, the open palm used as the two-hand modifier also toggles play/pause | risk | Surfaced 2026-10-12; relevant to R4b (suppress commands while grabbed) |
 | **Seek gap not measured on the user's machine** | unresolved | Check during R4a ear test |
+| **~5 ms silent gaps now and then at the loop wrap** (HTMLAudioElement re-buffer) | risk | R4a measured overshoot ≤6 ms idle and ≤23 ms under 25 ms/frame load; fallback is a Web Audio looping buffer |
+| **Background tab throttles the wrap timer** (overshoot could reach ~1 s) | risk | Low priority: dancing uses the foreground tab |
+| **Possible click at the wrap** if START sits mid-waveform | unresolved | Beat snap or a micro-fade would address it |

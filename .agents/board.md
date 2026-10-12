@@ -5,14 +5,16 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B4a | R4a: V-cycle loops, late-mark fix, restart to loop start, keyboard nudge, loop visuals | ship | branch `r4a-loops` (worktree TBD) | 2026-10-12 |
+| B4b | R4b: knob nudge of loop START, all variants switchable, claw default; built on r4a-loops | ship | branch `r4b-knob` | 2026-10-12 |
 
 ## Waiting on user
+- R4a hand/ear test at http://localhost:5176/?track=/test/click-track.wav → merge `r4a-loops` --no-ff + tag `r4a-done` on the user's word.
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
 ## Done (last 10)
+- B4a — R4a built: 236 tests + build pass; sim e2e OK; wrap overshoot ≤6 ms idle / ≤23 ms under load — branch `r4a-loops` (pushed, NOT merged), worktree `.claude/worktrees/agent-a52adaec4e622e9c4` — 2026-10-12
 - T3 — dashboard v3: R2/R3 code on main, latency lab, R4 preview — same link — 2026-10-12
 - R3 — accepted ("it seems to be working"), merged --no-ff, tag `r3-done` — 2026-10-12
 - B3 — R3 built: 186 tests + build pass, 26/26 sim e2e checks; audio reacts 2–8 ms after fire; real hand/ears unverified — branch `r3-audio` (pushed, NOT merged; only R3 commits on top of r2-gestures) — 2026-10-12
