@@ -1,5 +1,6 @@
 import { contains, type Box, type Handle } from "./box";
 import type { MachineView } from "./commands";
+import { drawKnob, type KnobDraw } from "./knobHud";
 
 /**
  * The HUD canvas: the command box, palm-centre markers and the dwell rings.
@@ -20,6 +21,8 @@ export interface HudInput {
   /** Palm centres of detected hands, display-normalized. */
   palms: readonly { x: number; y: number }[];
   view: MachineView | null;
+  /** R4b: the knob dial and the big GRABBED word, while the knob is held. */
+  knob?: KnobDraw | null;
 }
 
 export function prettyShape(label: string): string {
@@ -127,6 +130,7 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
     ctx.stroke();
   }
 
+  if (input.knob) drawKnob(ctx, input.knob);
   if (!view) return;
 
   if (view.cooldownLeftMs > 0) {

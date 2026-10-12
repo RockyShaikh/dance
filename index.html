@@ -126,6 +126,36 @@
       </div>
       <div id="cheat" class="note">In the box: open palm = play/pause · index up = back to loop start (or 0:00) · V = start, then end, then clear · keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
+
+      <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
+      <details id="knob-panel">
+        <summary>Knob <span id="knob-label"></span><span id="knob-state" class="pill">released</span></summary>
+        <div id="knob-body">
+          <div class="knob-col">
+            <label class="field"><span>Grab (clutch)</span><select id="knob-clutch"></select></label>
+            <label class="field"><span>Turning (motion)</span><select id="knob-motion"></select></label>
+            <label class="field"><span>Mapping</span><select id="knob-mapping"></select></label>
+            <label class="slider"><span>Gain <b id="knob-gain-value"></b></span><input id="knob-gain" type="range" /></label>
+            <label class="slider"><span>Dead zone (joystick) <b id="knob-dead-value"></b></span><input id="knob-dead" type="range" /></label>
+            <label class="check"><input id="knob-invert" type="checkbox" /> Flip direction (clockwise = earlier)</label>
+            <div class="note">Where you grab, with the hand in the command box, is "centre". Turning clockwise moves the START later, counter-clockwise earlier. Only the marker moves: index-tap to hear it.</div>
+          </div>
+          <div class="knob-col">
+            <div class="note">Experiment log, for <b id="knob-variant"></b></div>
+            <div id="knob-tally" class="kv"></div>
+            <div class="knob-buttons">
+              <button type="button" id="knob-best">Felt best</button>
+              <button type="button" id="knob-poor">Not great</button>
+            </div>
+            <input id="knob-note" type="text" placeholder="why? (saved as you type)" maxlength="300" />
+            <div class="knob-buttons">
+              <button type="button" id="knob-copy">Copy results</button>
+              <button type="button" id="knob-reset">Reset log</button>
+              <span id="knob-copied" class="note"></span>
+            </div>
+          </div>
+        </div>
+      </details>
     </footer>
     <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />
     <div id="drop-overlay" hidden>Drop an MP3 or WAV to load it</div>

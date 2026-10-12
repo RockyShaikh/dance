@@ -57,6 +57,8 @@ export class Practice {
   private loop: LoopState = NO_LOOP;
   private nudgeUntil = 0;
   private nudgeNote = "";
+  /** R4b: the knob is grabbed, so the START readout stays up. */
+  private nudgeHeld = false;
   /** The END-to-START wrap. Public so the dev console can read its measurements. */
   readonly wrapper: LoopWrapper;
 
@@ -130,17 +132,33 @@ export class Practice {
    * Moves the loop START by `deltaSec` (negative = earlier) and shows it huge for a moment. Only the
    * marker moves: index up to hear it. Keys, buttons and (R4b) the knob all come through here.
    */
-  nudgeStart(deltaSec: number): TransportResult {
+  nudgeStart(deltaSec: number, opts: { note?: (limited: boolean) => string } = {}): TransportResult {
     const result = runNudge(this.player, this.loop, deltaSec);
     this.loop = result.loop;
     if (this.loop.start !== null) {
-      this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;
+      if (!this.nudgeHeld) this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;
       const mag = Math.round(Math.abs(deltaSec) * 1000) / 1000;
-      this.nudgeNote = `${deltaSec < 0 ? "−" : "+"}${mag} s${result.limited ? "  LIMIT" : ""}`;
+      this.nudgeNote = opts.note ? opts.note(!!result.limited) : `${deltaSec < 0 ? "−" : "+"}${mag} s${result.limited ? "  LIMIT" : ""}`;
     }
     this.showHint(this.loop.start === null ? result.label : null);
     this.render();
     return result;
+  }
+
+  /**
+   * R4b: while the knob is grabbed the huge START time stays up (also when nothing is moving), with
+   * `note` under it; letting go starts the usual timeout. With no START set there is nothing to show.
+   */
+  setNudgeHold(held: boolean, note = ""): void {
+    this.nudgeHeld = held;
+    this.nudgeNote = note;
+    this.nudgeUntil = held ? Infinity : performance.now() + LOOP.nudgeReadoutMs;
+    this.render();
+  }
+
+  /** Under the huge START time while the knob is grabbed (a note of how far it has moved). */
+  setNudgeNote(note: string): void {
+    this.nudgeNote = note;
   }
 
   /** The loop as the view knows it (for the dev console and tests). */

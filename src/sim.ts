@@ -33,6 +33,8 @@ export interface SimHand {
   curl?: number;
   /** Hand size scale (default 2). */
   scale?: number;
+  /** Knob tilt: the hand's needle against straight up, degrees clockwise as the user sees the mirrored picture (default 0). */
+  tilt?: number;
 }
 
 export const SIM_SIZE = { width: 1280, height: 720 } as const;
@@ -83,6 +85,8 @@ export function simReading(s: SimHand): HandReading {
       P: bits[4] === "1",
     },
     yawDeg: s.away ? 180 : 0,
+    // makeHand's roll is clockwise in the raw (un-mirrored) image, which is counter-clockwise on the mirrored display.
+    rollDeg: -(s.tilt ?? 0),
     scale: s.scale ?? 2,
     curl: s.curl,
   };
