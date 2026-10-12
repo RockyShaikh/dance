@@ -1,39 +1,62 @@
 import { describe, expect, it } from "vitest";
 import { SCRUB } from "./config";
-import { IDLE_SCRUB, stepScrub, type ScrubAction, type ScrubState } from "./scrub";
+import { IDLE_SCRUB, stepScrub, type ScrubAction, type ScrubMode, type ScrubState } from "./scrub";
 
 const FRAME = 16; // ~60 fps: the fastest the app can ask
 const DURATION = 120;
 
-/** A tiny model of the player: playhead, playing/paused, and a log of every call. */
+/** A tiny model of the player: playhead, playing/paused, an optional seek latency, and a log of every call. */
 class Rig {
   state: ScrubState = IDLE_SCRUB;
   t = 5000;
   current: number;
   playing: boolean;
+  /** Seeks stay "in flight" this long (0 = instant). */
+  seekMs = 0;
+  seekingUntil = 0;
   calls: { t: number; a: ScrubAction }[] = [];
+  /** Everything the hand asked for: the sum of the deltas. */
+  handTotal = 0;
+  /** Seconds the music played by itself (so an expected landing spot can be computed). */
+  playedSec = 0;
+  readonly start: number;
+  /** The mode a claw / pinch grab would hold: what the music was doing at the start. */
+  readonly mode: ScrubMode;
   constructor(playing: boolean, at = 30) {
+    this.mode = playing ? "play" : "pause";
     this.playing = playing;
     this.current = at;
+    this.start = at;
   }
 
   /** One frame: the knob moved the playhead by `deltaSec` (and `active` = grabbed). */
-  frame(deltaSec: number, active = true): void {
+  frame(deltaSec: number, active = true, mode: ScrubMode = this.mode): void {
     this.t += FRAME;
     // The audio element plays on by itself between frames.
-    if (this.playing) this.current += FRAME / 1000;
-    const r = stepScrub(this.state, { t: this.t, dtSec: FRAME / 1000, active, deltaSec, playing: this.playing, current: this.current, duration: DURATION }, SCRUB);
+    if (this.playing) {
+      this.current += FRAME / 1000;
+      this.playedSec += FRAME / 1000;
+    }
+    this.handTotal += deltaSec;
+    const r = stepScrub(
+      this.state,
+      { t: this.t, active, mode, deltaSec, playing: this.playing, current: this.current, duration: DURATION, seeking: this.t < this.seekingUntil },
+      SCRUB,
+    );
     this.state = r.state;
     for (const a of r.actions) {
       this.calls.push({ t: this.t, a });
-      if (a.type === "seek") this.current = Math.min(DURATION, Math.max(0, a.to));
+      if (a.type === "seek") {
+        this.current = Math.min(DURATION, Math.max(0, a.to));
+        this.seekingUntil = this.t + this.seekMs;
+      }
       if (a.type === "play") this.playing = true;
       if (a.type === "pause") this.playing = false;
     }
   }
-  run(ms: number, deltaPerSec: number, active = true): void {
+  run(ms: number, deltaPerSec: number, active = true, mode?: ScrubMode): void {
     const n = Math.round(ms / FRAME);
-    for (let i = 0; i < n; i++) this.frame((deltaPerSec * FRAME) / 1000, active);
+    for (let i = 0; i < n; i++) this.frame((deltaPerSec * FRAME) / 1000, active, mode);
   }
   seeks(): { t: number; to: number }[] {
     return this.calls.filter((c) => c.a.type === "seek").map((c) => ({ t: c.t, to: (c.a as { to: number }).to }));
@@ -51,10 +74,10 @@ describe("scrub while playing", () => {
     expect(r.playing).toBe(true);
   });
 
-  it("moving the knob seeks the playhead live, in the right direction, and keeps playing", () => {
+  it("moving the knob seeks the playhead, in the right direction, and keeps playing", () => {
     const r = new Rig(true, 30);
     r.run(1000, -2); // scrub backward
-    expect(r.seeks().length).toBeGreaterThan(5);
+    expect(r.seeks().length).toBeGreaterThan(3);
     expect(r.current).toBeLessThan(30 - 0.5);
     expect(r.playing).toBe(true);
     expect(r.types()).not.toContain("play");
@@ -64,74 +87,117 @@ describe("scrub while playing", () => {
     expect(r.playing).toBe(true); // keeps playing from the new spot
   });
 
-  it("on release the last position is not lost to the rate limit", () => {
+  it("a slow movement does not re-seek all the time: the music plays between seeks (fewer, bigger seeks)", () => {
+    const r = new Rig(true, 30);
+    r.run(2000, 0.3); // the hand nudges the music 0.3 s per second
+    // The offset has to build to moveThresholdSec before a seek, so about 0.6 / threshold seeks in two seconds, not 40.
+    expect(r.seeks().length).toBeGreaterThan(0);
+    expect(r.seeks().length).toBeLessThanOrEqual(Math.ceil(0.6 / SCRUB.moveThresholdSec) + 1);
+    expect(r.types()).not.toContain("pause");
+    expect(r.playing).toBe(true);
+  });
+
+  it("each seek goes to where the music is NOW plus the offset the hand built up (the latest position wins)", () => {
+    const r = new Rig(true, 30);
+    let at = r.current;
+    for (let i = 0; i < 120; i++) {
+      const before = r.seeks().length;
+      r.frame(0.02);
+      if (r.seeks().length > before) {
+        // `current` already includes this frame's playing; the seek target is current + the accumulated offset.
+        expect(r.seeks().at(-1)!.to).toBeGreaterThan(at);
+        at = r.seeks().at(-1)!.to;
+      }
+    }
+  });
+
+  it("when the hand stops, the small offset left over is applied after settleMs, so it lands where you stopped", () => {
+    const r = new Rig(true, 30);
+    r.run(300, 0.25); // 0.075 s: under the move threshold, so no seek yet
+    expect(r.seeks()).toEqual([]);
+    r.run(SCRUB.settleMs + 3 * FRAME, 0);
+    expect(r.seeks().length).toBe(1);
+    expect(r.current).toBeCloseTo(r.start + r.playedSec + r.handTotal, 2);
+  });
+
+  it("on release the last offset is not lost", () => {
     const r = new Rig(true, 30);
     r.run(100, -3);
-    const before = r.seeks().length;
-    r.frame(-0.02); // a movement inside the rate-limit gap...
-    r.frame(0, false); // ...then release at once
-    const last = r.seeks().at(-1)!;
-    expect(r.seeks().length).toBeGreaterThanOrEqual(before);
-    expect(Math.abs(r.current - last.to)).toBeLessThan(0.05);
+    r.frame(-0.02);
+    r.frame(0, false);
+    expect(r.current).toBeCloseTo(r.start + r.playedSec + r.handTotal, 2);
+    expect(r.playing).toBe(true);
+  });
+
+  it("while the previous seek is still in flight no new seek is stacked on it; afterwards ONE seek carries everything", () => {
+    const r = new Rig(true, 30);
+    r.seekMs = 120;
+    r.run(2000, -1.5);
+    const s = r.seeks();
+    expect(s.length).toBeGreaterThan(3);
+    // Never closer together than the seek takes (stale seeks are dropped, not queued).
+    for (let i = 1; i < s.length; i++) expect(s[i].t - s[i - 1].t).toBeGreaterThanOrEqual(r.seekMs - FRAME);
+    r.run(500, 0);
+    r.frame(0, false);
+    expect(r.current).toBeCloseTo(r.start + r.playedSec + r.handTotal, 1);
+  });
+
+  it("a seek that never finishes does not block the scrub for good (stale after staleSeekMs)", () => {
+    const r = new Rig(true, 30);
+    r.seekMs = 10_000;
+    r.run(2000, -1.5);
+    expect(r.seeks().length).toBeGreaterThan(2);
   });
 });
 
 describe("seek rate limit", () => {
-  it("never more than maxSeeksPerSec in any one second, even with the knob moving every frame at 60 fps", () => {
+  it("never more than maxSeeksPerSec in any one second, even with a fast hand at 60 fps", () => {
     const r = new Rig(true, 60);
-    r.run(5000, -1.5);
+    r.run(5000, -8);
     const seeks = r.seeks();
     expect(seeks.length).toBeGreaterThan(40);
     for (let i = 0; i + SCRUB.maxSeeksPerSec < seeks.length; i++) {
-      // Any maxSeeksPerSec + 1 consecutive seeks span at least one second (minus a frame of rounding).
       expect(seeks[i + SCRUB.maxSeeksPerSec].t - seeks[i].t).toBeGreaterThanOrEqual(1000 - FRAME);
     }
   });
 
   it("the same limit holds while paused", () => {
     const r = new Rig(false, 30);
-    r.run(4000, 2);
+    r.run(4000, 6);
     const seeks = r.seeks();
     for (let i = 0; i + SCRUB.maxSeeksPerSec < seeks.length; i++) {
       expect(seeks[i + SCRUB.maxSeeksPerSec].t - seeks[i].t).toBeGreaterThanOrEqual(1000 - FRAME);
     }
   });
-
-  it("consecutive seeks are at least 1/maxSeeksPerSec apart", () => {
-    const r = new Rig(true, 60);
-    r.run(3000, 3);
-    const s = r.seeks();
-    for (let i = 1; i < s.length; i++) expect(s[i].t - s[i - 1].t).toBeGreaterThanOrEqual(1000 / SCRUB.maxSeeksPerSec - 0.001);
-  });
 });
 
 describe("scrub while paused: short snippets", () => {
-  it("each seek plays a short snippet, then pauses again, and the playhead ends at the scrub position", () => {
+  it("the first movement sounds a snippet, then it pauses again and the playhead ends at the scrub position", () => {
     const r = new Rig(false, 30);
     r.run(1000, 2);
     expect(r.types()).toContain("play");
-    // Stop moving: the snippet ends with a pause and a seek back to the scrub position.
     r.run(SCRUB.snippetMs + 3 * FRAME, 0);
     expect(r.playing).toBe(false);
     expect(r.current).toBeCloseTo(r.state.pos, 6);
+    expect(r.current).toBeCloseTo(r.start + r.handTotal, 6);
   });
 
-  it("while moving it keeps sounding (snippets chain), and the playhead follows the hand", () => {
+  it("while moving it keeps sounding (one chain, not a play per seek), and the playhead follows the hand", () => {
     const r = new Rig(false, 30);
     r.run(1500, 2);
-    expect(r.playing).toBe(true); // mid-scrub, a snippet is sounding
+    expect(r.playing).toBe(true);
+    expect(r.types().filter((t) => t === "play")).toHaveLength(1);
     expect(r.current).toBeGreaterThan(31.5);
   });
 
-  it("a snippet is about snippetMs long: pause comes within a rate-limit gap of snippetMs after the last seek", () => {
+  it("it stops sounding snippetMs after the hand stops, not before and not much later", () => {
     const r = new Rig(false, 30);
-    r.run(200, 2);
+    r.run(400, 2);
+    const stoppedAt = r.t;
     r.run(600, 0);
-    const lastSeekBeforePause = r.calls.filter((c) => c.a.type === "seek").map((c) => c.t);
     const pauseAt = r.calls.find((c) => c.a.type === "pause")!.t;
-    const lastMoveSeek = Math.max(...lastSeekBeforePause.filter((t) => t < pauseAt));
-    expect(pauseAt - lastMoveSeek).toBeGreaterThanOrEqual(SCRUB.snippetMs);
-    expect(pauseAt - lastMoveSeek).toBeLessThan(SCRUB.snippetMs + 2 * FRAME + 1);
+    expect(pauseAt - stoppedAt).toBeGreaterThanOrEqual(SCRUB.snippetMs - FRAME);
+    expect(pauseAt - stoppedAt).toBeLessThan(SCRUB.snippetMs + 2 * FRAME + 1);
   });
 
   it("stays paused on release, exactly at the scrub position", () => {
@@ -139,9 +205,7 @@ describe("scrub while paused: short snippets", () => {
     r.run(800, -2);
     r.frame(0, false); // release mid-snippet
     expect(r.playing).toBe(false);
-    expect(r.current).toBeCloseTo(30 - 1.6, 0);
-    expect(r.current).toBeCloseTo(r.seeks().at(-1)!.to, 6);
-    // ...and nothing more happens afterwards.
+    expect(r.current).toBeCloseTo(r.start + r.handTotal, 6);
     const n = r.calls.length;
     r.run(1000, 0, false);
     expect(r.calls.length).toBe(n);
@@ -153,6 +217,78 @@ describe("scrub while paused: short snippets", () => {
     expect(r.calls).toEqual([]);
     r.frame(0, false);
     expect(r.calls).toEqual([]);
+  });
+
+  it("a slow movement does not re-seek every frame either: seeks come only when the audio has drifted from the hand", () => {
+    const r = new Rig(false, 30);
+    r.run(2000, 0.3);
+    // The audio plays at 1x while the hand moves at 0.3x, so it drifts ahead by 0.7 s/s and is re-seeked each
+    // moveThresholdSec / 0.7: about 7 a second, not 60.
+    expect(r.seeks().length).toBeLessThanOrEqual(Math.ceil((2 * 0.7) / SCRUB.moveThresholdSec) + 2);
+  });
+});
+
+describe("palm <-> fist: the mode switches under a held grab", () => {
+  it("palm -> fist pauses at exactly the position the hand has put the music, without releasing", () => {
+    const r = new Rig(true, 30);
+    r.run(500, -1.5, true, "play");
+    r.frame(-0.01, true, "play");
+    const expected = r.start + r.playedSec + r.handTotal; // the playing music, moved by the hand so far
+    r.frame(0, true, "pause");
+    expect(r.playing).toBe(false);
+    expect(r.state.active).toBe(true);
+    expect(r.current).toBeCloseTo(expected + FRAME / 1000 * 0, 1);
+    // From here it is a paused scrub: it stays exactly where the hand puts it.
+    r.run(600, 1, true, "pause");
+    r.run(SCRUB.snippetMs + 3 * FRAME, 0, true, "pause");
+    expect(r.playing).toBe(false);
+    expect(r.current).toBeCloseTo(r.state.pos, 6);
+  });
+
+  it("fist -> palm resumes playing from the exact scrub position, without releasing", () => {
+    const r = new Rig(false, 30);
+    r.run(500, 1.5, true, "pause");
+    r.run(300, 0, true, "pause");
+    const pos = r.current;
+    r.frame(0, true, "play");
+    expect(r.playing).toBe(true);
+    expect(r.state.active).toBe(true);
+    expect(r.current).toBeCloseTo(pos, 6);
+    r.run(500, 0, true, "play");
+    expect(r.current).toBeGreaterThan(pos + 0.4); // it plays on
+  });
+
+  it("toggling back and forth many times never releases and keeps reporting scrubbing", () => {
+    const r = new Rig(true, 30);
+    for (let i = 0; i < 10; i++) {
+      r.run(300, 0.5, true, i % 2 === 0 ? "play" : "pause");
+      expect(r.state.active).toBe(true);
+    }
+    expect(r.calls.filter((c) => c.a.type === "pause").length).toBeGreaterThanOrEqual(5);
+    expect(r.calls.filter((c) => c.a.type === "play").length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("a grab that begins in fist mode pauses music that was playing; one that begins in palm mode plays paused music", () => {
+    const a = new Rig(true, 30);
+    a.frame(0, true, "pause");
+    expect(a.playing).toBe(false);
+    const b = new Rig(false, 30);
+    b.frame(0, true, "play");
+    expect(b.playing).toBe(true);
+  });
+
+  it("releasing in palm mode leaves it playing, in fist mode leaves it paused at the exact spot", () => {
+    const a = new Rig(true, 30);
+    a.run(400, 1, true, "play");
+    a.frame(0, false, "play");
+    expect(a.playing).toBe(true);
+    const b = new Rig(true, 30);
+    b.run(400, 1, true, "play");
+    b.run(300, 1, true, "pause");
+    const pos = b.state.pos;
+    b.frame(0, false, "pause");
+    expect(b.playing).toBe(false);
+    expect(b.current).toBeCloseTo(pos, 6);
   });
 });
 
@@ -166,7 +302,7 @@ describe("clamps", () => {
     for (const s of q.seeks()) expect(s.to).toBeLessThanOrEqual(DURATION);
   });
 
-  it("pinned at 0:00 it stops asking for seeks", () => {
+  it("pinned at 0:00 while paused it stops asking for seeks", () => {
     const r = new Rig(false, 0.2);
     r.run(1000, -5);
     const n = r.seeks().length;
@@ -178,7 +314,7 @@ describe("clamps", () => {
 describe("state", () => {
   it("reports scrubbing while active and on the frame of release, not before or after", () => {
     let s: ScrubState = IDLE_SCRUB;
-    const inp = (active: boolean) => ({ t: 1000, dtSec: 0.016, active, deltaSec: 0, playing: true, current: 5, duration: 60 });
+    const inp = (active: boolean) => ({ t: 1000, active, mode: "play" as const, deltaSec: 0, playing: true, current: 5, duration: 60 });
     let r = stepScrub(s, inp(false), SCRUB);
     expect(r.scrubbing).toBe(false);
     r = stepScrub(r.state, inp(true), SCRUB);
