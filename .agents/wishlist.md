@@ -68,6 +68,8 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Per-window waveform gain; long tracks decode large (~53 MB for 10 min)** | QoL | Surfaced in R4c |
 | **Remember speed across tracks** (new track resets to 1×) | QoL | Surfaced in R5 |
 | **Web Audio engine for true scrubbing** instead of seeks | later | Surfaced in R4c |
+| **Arming feedback for the 0.3 s thumbs-up hold** (no ring now) | QoL | Surfaced in R5b |
+| **Mini 0.5–1.0 speed gauge in speed mode** instead of text | QoL | Surfaced in R5b |
 
 ## Unresolved threads
 
@@ -129,3 +131,9 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Left palm grab while paused starts playback** (palm = playing) | unresolved | User to confirm, or respect paused |
 | **Thumbs up from a slowed speed goes to 1×, not 2×** | unresolved | User to confirm |
 | **Fast flick drifts ~0.4 s of music past the stop** | risk | Surfaced in R4c; tune acceleration if it bothers |
+| **Marking while the right hand rests in its box is impossible** (left V/index steer instead) | unresolved | R4d decision 1; option: marks win unless the right hand moves |
+| **Fist/thumb chord guard false-reject rate on real hands** (`chordAgrees`) | risk | Real-hand tuning |
+| **Circling tuned on simulated jitter** (`KNOB.circling.*`) | risk | Real-hand tuning |
+| **Thumb_Up flicker over 150 ms drops 2× momentarily** | risk | Surfaced in R5b |
+| **Hold-to-2× overwrites any key speed change made during the boost** | overlooked | Surfaced in R5b |
+| **Hands dropping with the left fist closed leaves the music paused** | unresolved | R4d decision 2; the user to confirm |

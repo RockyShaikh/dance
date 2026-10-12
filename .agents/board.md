@@ -5,15 +5,16 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B4d | R4d hands rework (`r4d-hands` on r5-speed), then R5b speed rework (`r5b-speed`) | ship | branches `r4d-hands` → `r5b-speed` | 2026-10-12 |
 
 ## Waiting on user
+- Test R4d+R5b at http://localhost:5187/?track=/test/click-track.wav (20-point checklist in chat). Then merge chain r4a → r4b → r4c → r5 → r4d → r5b on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
 ## Done (last 10)
+- B4d — R4d (`r4d-hands`, 3 commits, 502 tests; circling direction in ~36–55°) and R5b (`r5b-speed`, 3 commits, 530 tests; hold-2× engages ~340 ms, releases ~144 ms; 0.05 steps per 36°) — pushed, NOT merged; worktree `.claude/worktrees/agent-a89f1574c4aaba37e` — 2026-10-12
 - B4c — R4c (`r4c-steer`, 5 commits, 431 tests, 26/26 steer e2e; lag cause = joystick mapping + release grace; paused stop 474→110 ms) and R5 (`r5-speed`, 2 commits, 459 tests, 29/29 speed e2e) — both pushed, NOT merged; worktree `.claude/worktrees/agent-ae531b24ea41c8084` — 2026-10-12
 - B4b — R4b built: tap/hold removed (921ae4f), knob pipeline, two-hand scrub-then-mark, audible scrub ≤17 seeks/s; 366 tests; 50/50 sim e2e — branch `r4b-knob` (pushed, NOT merged), worktree `.claude/worktrees/agent-a9024670d83792788` — 2026-10-12
 - B4a — R4a built: 236 tests + build pass; sim e2e OK; wrap overshoot ≤6 ms idle / ≤23 ms under load — branch `r4a-loops` (pushed, NOT merged), worktree `.claude/worktrees/agent-a52adaec4e622e9c4` — 2026-10-12
