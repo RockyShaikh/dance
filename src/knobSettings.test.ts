@@ -4,9 +4,9 @@ import { formatResults, markVariant, recordNudge, setNote, variantKey, type Knob
 import { defaultKnobSettings, loadKnobSettings, sanitizeKnobSettings } from "./knobSettings";
 
 describe("knob settings", () => {
-  it("default to the two-hand steering wheel + tilt + relative, moving the playhead (R4c)", () => {
+  it("default to the two-hand steering wheel + circling + jog, moving the playhead (R4d; tilt stays selectable)", () => {
     const d = defaultKnobSettings();
-    expect([d.clutch, d.motion, d.mapping, d.target]).toEqual(["twoHand", "tilt", "relative", "playhead"]);
+    expect([d.clutch, d.motion, d.mapping, d.target]).toEqual(["twoHand", "circling", "jog", "playhead"]);
     expect(d.gain).toBe(KNOB.defaults.gain);
   });
 
@@ -36,7 +36,9 @@ describe("knob settings", () => {
     });
     expect(loadKnobSettings()).toEqual(defaultKnobSettings());
     vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ clutch: "pinch", mapping: "relative" }) });
-    expect(loadKnobSettings()).toMatchObject({ clutch: "pinch", motion: "tilt", mapping: "relative" });
+    expect(loadKnobSettings()).toMatchObject({ clutch: "pinch", motion: "circling", mapping: "jog" });
+    vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ motion: "tilt", mapping: "relative" }) });
+    expect(loadKnobSettings()).toMatchObject({ motion: "tilt", mapping: "relative" });
     vi.unstubAllGlobals();
   });
 });

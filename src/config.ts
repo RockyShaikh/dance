@@ -106,8 +106,9 @@ export interface CommandConfig {
 }
 
 export const COMMANDS: CommandConfig = {
+  // R4d: the open palm is no command (a hand coming into frame must not pause); the RIGHT fist is play / pause.
   // R5: Thumb_Up (right hand) toggles the whole track between 2x and 1x.
-  shapes: ["Open_Palm", "Pointing_Up", "Victory", "Thumb_Up"],
+  shapes: ["Closed_Fist", "Pointing_Up", "Victory", "Thumb_Up"],
   dwellMs: 600,
   dwellMinMs: 600,
   dwellMaxMs: 1200,
@@ -116,8 +117,8 @@ export const COMMANDS: CommandConfig = {
   dropoutGraceMs: 120,
   minShapeScore: 0.5,
   requirePalmFacing: true,
-  palmFacingExempt: ["Thumb_Up"],
-  rightOnlyShapes: ["Thumb_Up"],
+  palmFacingExempt: ["Thumb_Up", "Closed_Fist"],
+  rightOnlyShapes: ["Thumb_Up", "Closed_Fist"],
   stillness: { enabled: false, maxMove: 0.06 },
 };
 
@@ -244,12 +245,19 @@ export interface KnobConfig {
     smoothing: number;
   };
   circling: {
-    /** The circle's centre is the average palm position over this long ("a ~1 s running average"). */
+    /** R4d: the circle's centre (shown on the dial only) is the average palm position over this long. */
     windowMs: number;
-    /** The palm must be at least this far from that centre (as a fraction of the frame HEIGHT) to count as circling. */
-    minRadius: number;
-    /** Nothing is measured until the window holds at least this much history. */
-    warmupMs: number;
+    /**
+     * R4d: the turn is read from the palm's HEADING (the direction it is moving in), not from where it is around an
+     * estimated centre. A circle turns the heading at the same rate the hand goes round, so no centre is needed and
+     * the direction is known within a few frames of the hand starting to move (the old centre estimate needed about
+     * a third of a circle of history). The heading is the direction from the most recent earlier palm position that
+     * is at least `minChord` away (frame HEIGHTS; hovering and tremor stay below it) and no older than `lookbackMs`.
+     */
+    minChord: number;
+    lookbackMs: number;
+    /** A heading change bigger than this in one frame is a reversal or a glitch, not a turn: re-base, add nothing. */
+    maxStepDeg: number;
   };
   joystick: {
     /** Tilt (away from where you grabbed) at which the rate is at its maximum. */
@@ -297,9 +305,10 @@ export interface KnobConfig {
 }
 
 export const KNOB: KnobConfig = {
-  // R4c: the two-hand steering wheel (left hand up, right hand tilts) with a position-style mapping, so that
+  // R4c: the two-hand steering wheel (left hand up, right hand steers) with a position-style mapping, so that
   // stopping the rotation stops the music's movement at once (the joystick keeps moving until you return to centre).
-  defaults: { clutch: "twoHand", motion: "tilt", mapping: "relative", target: "playhead", gain: 1, deadZoneDeg: 12, invert: false },
+  // R4d: the hand circles (the jog wheel, unlimited travel) by default; tilt is still selectable in the Knob panel.
+  defaults: { clutch: "twoHand", motion: "circling", mapping: "jog", target: "playhead", gain: 1, deadZoneDeg: 12, invert: false },
   targetScale: { playhead: 1.5, start: 1, end: 1 },
   steeringHand: "Right",
   gainMin: 0.25,
@@ -307,7 +316,7 @@ export const KNOB: KnobConfig = {
   deadZoneMinDeg: 3,
   deadZoneMaxDeg: 30,
   tilt: { smoothing: 0.8 },
-  circling: { windowMs: 1000, minRadius: 0.035, warmupMs: 300 },
+  circling: { windowMs: 1000, minChord: 0.02, lookbackMs: 150, maxStepDeg: 100 },
   joystick: { fullTiltDeg: 60, maxRateSecPerSec: 3, curve: 1.5 },
   absolute: { worldRangeDeg: 70, secPerDeg: 0.06 },
   relative: { secPerDeg: 0.03, holdDeg: 1, slowDegPerSec: 40, fastDegPerSec: 200, maxBoost: 10, speedSmoothing: 0.8 },
@@ -345,14 +354,17 @@ export const SCRUB: ScrubConfig = {
 };
 
 /**
- * R4c: the two-hand steering wheel. The left hand's shape picks what the right hand's tilt moves, live,
+ * R4c/R4d: the two-hand steering wheel. The left hand's shape picks what the right hand's wheel motion moves, live,
  * while the grab continues:
- *   open palm = the playhead with the music PLAYING; fist = the playhead with the music PAUSED;
+ *   open palm = the playhead (the music is left as it is); fist = the playhead, paused while the fist is closed;
  *   V = loop START; index finger up = loop END.
- * A grab begins with the left open palm (and the right hand in its box). Marks (left V / index) work as
- * before when the right hand is not steering.
+ * A grab begins with the left open palm, V or index (R4d: not only the palm) while the right hand is in its box,
+ * and NOT with a fist: a hand hanging in a loose fist looks the same, and a fist pauses the music. Marks (left V /
+ * index) work as before when the right hand is not in its box, so it is not steering.
  */
 export const STEER = {
+  /** Left-hand shapes that may START a grab. The fist may only continue one. */
+  startShapes: ["palm", "v", "index"] as readonly string[],
   /** A different left-hand shape must hold this long (ms) before the mode changes: a flicker must not toggle play / pause. */
   modeDebounceMs: 120,
   /**
