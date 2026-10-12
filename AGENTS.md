@@ -42,6 +42,8 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-12 — R2 accepted ("r2 is good"); merged `--no-ff`, tag `r2-done`. Pinch is rough and the user doesn't see using it often; claw is decent. Open R2 questions left at defaults (one-hand rule = block only when two hands show command shapes in the box; dwell slider min 0.6 s).
 - 2026-10-12 — R3 accepted ("it seems to be working"); merged `--no-ff`, tag `r3-done`.
 - 2026-10-12 — R4 plan confirmed ("go"). Split into **R4a** (loops, restart, late-mark fix, visuals, keyboard nudge) and **R4b** (knob nudge, all variants), with separate branches, merges and tags. **Default knob grab = claw**, since pinch is rough; pinch and two-hand stay as options.
+- 2026-10-12 — **No duration-dependent gestures** (user: "I don't like the tap vs hold feature... there should be no button that is variable based off how long you are holding it"). Every command fires once when its ring fills. Index = restart to IN if set, else the top; the Home key goes to the top.
+- 2026-10-12 — **Scrubbing is very important; two hands** (user picked "Scrub, then mark" and "audible scrub"). **Right hand:** claw grab + tilt scrubs the playhead (music follows, DJ-style; short snippets while paused), open palm = play/pause, index = restart to IN, V = clear. **Left hand:** V = set IN at the playhead, index = set OUT and loop. Each hand has its own mouse-editable box (left half / right half by default). Knob variants stay switchable. The loop wrap had no audible delay problems (user).
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->

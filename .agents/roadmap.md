@@ -123,7 +123,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 
 **Split (approved 2026-10-12):** two branches, each merged `--no-ff` and tagged on its own.
 - **R4a** (`r4a-loops`): V cycle marking, late-mark fix, restart to loop start (restores index tap vs hold), START/END flags and loop bar, huge start time, **keyboard/button nudge** of the loop start, clean loop wrap.
-- **R4b** (`r4b-knob`, built on R4a): knob nudge with all variants switchable. **Default grab = claw** (user found pinch rough); pinch and two-hand stay as options. Joystick tilt first, then absolute wiper, relative + ratchet, circling.
+- **R4b** (`r4b-knob`, built on R4a): **revised 2026-10-12.** Two-hand "scrub, then mark": the right-hand claw + tilt scrubs the playhead audibly; left V = IN, left index = OUT; per-hand command boxes. Tap vs hold is removed everywhere (separate "R4a amendment" commit). All knob variants stay switchable. Earlier wording: **Default grab = claw** (user found pinch rough); pinch and two-hand stay as options. Joystick tilt first, then absolute wiper, relative + ratchet, circling.
 
 **Notes**
 - The loop model is the user's: let it play, mark it, then fine-tune only the start, because "you will always overplay at the beginning." It replaces the earlier "rotate to find points" vs "play-pause-set" A/B.

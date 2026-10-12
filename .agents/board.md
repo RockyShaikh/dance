@@ -5,10 +5,10 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B4b | R4b: knob nudge of loop START, all variants switchable, claw default; built on r4a-loops | ship | branch `r4b-knob` | 2026-10-12 |
+| B4b | R4b (revised): two-hand scrub-then-mark, audible scrub, no tap/hold, per-hand boxes, knob variants; built on r4a-loops | ship | branch `r4b-knob` | 2026-10-12 |
 
 ## Waiting on user
-- R4a hand/ear test at http://localhost:5176/?track=/test/click-track.wav → merge `r4a-loops` --no-ff + tag `r4a-done` on the user's word.
+- R4a: the user tested it; no delay problems; doesn't like tap vs hold → removed in R4b's first commit. Merge plan TBD with the user: R4a + amendment.
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked

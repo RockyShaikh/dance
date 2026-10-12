@@ -11,7 +11,7 @@ R4 (split): R4a = loops marked as music plays, restart to loop start, keyboard n
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-The user tests R4a (:5176, worktree `.claude/worktrees/agent-a52adaec4e622e9c4`). B4b is building the knob on `r4b-knob` (based on `r4a-loops`). Merge order on the user's word: r4a-loops (tag r4a-done), then r4b-knob (tag r4b-done → r4-done).
+B4b is rebuilding R4b per the two-hand design (see AGENTS.md 2026-10-12 decisions). On completion: give the user knob-testing steps; merge only on their word (r4a-loops, then r4b-knob, each --no-ff + tag).
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
