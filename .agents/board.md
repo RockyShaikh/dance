@@ -5,15 +5,15 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B4b | R4b (revised): two-hand scrub-then-mark, audible scrub, no tap/hold, per-hand boxes, knob variants; built on r4a-loops | ship | branch `r4b-knob` | 2026-10-12 |
 
 ## Waiting on user
-- R4a: the user tested it; no delay problems; doesn't like tap vs hold → removed in R4b's first commit. Merge plan TBD with the user: R4a + amendment.
+- Knob testing (R4b) at http://localhost:5177/?track=/test/click-track.wav; paste "Copy results". Then merge r4a-loops → r4a-done, r4b-knob → r4b-done on the user's word.
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
 ## Done (last 10)
+- B4b — R4b built: tap/hold removed (921ae4f), knob pipeline, two-hand scrub-then-mark, audible scrub ≤17 seeks/s; 366 tests; 50/50 sim e2e — branch `r4b-knob` (pushed, NOT merged), worktree `.claude/worktrees/agent-a9024670d83792788` — 2026-10-12
 - B4a — R4a built: 236 tests + build pass; sim e2e OK; wrap overshoot ≤6 ms idle / ≤23 ms under load — branch `r4a-loops` (pushed, NOT merged), worktree `.claude/worktrees/agent-a52adaec4e622e9c4` — 2026-10-12
 - T3 — dashboard v3: R2/R3 code on main, latency lab, R4 preview — same link — 2026-10-12
 - R3 — accepted ("it seems to be working"), merged --no-ff, tag `r3-done` — 2026-10-12

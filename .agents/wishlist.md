@@ -58,6 +58,10 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Nudge readout and banner overlap** on short windows | QoL | Surfaced in R4a |
 | **Late-mark offset as a bench slider** (config-only now, 0.15 s) | QoL | Surfaced in R4a |
 | **Wrap look-ahead tune** (`LOOP.wrapLookaheadSec`, now 0) | QoL | Surfaced in R4a; one-line tune if the loop end feels late |
+| **Pre-grab hint ("curl now")** for the claw | QoL | Surfaced in R4b |
+| **Key to cycle knob variants; HUD shows "left marks off" in two-hand** | QoL | Surfaced in R4b |
+| **Separate scrub speed slider** (`KNOB.targetScale.playhead` fixed at 1.5) | QoL | Surfaced in R4b |
+| **Sim scripts claw sequences natively** | later | Surfaced in R4b |
 
 ## Unresolved threads
 
@@ -107,3 +111,10 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **~5 ms silent gaps now and then at the loop wrap** (HTMLAudioElement re-buffer) | risk | R4a measured overshoot ≤6 ms idle and ≤23 ms under 25 ms/frame load; fallback is a Web Audio looping buffer |
 | **Background tab throttles the wrap timer** (overshoot could reach ~1 s) | risk | Low priority: dancing uses the foreground tab |
 | **Possible click at the wrap** if START sits mid-waveform | unresolved | Beat snap or a micro-fade would address it |
+| **Claw starts from an open hand, and a right open palm held 0.6 s toggles play/pause** | risk | Must curl within ~0.5 s; may force a design change (different claw entry, longer dwell, or play/pause on another shape). Check by hand |
+| **Absolute vs relative mapping nearly identical for nudging** | unresolved | Keep both only if they feel different |
+| **Scrubbing near loop END while playing**: the wrap may fight the seek | risk | Untested |
+| **MP3 seek accuracy/latency** | risk | Only WAV tested so far |
+| **1 s cooldown shared across hands** may slow IN-then-OUT marking | risk | Surfaced in R4b |
+| **Left-hand marks stay live while the right hand grabs** | unresolved | Builder's choice; the user to confirm |
+| **UI says START/END; gestures say IN/OUT** | unresolved | Naming; the user to pick |

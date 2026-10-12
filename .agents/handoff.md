@@ -11,7 +11,7 @@ R4 (split): R4a = loops marked as music plays, restart to loop start, keyboard n
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-B4b is rebuilding R4b per the two-hand design (see AGENTS.md 2026-10-12 decisions). On completion: give the user knob-testing steps; merge only on their word (r4a-loops, then r4b-knob, each --no-ff + tag).
+The user tests knob variants on R4b (:5177, worktree `.claude/worktrees/agent-a9024670d83792788`) and pastes the Copy-results output. Record the winner in AGENTS.md Decisions; sync roadmap R4 text and spec §4.6/§9 (still mention tap/hold, V cycle, START-only). Merge on their word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
