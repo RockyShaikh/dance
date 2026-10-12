@@ -62,6 +62,12 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Key to cycle knob variants; HUD shows "left marks off" in two-hand** | QoL | Surfaced in R4b |
 | **Separate scrub speed slider** (`KNOB.targetScale.playhead` fixed at 1.5) | QoL | Surfaced in R4b |
 | **Sim scripts claw sequences natively** | later | Surfaced in R4b |
+| **Audible preview while steering START/END** | QoL | Surfaced in R4c |
+| **V/index steer with no loop set could create the mark at the playhead** | QoL | Surfaced in R4c |
+| **Zoom waveform panel overlaps dial/hand in small windows** | QoL | Surfaced in R4c |
+| **Per-window waveform gain; long tracks decode large (~53 MB for 10 min)** | QoL | Surfaced in R4c |
+| **Remember speed across tracks** (new track resets to 1×) | QoL | Surfaced in R5 |
+| **Web Audio engine for true scrubbing** instead of seeks | later | Surfaced in R4c |
 
 ## Unresolved threads
 
@@ -118,3 +124,8 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **1 s cooldown shared across hands** may slow IN-then-OUT marking | risk | Surfaced in R4b |
 | **Left-hand marks stay live while the right hand grabs** | unresolved | Builder's choice; the user to confirm |
 | **UI says START/END; gestures say IN/OUT** | unresolved | Naming; the user to pick |
+| **Real-hand tuning:** `STEER.fistMaxReach` (1.15), `KNOB.relative` hold-off/boost, tilt smoothing (not on panel) | unresolved | Surfaced in R4c |
+| **Thumb_Up vs fist confusion**: right-box false fires could toggle 2× | risk | Run the bench false-fire test |
+| **Left palm grab while paused starts playback** (palm = playing) | unresolved | User to confirm, or respect paused |
+| **Thumbs up from a slowed speed goes to 1×, not 2×** | unresolved | User to confirm |
+| **Fast flick drifts ~0.4 s of music past the stop** | risk | Surfaced in R4c; tune acceleration if it bothers |

@@ -11,7 +11,7 @@ R4c: two-hand steering wheel (left-hand shape = mode: palm play+scrub, fist paus
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B4c. Then give the user a test checklist (R4c and R5). Ask about merging the chain r4a → r4b → r4c → r5, each --no-ff and tagged.
+The user tests R4c (:5185, test checkout) and R5 (:5186, worktree agent-ae531b24ea41c8084). Then merge the chain r4a-loops → r4b-knob → r4c-steer → r5-speed into main, each --no-ff + tag, on the user's word. Clean up the old worktrees (R1, R2, R3, R4a, R4b, test-r4c) only with their OK.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

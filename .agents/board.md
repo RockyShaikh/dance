@@ -5,7 +5,6 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B4c | R4c steering redesign (left-shape modes, lag fix, waveform) on `r4c-steer`, then R5 2× toggle on `r5-speed` | ship | branches `r4c-steer` → `r5-speed` | 2026-10-12 |
 
 ## Waiting on user
 - R4c hand test at http://localhost:5185/?track=/test/click-track.wav (read-only test checkout `.claude/worktrees/test-r4c` on `r4c-steer`; remove after testing, with the user's OK). The builder is still on R5.
@@ -15,6 +14,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- B4c — R4c (`r4c-steer`, 5 commits, 431 tests, 26/26 steer e2e; lag cause = joystick mapping + release grace; paused stop 474→110 ms) and R5 (`r5-speed`, 2 commits, 459 tests, 29/29 speed e2e) — both pushed, NOT merged; worktree `.claude/worktrees/agent-ae531b24ea41c8084` — 2026-10-12
 - B4b — R4b built: tap/hold removed (921ae4f), knob pipeline, two-hand scrub-then-mark, audible scrub ≤17 seeks/s; 366 tests; 50/50 sim e2e — branch `r4b-knob` (pushed, NOT merged), worktree `.claude/worktrees/agent-a9024670d83792788` — 2026-10-12
 - B4a — R4a built: 236 tests + build pass; sim e2e OK; wrap overshoot ≤6 ms idle / ≤23 ms under load — branch `r4a-loops` (pushed, NOT merged), worktree `.claude/worktrees/agent-a52adaec4e622e9c4` — 2026-10-12
 - T3 — dashboard v3: R2/R3 code on main, latency lab, R4 preview — same link — 2026-10-12
