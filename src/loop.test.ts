@@ -250,6 +250,7 @@ describe("markPlayhead (where a gesture mark lands)", () => {
   it("R5: at 2x the late-mark offset is twice as much music (the delay is real time), and still none while paused", () => {
     expect(markPlayhead(stamp, { ...base, rate: 2 })).toBeCloseTo(39.4 - 2 * LOOP.markOffsetSec, 6);
     expect(markPlayhead(stamp, { ...base, rate: 0.5 })).toBeCloseTo(39.4 - 0.5 * LOOP.markOffsetSec, 6);
+    expect(markPlayhead(stamp, { ...base, rate: 0.85 })).toBeCloseTo(39.4 - 0.85 * LOOP.markOffsetSec, 2); // R5b: a fine-tuned speed scales it too
     expect(markPlayhead({ ...stamp, playing: false }, { ...base, rate: 2 })).toBe(39.4);
     expect(markPlayhead(stamp, { ...base, rate: 1 })).toBeCloseTo(39.4 - LOOP.markOffsetSec, 6);
   });

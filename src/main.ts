@@ -1,11 +1,11 @@
 import "./style.css";
 import { analyze, type HandReading } from "./analyze";
 import { Bench } from "./bench";
-import { normalizeBox, type Box } from "./box";
+import { contains, normalizeBox, type Box } from "./box";
 import { attachBoxEditor } from "./boxEditor";
 import { CameraError, openCamera, openImage, openVideoFile, type FrameSource } from "./camera";
 import { initialClutchState, stepClutches, twoHandRoles, type ClutchView } from "./clutch";
-import type { MachineView } from "./commands";
+import { chordAgrees, type MachineView } from "./commands";
 import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
 import { drawHands } from "./draw";
 import type { Handedness } from "./hand";
@@ -26,6 +26,8 @@ import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, TARGET_NAMES, loadKnobSettin
 import { IDLE_SCRUB, stepScrub, type ScrubMode } from "./scrub";
 import { IDLE_STEER, classifySteerShape, stepSteerMode, targetOf, type SteerMode } from "./steerMode";
 import { IDLE_STEER_AUDIO, stepSteerAudio } from "./steerAudio";
+import { IDLE_HOLD, stepHoldSpeed } from "./holdSpeed";
+import { formatRate, wheelSteps } from "./speed";
 import type { ZoomDraw } from "./waveDraw";
 
 const video = document.getElementById("video") as HTMLVideoElement;
@@ -77,6 +79,11 @@ let knobPanel: KnobPanel;
 let steer = IDLE_STEER;
 /** R4d: what the left hand has done to the music during this grab (a fist's pause, and so the scrub mode). Claw / pinch have no modes: the music keeps doing what it was doing. */
 let steerAudio = IDLE_STEER_AUDIO;
+
+/** R5b: the right thumbs up held = 2x (and back on release). */
+let hold = IDLE_HOLD;
+/** R5b: degrees turned in speed mode that have not made a whole 0.05 step yet. */
+let speedAccum = 0;
 
 /** Audible scrub of the playhead. */
 let scrub = IDLE_SCRUB;
@@ -218,6 +225,19 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     if (import.meta.env.DEV) recordTiming(`${fired.hand} ${fired.shape}`, ts, before, result?.label ?? null, markAt);
     bench.fire(fired, result?.label);
   }
+  // R5b: hold the right thumbs up = 2x while held. A state, not a command: no ring, no fire. Arming needs the hand in its box;
+  // once armed it may leave it. The wheel being grabbed (or the thumb being a steering hand) ends it.
+  {
+    const right = hands.find((h) => h.hand === "Right");
+    const shape = !!right && right.shape === "Thumb_Up" && right.shapeScore >= COMMANDS.minShapeScore && chordAgrees("Thumb_Up", right.chord);
+    const thumb = shape && (hold.since !== null || contains(settings.boxes.Right, right!.palm));
+    const hs = stepHoldSpeed(hold, { t: ts, thumb, suppress: grabbed, rate: player.rate });
+    hold = hs.state;
+    if (hs.setRate !== null) {
+      const res = practice.perform("speedSet", { rate: hs.setRate });
+      bench.showBanner(res.label, hold.boosted ? "HOLD THUMBS UP" : "RELEASED");
+    }
+  }
   // After the fire, so the stamp read above is the one from the ring that just filled.
   for (const h of ["Left", "Right"] as const) {
     ringStamps[h] = trackRingStart(ringStamps[h], machines[h].shape, machines[h].since, player.currentTime, player.state === "playing");
@@ -231,7 +251,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   redrawHud();
   if (import.meta.env.DEV) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    Object.assign(dance, { hands, views, clutchView, boxes: settings.boxes, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer });
+    Object.assign(dance, { hands, views, clutchView, boxes: settings.boxes, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
   }
 }
 
@@ -271,7 +291,10 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
   // fist pauses it while closed and opening to a palm resumes it, but only if the fist did the pausing (steerAudio.ts).
   steerAudio = stepSteerAudio(steerAudio, { grabbed: out.grabbed, mode, playing: player.state === "playing" });
   const scrubMode: ScrubMode = steerAudio.scrub;
-  if (target === "playhead") {
+  // R5b: the left shaka puts the wheel in speed mode: its turn steps the playback speed instead of moving anything.
+  const speedMode = mode === "speed";
+  if (!speedMode) speedAccum = 0;
+  if (target === "playhead" && !speedMode) {
     // Audible scrub: the music follows the hand (see scrub.ts for the seek policy).
     const sr = stepScrub(
       scrub,
@@ -302,7 +325,9 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
       );
     }
     scrub = IDLE_SCRUB;
-    if (out.applySec !== 0) {
+    if (speedMode) {
+      stepSpeedWheel(out.turnDeg);
+    } else if (out.applySec !== 0) {
       const note = (limited: boolean) => `${sinceGrab()}${limited ? "  LIMIT" : ""}`;
       if (target === "start") practice.nudgeStart(out.applySec, { note });
       else practice.nudgeEnd(out.applySec, { note });
@@ -319,7 +344,7 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
   const value = targetValue(target);
   const loop = practice.loopState;
   const zoom: ZoomDraw | null =
-    out.view && player.loaded && practice.waveform
+    out.view && player.loaded && practice.waveform && !speedMode
       ? {
           peaks: practice.waveform,
           target,
@@ -332,19 +357,33 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
           note: target === "playhead" ? "" : value === null ? `no loop ${target.toUpperCase()} yet` : sinceGrab(),
         }
       : null;
-  practice.setZoomActive(zoom !== null);
+  practice.setZoomActive(zoom !== null || (speedMode && out.grabbed)); // speed mode shows no big time either: the speed number is the feedback
   knobDraw = out.view
     ? {
         view: out.view,
         palm: lastKnobPalm,
-        title: `${CLUTCH_NAMES[knobSettings.clutch]} + ${MOTION_NAMES[knobSettings.motion]} + ${MAPPING_NAMES[knobSettings.mapping]} → ${TARGET_NAMES[target]}`,
+        title: `${CLUTCH_NAMES[knobSettings.clutch]} + ${MOTION_NAMES[knobSettings.motion]} + ${MAPPING_NAMES[knobSettings.mapping]} → ${speedMode ? "Speed" : TARGET_NAMES[target]}`,
         deadZoneDeg: knobSettings.deadZoneDeg,
         // The huge readout (DOM) already shows the value; here only what is missing.
-        note: value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
+        note: speedMode ? `Speed ${formatRate(player.rate)}  ·  clockwise = faster  ·  0.5 to 1×` : value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
         modes: mode ? { active: mode, pending: steer.pending } : null,
         zoom,
       }
     : null;
+}
+
+/** R5b: the speed mode's turn: every `SPEED.stepDeg` of turn is one 0.05 step (clockwise = faster); stuck at an end, the leftover turn is dropped so reversing is not delayed. */
+function stepSpeedWheel(turnDeg: number): void {
+  const w = wheelSteps(speedAccum, turnDeg, player.rate);
+  speedAccum = w.accumDeg;
+  for (let i = 0; i < Math.abs(w.steps); i++) {
+    const before = player.rate;
+    practice.perform(w.steps > 0 ? "speedUp" : "speedDown");
+    if (player.rate === before) {
+      speedAccum = 0;
+      break;
+    }
+  }
 }
 
 /** DEV only: when each scrub seek was asked for, to measure the seek rate (window.__dance.scrubSeeks). */

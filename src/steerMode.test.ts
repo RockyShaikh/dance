@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { CLUTCH, STEER } from "./config";
 import { clawExtension, othersReach } from "./handFeatures";
-import { IDLE_STEER, MODE_OF, classifySteerShape, stepSteerMode, targetOf, type SteerModeState, type SteerShape } from "./steerMode";
-import { shapes } from "./test/fixtures";
+import { IDLE_STEER, MODE_OF, classifySteerShape, isShaka, stepSteerMode, targetOf, type SteerModeState, type SteerShape } from "./steerMode";
+import { chord, shapes } from "./test/fixtures";
+import { pseudoChord } from "./pseudoChord";
 
 const FRAME = 33;
 
@@ -45,9 +46,66 @@ describe("classifySteerShape: the left hand as one of the four steering shapes",
   });
 });
 
+describe("R5b: the shaka (thumb and pinky out, the rest curled: chord 10001), found from the finger chord alone", () => {
+  const obs = (shape: string, bits: string, clawExt = 1.2, shapeScore = 0.9) => ({ shape, shapeScore, clawExt, chord: chord(bits) });
+
+  it("chord 10001 is a shaka whatever the model calls it (nothing, a thumbs up, a fist, anything)", () => {
+    for (const label of ["None", "Thumb_Up", "Closed_Fist", "ILoveYou", "Open_Palm", "Pointing_Up"]) {
+      expect(classifySteerShape(obs(label, "10001")), label).toBe("shaka");
+    }
+  });
+
+  it("NOT confused with a thumbs up (10000) or a fist (00000): those stay a fist (curled in) or nothing", () => {
+    expect(classifySteerShape(obs("Thumb_Up", "10000", 1.05))).toBe("fist"); // as before: curled fingers, the thumb does not matter to a fist
+    expect(classifySteerShape(obs("Thumb_Up", "10000", 1.3))).toBeNull();
+    expect(classifySteerShape(obs("Closed_Fist", "00000", 1.0))).toBe("fist");
+    expect(isShaka(chord("10000"))).toBe(false);
+    expect(isShaka(chord("00000"))).toBe(false);
+  });
+
+  it("NOT confused with the other shapes: pinky alone, thumb alone, I love you (T I _ _ P), the open palm", () => {
+    for (const bits of ["00001", "10000", "11001", "11111", "01000", "01100", "10101", "10011"]) expect(isShaka(chord(bits)), bits).toBe(false);
+    expect(classifySteerShape(obs("Open_Palm", "11111", 1.9))).toBe("palm");
+    expect(classifySteerShape(obs("Victory", "01100", 1.5))).toBe("v");
+    expect(classifySteerShape(obs("Pointing_Up", "01000", 1.3))).toBe("index");
+  });
+
+  it("no chord given: never a shaka", () => {
+    expect(isShaka(undefined)).toBe(false);
+    expect(classifySteerShape({ shape: "None", shapeScore: 0.9, clawExt: 1.2 })).toBeNull();
+  });
+
+  it("works on real landmark geometry (the fixture hands), either hand, and not on a thumbs up or a fist", () => {
+    for (const hand of ["Left", "Right"] as const) {
+      expect(isShaka(pseudoChord(shapes.shaka(hand)))).toBe(true);
+      expect(isShaka(pseudoChord(shapes.thumbOut(hand)))).toBe(false);
+      expect(isShaka(pseudoChord(shapes.fist(hand)))).toBe(false);
+      expect(isShaka(pseudoChord(shapes.openPalm(hand)))).toBe(false);
+      expect(isShaka(pseudoChord(shapes.shaka(hand, { yawDeg: 180 })))).toBe(true); // back of the hand to the camera
+    }
+  });
+
+  it("shaka is the speed mode, and (like palm, V, index) may start a grab", () => {
+    expect(MODE_OF.shaka).toBe("speed");
+    expect(STEER.startShapes).toContain("shaka");
+    expect(targetOf("speed")).toBe("playhead"); // unused: the speed mode moves nothing
+  });
+
+  it("the debounced mode switches to speed after the hold, and back", () => {
+    const r = new Run();
+    r.show(300, "palm");
+    r.show(2 * FRAME, "shaka");
+    expect(r.mode).toBe("palm");
+    r.show(STEER.modeDebounceMs + 2 * FRAME, "shaka");
+    expect(r.mode).toBe("speed");
+    r.show(STEER.modeDebounceMs + 2 * FRAME, "fist");
+    expect(r.mode).toBe("fist");
+  });
+});
+
 describe("mode and target", () => {
   it("palm and fist both steer the playhead, V = START, index = END", () => {
-    expect(MODE_OF).toEqual({ palm: "palm", fist: "fist", v: "start", index: "end" });
+    expect(MODE_OF).toEqual({ palm: "palm", fist: "fist", v: "start", index: "end", shaka: "speed" });
     expect([targetOf("palm"), targetOf("fist"), targetOf("start"), targetOf("end")]).toEqual(["playhead", "playhead", "start", "end"]);
   });
 });

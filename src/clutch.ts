@@ -132,7 +132,7 @@ function steerShapeOf(h: ClutchHand, cfg: ClutchConfig): SteerShape | null {
 /**
  * Two-hand (the steering wheel): the hand on the modifier side of the screen is held up while the other hand
  * (the "steering" hand) is present. Hands are told apart by screen side, not by the model's left/right label
- * (which can flip). To START, the modifier shows an open palm, V or index (R4d; `STEER.startShapes`: not a fist,
+ * (which can flip). To START, the modifier shows an open palm, V, index or shaka (R4d; `STEER.startShapes`: not a fist,
  * which a loose hand at rest also looks like, and a fist pauses the music) and the steering hand's palm centre is in the box.
  * Once started, the grab holds while the modifier shows ANY steering shape (palm, fist, V, index: R4c, they pick
  * the mode and must not release the grab) and the steering hand may be anywhere. A modifier that shows none of

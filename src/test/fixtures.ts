@@ -127,6 +127,7 @@ export const shapes = {
   indexUp: (hand: Handedness, o: Partial<HandSpec> = {}) => makeHand({ hand, fingers: chord("01000"), ...o }),
   victory: (hand: Handedness, o: Partial<HandSpec> = {}) => makeHand({ hand, fingers: chord("01100"), ...o }),
   thumbOut: (hand: Handedness, o: Partial<HandSpec> = {}) => makeHand({ hand, fingers: chord("10000"), ...o }),
+  shaka: (hand: Handedness, o: Partial<HandSpec> = {}) => makeHand({ hand, fingers: chord("10001"), ...o }),
 };
 
 export { chord };

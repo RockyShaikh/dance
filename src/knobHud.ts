@@ -31,12 +31,13 @@ export interface KnobDraw {
   zoom?: ZoomDraw | null;
 }
 
-/** The four left-hand modes as chips: what each shape does, with the one in force lit. */
+/** The five left-hand modes as chips: what each shape does, with the one in force lit. */
 const CHIPS: { mode: SteerMode; shape: SteerShape; text: string }[] = [
   { mode: "palm", shape: "palm", text: "PALM  playhead" },
   { mode: "fist", shape: "fist", text: "FIST  pause" },
   { mode: "start", shape: "v", text: "V  START" },
   { mode: "end", shape: "index", text: "INDEX  END" },
+  { mode: "speed", shape: "shaka", text: "SHAKA  speed" },
 ];
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
