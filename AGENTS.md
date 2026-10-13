@@ -53,6 +53,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-12 — R4d/R5b tested. **Speed wheel must be finer:** more travel between ticks and **0.025 steps** (amend R5b).
 - 2026-10-12 — **R6 = top zone + zoom (no head tracking yet).** One command zone across the **top quarter** of the frame for both hands (no left/right split). **Zoom:** crop the camera image to the zone and run hand tracking on the crop, so far-away hands look bigger. **Handedness from the thumb,** assuming the palm always faces the camera; with only one hand up, assume it's the right hand. Head tracking only if this isn't enough.
 - 2026-10-12 — Future thread: when scrubbing with no IN/OUT set, you must lower the right hand to set a mark and then steer it. "A bit more to be desired", but the user understands the complexity and wants a **stress test first**.
+- 2026-10-13 — Distance is the next big problem: the hand isn't detected at a decent distance. Agreed cause: MediaPipe's palm detector shrinks the whole frame, so a far-away hand ends up with too few pixels; the landmark stage is fine. The user will baseline the current version's range. **Capture raised to 1080p** (R6 amendment 8760ec6). **Explore auto-tracking:** a scout first, then a range-only spike, with body-first (pose → crop at the wrists → hand model) as the lead option. Face-zoom and arm/pose gestures are alternatives.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->

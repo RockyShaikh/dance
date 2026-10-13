@@ -5,8 +5,10 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| S3 | Scout: distance hand tracking (MediaPipe detector sizes, web HolisticLandmarker, pose → wrist crop, alternatives) → `.agents/research/distance-hand-tracking.md` | scout | n/a | 2026-10-13 |
 
 ## Waiting on user
+- User baselines the current version's distance range (R6 at :5188, now 1080p; reload the page).
 - Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".

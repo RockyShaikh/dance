@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-R6: both hands command only inside a top-quarter zone; zoom = run tracking on the cropped zone; handedness from the thumb (palm assumed facing the camera; one hand = right). Plus a finer speed wheel (0.025 steps). Head tracking only if needed.
+Make gestures work at 3–5 m. The user baselines R6's range (1080p) while scout S3 researches body-first auto-tracking; then a range-only spike.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ R6: both hands command only inside a top-quarter zone; zoom = run tracking on th
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B6. Then give the user the test link and checklist (zoom on/off at distance, L/R labels). The merge chain (r4a → r4b → r4c → r5 → r4d → r5b → r6) happens on the user's word.
+Wait for S3. Then brief a range-only spike (R7) per the scout's plan on a new branch off `r6-zone`. The merge chain stays pending the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.

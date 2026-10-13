@@ -15,6 +15,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 | R4d | Hands rework: left hand = mode anchor only (fist = pause while closed); right fist = play/pause; circling wheel default | tested |
 | R5b | Speed rework: hold right thumbs up = 2× while held; left shaka + right wheel = fine speed in 0.05 steps, heard live | tested; finer wheel amended (0311d40) |
 | R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | built (`r6-zone`), awaiting test. Full-width zoom gives ×1.00 |
+| R7 | Exploration: auto-tracking for distance (body-first wrist crops vs face zoom vs arm gestures); scout, then a range-only spike | **active** (scout) |
 
 ---
 
