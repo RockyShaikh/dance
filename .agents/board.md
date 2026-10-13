@@ -5,6 +5,7 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B8 | R8 pose auto-tracking (Person / Wrists crops, HUD, comparison table) | ship | `r8-autotrack` on `r7-camera` | 2026-10-13 |
 
 ## Waiting on user
 - User tests R7 at http://localhost:5189/?track=/test/click-track.wav: pick the iPhone, latency test (FaceTime HD / iPhone wireless / USB), walk-back at 1×/2×/3×/Center Stage. Merge chain on the user's word.

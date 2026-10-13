@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-Distance: the iPhone back-camera hypothesis first (Continuity Camera / Center Stage, native Vision, hybrid). A 4K webcam is an acceptable fallback. The fist rework (four fingers down, debounced) is queued next.
+Distance: R7 (iPhone camera picker + latency) is built and awaits a real test (Chrome didn't list the iPhone; macOS does). R8 is building pose-driven auto-tracking crops.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ Distance: the iPhone back-camera hypothesis first (Continuity Camera / Center St
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for S4 (research) and B7 (build). Then give the user steps: connect the iPhone (wireless and USB), pick it in the app, run the latency test, compare with FaceTime HD and the distance range. Fist rework queued. The merge chain is still pending the user's word.
+Wait for B8. Then give the user a short 2–5 m test checklist (modes Off / Person / Wrists). The user has limited time to test. The fist rework is queued. The merge chain is still pending the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
