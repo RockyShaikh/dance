@@ -5,6 +5,7 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| S4 | Scout: iPhone camera hypothesis (Continuity Camera + Center Stage, native Vision, hybrid streaming, other cameras) → `.agents/research/iphone-camera.md` | scout | n/a | 2026-10-13 |
 
 ## Waiting on user
 - User: no-code step-back test (detect near, step back holding each shape) + baseline range on :5188; tell us the Mac model. Then the R7 spike.

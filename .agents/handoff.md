@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-Make gestures work at 3–5 m. The user baselines R6's range (1080p) while scout S3 researches body-first auto-tracking; then a range-only spike.
+Distance: the iPhone back-camera hypothesis first (Continuity Camera / Center Stage, native Vision, hybrid). A 4K webcam is an acceptable fallback. The fist rework (four fingers down, debounced) is queued next.
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ Make gestures work at 3–5 m. The user baselines R6's range (1080p) while scout
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for S3. Then brief a range-only spike (R7) per the scout's plan on a new branch off `r6-zone`. The merge chain stays pending the user's word.
+Wait for S4. Give the user the cheapest test steps (probably Continuity Camera + Center Stage on the current app). Offer the fist-rework ship. The merge chain is still pending the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
