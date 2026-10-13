@@ -54,10 +54,13 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-12 — **R6 = top zone + zoom (no head tracking yet).** One command zone across the **top quarter** of the frame for both hands (no left/right split). **Zoom:** crop the camera image to the zone and run hand tracking on the crop, so far-away hands look bigger. **Handedness from the thumb,** assuming the palm always faces the camera; with only one hand up, assume it's the right hand. Head tracking only if this isn't enough.
 - 2026-10-12 — Future thread: when scrubbing with no IN/OUT set, you must lower the right hand to set a mark and then steer it. "A bit more to be desired", but the user understands the complexity and wants a **stress test first**.
 - 2026-10-13 — Distance is the next big problem: the hand isn't detected at a decent distance. Agreed cause: MediaPipe's palm detector shrinks the whole frame, so a far-away hand ends up with too few pixels; the landmark stage is fine. The user will baseline the current version's range. **Capture raised to 1080p** (R6 amendment 8760ec6). **Explore auto-tracking:** a scout first, then a range-only spike, with body-first (pose → crop at the wrists → hand model) as the lead option. Face-zoom and arm/pose gestures are alternatives.
+- 2026-10-13 — **Hypothesis switch: the iPhone back camera first** (user: "over a webcam, having an iPhone back camera is actually much more feasible... If there's an iPhone app... iPhone probably has a much better engine to do this natively"). A 4K webcam is an acceptable prototyping dependency. Building our own pipeline (e.g. body-first) is welcome. A future **full-body pose version** goes to beta testing for comparison.
+- 2026-10-13 — Fist is inconsistent: the label doesn't hold for the 0.6 s ring, and fist joint detection is poor. The user's idea: define a fist as **the four fingers down, ignoring the thumb**, and debounce it. Also considered: going back to an open palm on the other hand.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->
 - MediaPipe's Left/Right label matches the user's own hand on the un-mirrored frame (`swapHandedness: false`; verified live 2026-10-11). Palm-facing depends on it.
+- The user's machine: MacBook Pro M1 Max, 64 GB (Apple Silicon); built-in 1080p FaceTime HD camera.
 - Hand detection and labels work at ~1 m and at 3–5 m with the built-in MacBook webcam (user's live test, 2026-10-11).
 - Git repo, default branch `main`, remote https://github.com/RockyShaikh/dance (public). Repo-local git identity: RockyShaikh <91840937+RockyShaikh@users.noreply.github.com> (no global git identity on this machine).
 

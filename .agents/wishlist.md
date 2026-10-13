@@ -75,6 +75,9 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Pose as the left/right source** (body knows its own arms) | later | S3 2026-10-13 |
 | **Body-relative command zone** (above head from pose) | later | S3 2026-10-13; links to the deferred above-head zone |
 | **macOS Center Stage as a zero-code zoom test** | QoL | S3 2026-10-13; only if the Mac/camera supports it |
+| **Full-body pose control version** for beta testing against hand gestures | later | User 2026-10-13 |
+| **Own detection pipeline** (body-first crops into the gesture model) | later | User 2026-10-13: "making our own pipeline might be good" |
+| **Fist = four fingers down (ignore thumb) + dropout-tolerant dwell** | next up | User 2026-10-13: the fist label drops before 0.6 s; fist joints are poor. Must not swallow thumbs up (right hand) |
 
 ## Unresolved threads
 
@@ -149,3 +152,4 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **HolisticLandmarker GPU bug (#5166); no gesture labels; always runs the face model** | risk | S3 2026-10-13 |
 | **Palm detection runs every frame while only one hand is up** (cost) | risk | S3 2026-10-13 |
 | **Finger shapes at 3–5 m unmeasured**: crops fix detection only; landmark pixels are the same (~65 px hand at 4 m) | unresolved | No-code test: grab near, step back |
+| **Is hand-gesture detection the right modality at distance at all?** | unresolved | User 2026-10-13: resolution may run out; OK if tracking works; a 4K webcam is acceptable for prototyping; compare against a full-body pose version |
