@@ -6,7 +6,6 @@ Updated: 2026-10-11
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
 | B7 | R7 iPhone camera: picker + hot-plug, 1080p with delivered-resolution readout, glass-to-glass latency tool | ship | `r7-camera` on `r6-zone` | 2026-10-13 |
-| S4 | Scout: iPhone camera hypothesis (Continuity Camera + Center Stage, native Vision, hybrid streaming, other cameras) → `.agents/research/iphone-camera.md` | scout | n/a | 2026-10-13 |
 
 ## Waiting on user
 - User: no-code step-back test (detect near, step back holding each shape) + baseline range on :5188; tell us the Mac model. Then the R7 spike.
@@ -17,6 +16,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- S4 — iPhone research: Continuity Camera works in Chrome, max 1080p/1920×1440 (no 4K), Video-menu zoom 0.5–3×, Center Stage on iPhone 11+; 2× zoom roughly doubles palm pixels; macOS Reactions may alter frames — `.agents/research/iphone-camera.md` — 2026-10-13
 - S3 — distance research: the detector (192² input) is the bottleneck, 1080p can't help detection; no ROI option; web HolisticLandmarker exists (no gesture labels, GPU bug); recommend a no-code step-back test, then a ?track= spike — `.agents/research/distance-hand-tracking.md` — 2026-10-13
 - B6 — R5b amendment 0311d40 (0.025 steps, 72°/step, 4 turns full range) on `r5b-speed`; R6 (`r6-zone`, 2 commits, 583 tests, zone.mjs 30/30). Finding: full-width zone zoom = ×1.00; half-width ×1.76. Worktree `.claude/worktrees/agent-ad2be58932550cc04` — 2026-10-12
 - B4d — R4d (`r4d-hands`, 3 commits, 502 tests; circling direction in ~36–55°) and R5b (`r5b-speed`, 3 commits, 530 tests; hold-2× engages ~340 ms, releases ~144 ms; 0.05 steps per 36°) — pushed, NOT merged; worktree `.claude/worktrees/agent-a89f1574c4aaba37e` — 2026-10-12

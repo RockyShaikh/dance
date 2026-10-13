@@ -78,8 +78,9 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Full-body pose control version** for beta testing against hand gestures | later | User 2026-10-13 |
 | **Own detection pipeline** (body-first crops into the gesture model) | later | User 2026-10-13: "making our own pipeline might be good" |
 | **Fist = four fingers down (ignore thumb) + dropout-tolerant dwell** | next up | User 2026-10-13: the fist label drops before 0.6 s; fist joints are poor. Must not swallow thumbs up (right hand) |
-| **Bump capture to 2K/4K and run CV on it** | next up | User 2026-10-13: start at 1080p, then try 2K/4K |
+| **Bump capture to 2K/4K and run CV on it** | next up | User 2026-10-13: start at 1080p, then try 2K/4K. Note (S4): Continuity Camera maxes out at 1080p / 1920×1440, so 4K needs a different camera |
 | **iPhone-native companion**: the iPhone runs all the CV and sends commands to the laptop | later | User 2026-10-13: keep as an option after the direct-on-Mac test |
+| **Native macOS Vision helper** (Apple hand pose on the Mac) as an alternative to an iPhone app | later | S4 2026-10-13 |
 
 ## Unresolved threads
 
@@ -156,3 +157,5 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Finger shapes at 3–5 m unmeasured**: crops fix detection only; landmark pixels are the same (~65 px hand at 4 m) | unresolved | No-code test: grab near, step back |
 | **Is hand-gesture detection the right modality at distance at all?** | unresolved | User 2026-10-13: resolution may run out; OK if tracking works; a 4K webcam is acceptable for prototyping; compare against a full-body pose version |
 | **Continuity Camera streaming latency** (wireless vs USB) | unresolved | Measure in R7 |
+| **macOS Reactions draw effects into camera frames on V sign / thumbs up** (our gestures!) | bug? | S4 2026-10-13: turn Reactions off in the menu-bar Video menu; affects the built-in camera too |
+| **2× zoom at 4 m frames only about 1.56 m tall** (head + raised hands, not the full body) | unresolved | S4 2026-10-13; fine for the top-zone design, a problem for future full-body pose |
