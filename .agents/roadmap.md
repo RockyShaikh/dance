@@ -16,7 +16,7 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 | R5b | Speed rework: hold right thumbs up = 2× while held; left shaka + right wheel = fine speed in 0.05 steps, heard live | tested; finer wheel amended (0311d40) |
 | R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | built (`r6-zone`), awaiting test. Full-width zoom gives ×1.00 |
 | R7 | iPhone camera via Continuity Camera in the current app: camera picker, 1080p, latency measurement (body-first auto-tracking deferred) | built (`r7-camera`), awaiting test (Chrome doesn't list the iPhone yet; troubleshooting given) |
-| R8 | Auto-tracking from body pose: Off / Person auto-frame / Wrist crops, with a measurement HUD | **active** (`r8-autotrack` on `r7-camera`) |
+| R8 | Auto-tracking from body pose: Off / Person auto-frame / Wrist crops, with a measurement HUD | built (`r8-autotrack`), awaiting live test |
 
 ---
 

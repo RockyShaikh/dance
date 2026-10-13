@@ -5,10 +5,9 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B8 | R8 pose auto-tracking (Person / Wrists crops, HUD, comparison table) | ship | `r8-autotrack` on `r7-camera` | 2026-10-13 |
 
 ## Waiting on user
-- User tests R7 at http://localhost:5189/?track=/test/click-track.wav: pick the iPhone, latency test (FaceTime HD / iPhone wireless / USB), walk-back at 1×/2×/3×/Center Stage. Merge chain on the user's word.
+- User tests R8 (includes R7) at http://localhost:5190/?track=/test/click-track.wav: Auto-track Off/Person/Wrists at 2–5 m with Measure on; iPhone via the picker (quit Chrome with ⌘Q first). Merge chain on the user's word.
 - Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
@@ -16,6 +15,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- B8 — R8 auto-track Off/Person/Wrists; Person default (simulated 4 m stills: Off 0% vs Person 100% hand found; 3–4 m clip 36% → 77%); pose ~10–15 ms; 668 tests; all e2e pass — `r8-autotrack` (pushed, NOT merged), worktree `.claude/worktrees/agent-a1489fa47055283a6` — 2026-10-13
 - B7 — R7 camera picker + hot-plug, delivered-resolution readout, 4:3 option, latency tools; 626 tests, camera.mjs 27/27 (fake cams) — `r7-camera` (pushed, NOT merged), worktree `.claude/worktrees/agent-ac76d8a72fea64893` — 2026-10-13
 - S4 — iPhone research: Continuity Camera works in Chrome, max 1080p/1920×1440 (no 4K), Video-menu zoom 0.5–3×, Center Stage on iPhone 11+; 2× zoom roughly doubles palm pixels; macOS Reactions may alter frames — `.agents/research/iphone-camera.md` — 2026-10-13
 - S3 — distance research: the detector (192² input) is the bottleneck, 1080p can't help detection; no ROI option; web HolisticLandmarker exists (no gesture labels, GPU bug); recommend a no-code step-back test, then a ?track= spike — `.agents/research/distance-hand-tracking.md` — 2026-10-13

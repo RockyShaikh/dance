@@ -83,6 +83,9 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Native macOS Vision helper** (Apple hand pose on the Mac) as an alternative to an iPhone app | later | S4 2026-10-13 |
 | **Latency results: include camera label, CSV export** | QoL | Surfaced in R7 |
 | **Run the hand model in a worker** (separate it from the frame callback; cleaner latency) | later | Surfaced in R7 |
+| **Above-head command zone from pose (nose/eyes)** | later | R8 makes pose available; links to the deferred above-head zone |
+| **Record 10 s of live camera and replay through every mode** (fair A/B) | QoL | Surfaced in R8 |
+| **Whole-frame fallback pass alongside Person when fewer hands than expected** | later | Surfaced in R8 |
 
 ## Unresolved threads
 
@@ -164,3 +167,8 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Glass-to-glass test needs the camera to see the screen** (built-in camera needs a mirror) | risk | Surfaced in R7 |
 | **Real Continuity Camera labels/ids across sleep/wake, Desk View listing** | unresolved | Untested in R7 |
 | **With phone zoom, the screen-fixed zone moves relative to the body** | unresolved | Surfaced in R7 |
+| **Pose model adds ~10–15 ms/frame and a second GPU model** | risk | Measure Off vs Person on the M1 Max with the R7 latency panel |
+| **Close-in user: pose sees only head/shoulders, so the crop may cut off low hands** | risk | Surfaced in R8; on the test checklist |
+| **Shape reading at distance still unproven** (R8 measured detection, not gesture correctness) | unresolved | If it fails: more pixels (4K / phone camera) |
+| **Pose wrist jitter (~100 px) makes Wrists-mode crops change on 60–90% of frames** | bug? | Tune crop size/dead-band on live video |
+| **e2e: zone.mjs crash left headless Chrome holding the shared profile, breaking later suites** | bug? | Close Chrome on failure; separate profiles per suite |
