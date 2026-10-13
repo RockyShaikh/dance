@@ -140,10 +140,10 @@ describe("dwell: a shape must be held", () => {
   });
 
   it("the fist, like the thumbs up before it, does not show the palm, so the palm-facing rule does not apply to it (it still applies to the others)", () => {
-    const b = new Bench(COMMANDS);
+    const b = new Bench(cfg({ requirePalmFacing: true }));
     b.show(2000, [hand("Closed_Fist", INSIDE, { palmFacing: false })]);
     expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
-    const c = new Bench();
+    const c = new Bench(cfg({ requirePalmFacing: true }));
     c.show(2000, [hand("Victory", INSIDE, { palmFacing: false })]);
     expect(c.fires).toHaveLength(0);
     expect(c.view.blocked).toBe("palm not facing");
@@ -352,17 +352,18 @@ describe("the command box", () => {
 });
 
 describe("gates: palm facing, confidence, one hand at a time", () => {
-  it("palm not facing the camera never fires", () => {
-    const b = new Bench();
+  it("R6: palm facing is assumed, not required, by default (the config still has the switch)", () => {
+    expect(COMMANDS.requirePalmFacing).toBe(false);
+    const b = new Bench(COMMANDS);
+    b.show(1000, [hand("Pointing_Up", INSIDE, { palmFacing: false })]);
+    expect(b.fires).toHaveLength(1);
+  });
+
+  it("palm not facing the camera never fires when the requirement is switched on", () => {
+    const b = new Bench(cfg({ requirePalmFacing: true }));
     b.show(5000, [hand("Open_Palm", INSIDE, { palmFacing: false })]);
     expect(b.fires).toHaveLength(0);
     expect(b.view.blocked).toBe("palm not facing");
-  });
-
-  it("palm facing can be switched off", () => {
-    const b = new Bench(cfg({ requirePalmFacing: false }));
-    b.show(1000, [hand("Open_Palm", INSIDE, { palmFacing: false })]);
-    expect(b.fires).toHaveLength(1);
   });
 
   it("a low-confidence label never fires", () => {

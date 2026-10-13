@@ -1,10 +1,11 @@
 import { contains, type Box, type Handle } from "./box";
 import type { Handedness } from "./hand";
 import type { MachineView } from "./commands";
+import type { HandSource } from "./handedness";
 import { drawKnob, type KnobDraw } from "./knobHud";
 
 /**
- * The HUD canvas: the command box, palm-centre markers and the dwell rings.
+ * The HUD canvas: the command zone, palm-centre markers with an L / R label, and the dwell rings.
  * Unlike the skeleton canvas it is NOT mirrored, so it is drawn directly in
  * display coordinates and its text reads normally.
  */
@@ -15,22 +16,24 @@ const WARN = "#ffb020";
 const OFF = "#ff5d6c";
 
 export interface HudInput {
-  /** R4b: each hand's command box. */
-  boxes: Record<Handedness, Box>;
-  /** The box and handle under the pointer / being dragged. */
-  active: { hand: Handedness; handle: Handle } | null;
+  /** R6: the one command zone both hands use (display-normalized). */
+  zone: Box;
+  /** The handle of the zone under the pointer / being dragged. */
+  active: Handle | null;
   dragging: boolean;
-  /** Detected hands: palm centre (display-normalized) and which hand. */
-  palms: readonly { hand: Handedness; x: number; y: number }[];
+  /** Detected hands: palm centre (display-normalized), which hand, and how that was decided (a default is shown with a "?"). */
+  palms: readonly { hand: Handedness; x: number; y: number; source?: HandSource }[];
   /** Each hand's command ring, if it has one. */
   views: Partial<Record<Handedness, MachineView>>;
   /** R4b: the knob dial and the big GRABBED word, while the knob is held. */
   knob?: KnobDraw | null;
+  /** R6: with zoom on, what the model is given (display space) and how much bigger that makes a hand to it. */
+  crop?: { box: Box; magnification: number } | null;
 }
 
-/** The dancer's right hand appears on the right of the mirrored picture, so its box is blue; the left hand's is purple. */
+/** The dancer's right hand is blue, the left purple (the L / R labels on the hands). */
 const HAND_COLOR: Record<Handedness, string> = { Right: ACCENT, Left: "#c79bff" };
-const HAND_LABEL: Record<Handedness, string> = { Right: "RIGHT HAND: PLAY / RESTART / CLEAR / SPEED", Left: "LEFT HAND: MARK START / END" };
+const SIDE_LETTER: Record<Handedness, string> = { Right: "R", Left: "L" };
 
 export function prettyShape(label: string): string {
   const s = label.replace(/_/g, " ");
@@ -88,50 +91,63 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
   ctx.clearRect(0, 0, W, H);
 
   const hands: Handedness[] = ["Left", "Right"];
-  for (const hand of hands) {
-    const box = input.boxes[hand];
-    const bx = box.x * W;
-    const by = box.y * H;
-    const bw = box.w * W;
-    const bh = box.h * H;
-    // Lit while that hand's palm centre is inside its own box.
-    const occupied = input.palms.some((p) => p.hand === hand && contains(box, p));
-    const base = HAND_COLOR[hand];
-    const color = occupied ? ON : base;
-    ctx.fillStyle = occupied ? "rgba(56,224,140,0.10)" : hand === "Right" ? "rgba(92,200,255,0.07)" : "rgba(199,155,255,0.07)";
-    ctx.fillRect(bx, by, bw, bh);
-    ctx.lineWidth = (occupied ? 6 : 4) * s;
-    ctx.strokeStyle = color;
-    ctx.setLineDash(hand === "Left" ? [14 * s, 8 * s] : []);
-    ctx.strokeRect(bx, by, bw, bh);
-    ctx.setLineDash([]);
-    text(ctx, HAND_LABEL[hand], bx + 14 * s, by + 32 * s, 20 * s, color);
+  const zone = input.zone;
+  const bx = zone.x * W;
+  const by = zone.y * H;
+  const bw = zone.w * W;
+  const bh = zone.h * H;
+  // Lit while any hand's palm centre is inside the zone.
+  const occupied = input.palms.some((p) => contains(zone, p));
+  const color = occupied ? ON : ACCENT;
+  ctx.fillStyle = occupied ? "rgba(56,224,140,0.10)" : "rgba(92,200,255,0.07)";
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.lineWidth = (occupied ? 6 : 4) * s;
+  ctx.strokeStyle = color;
+  ctx.strokeRect(bx, by, bw, bh);
+  text(ctx, "COMMAND ZONE: both hands (palm centre inside)", bx + 14 * s, by + 32 * s, 20 * s, color);
 
-    // Drag handles: small squares on the corners and edge midpoints.
-    const mine = input.active?.hand === hand ? input.active.handle : null;
-    for (const [h, hx, hy] of handlePoints(box)) {
-      const lit = mine === h;
-      const size = (lit ? 18 : 12) * s;
-      ctx.fillStyle = lit ? "#ffffff" : color;
-      ctx.fillRect(hx * W - size / 2, hy * H - size / 2, size, size);
-      ctx.lineWidth = 2 * s;
-      ctx.strokeStyle = "#000";
-      ctx.strokeRect(hx * W - size / 2, hy * H - size / 2, size, size);
-    }
-    if (mine === "move") {
-      text(ctx, input.dragging ? "release to set" : "drag to move", bx + bw / 2, by + bh / 2, 20 * s, "rgba(255,255,255,0.7)", "center");
-    }
-
-    const view = input.views[hand];
-    if (view) {
-      if (view.cooldownLeftMs > 0) text(ctx, `COOLDOWN ${(view.cooldownLeftMs / 1000).toFixed(1)} s`, bx + bw - 14 * s, by + 56 * s, 20 * s, WARN, "right");
-      if (view.blocked && view.phase === "idle") text(ctx, `Not counting: ${view.blocked}`, bx + bw / 2, by + bh - 16 * s, 24 * s, WARN, "center");
-    }
+  // Zoom: what the hand model is given, and how much bigger a hand is to it. Hands outside are not tracked at all.
+  if (input.crop) {
+    const c = input.crop.box;
+    ctx.save();
+    ctx.setLineDash([10 * s, 8 * s]);
+    ctx.lineWidth = 3 * s;
+    ctx.strokeStyle = WARN;
+    ctx.strokeRect(c.x * W, c.y * H, c.w * W, c.h * H);
+    ctx.restore();
+    text(ctx, `ZOOM ×${input.crop.magnification.toFixed(1)}: only this is tracked`, (c.x + c.w) * W - 14 * s, (c.y + c.h) * H + 24 * s, 20 * s, WARN, "right");
   }
 
-  // Palm centres: the exact point tested against that hand's own box.
+  // Drag handles: small squares on the corners and edge midpoints.
+  for (const [h, hx, hy] of handlePoints(zone)) {
+    const lit = input.active === h;
+    const size = (lit ? 18 : 12) * s;
+    ctx.fillStyle = lit ? "#ffffff" : color;
+    ctx.fillRect(hx * W - size / 2, hy * H - size / 2, size, size);
+    ctx.lineWidth = 2 * s;
+    ctx.strokeStyle = "#000";
+    ctx.strokeRect(hx * W - size / 2, hy * H - size / 2, size, size);
+  }
+  if (input.active === "move") {
+    text(ctx, input.dragging ? "release to set" : "drag to move", bx + bw / 2, by + bh / 2, 20 * s, "rgba(255,255,255,0.7)", "center");
+  }
+
+  // Per-hand status lines at the zone's bottom edge: the cooldown and why a hand is not counting.
+  let line = 0;
+  for (const hand of hands) {
+    const view = input.views[hand];
+    if (!view) continue;
+    if (view.cooldownLeftMs > 0) text(ctx, `${SIDE_LETTER[hand]} COOLDOWN ${(view.cooldownLeftMs / 1000).toFixed(1)} s`, bx + bw - 14 * s, by + 32 * s + line++ * 24 * s, 20 * s, WARN, "right");
+  }
+  line = 0;
+  for (const hand of hands) {
+    const view = input.views[hand];
+    if (view && view.blocked && view.phase === "idle") text(ctx, `${SIDE_LETTER[hand]}: not counting: ${view.blocked}`, bx + 14 * s, by + bh - 14 * s - line++ * 26 * s, 22 * s, WARN, "left");
+  }
+
+  // Palm centres: the exact point tested against the zone, with the hand the app thinks it is (L / R, "?" = assumed).
   for (const p of input.palms) {
-    const inside = contains(input.boxes[p.hand], p);
+    const inside = contains(zone, p);
     const x = p.x * W;
     const y = p.y * H;
     const r = 9 * s;
@@ -146,6 +162,21 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    // The hand label: a small chip above the marker.
+    const letter = SIDE_LETTER[p.hand] + (p.source === "default" ? "?" : "");
+    const cw = (p.source === "default" ? 40 : 30) * s;
+    ctx.fillStyle = HAND_COLOR[p.hand];
+    ctx.beginPath();
+    ctx.roundRect(x - cw / 2, y - 46 * s, cw, 28 * s, 8 * s);
+    ctx.fill();
+    ctx.lineWidth = 2 * s;
+    ctx.strokeStyle = "#000";
+    ctx.stroke();
+    ctx.font = `800 ${20 * s}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#06101a";
+    ctx.fillText(letter, x, y - 25 * s);
   }
 
   if (input.knob) drawKnob(ctx, input.knob);

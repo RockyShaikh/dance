@@ -1,6 +1,5 @@
 import type { HandReading } from "./analyze";
 import { contains, type Box } from "./box";
-import type { Handedness } from "./hand";
 import { prettyShape } from "./hud";
 import { CHORD_ORDER } from "./pseudoChord";
 
@@ -28,22 +27,22 @@ function renderCard(card: HTMLElement, h: HandReading | undefined, box: Box): vo
   card.classList.remove("empty");
   const inBox = contains(box, h.palm);
   card.innerHTML = `
-    <div class="hand-title">${h.hand} hand<span class="sub">${Math.round(h.handScore * 100)}%</span></div>
+    <div class="hand-title">${h.hand} hand<span class="sub">by ${h.handSource === "pair" ? "pair rule" : h.handSource === "default" ? "default (no clear thumb)" : h.handSource}: thumb ${h.thumb.hand} ${Math.round(h.thumb.conf * 100)}% · model ${h.modelHand} ${Math.round(h.handScore * 100)}%</span></div>
     <div class="chord">${chordHtml(h)}</div>
     <div class="row"><span class="label">Shape</span>${prettyShape(h.shape)}
       <span class="score">${Math.round(h.shapeScore * 100)}%</span></div>
     <div class="row two">
-      <div><span class="label">Palm facing camera</span>
+      <div><span class="label">Palm facing (readout only)</span>
         <span class="${h.palmFacing ? "yes" : "no"}">${h.palmFacing ? "YES" : "NO"}</span></div>
-      <div><span class="label">Palm centre in its box</span>
+      <div><span class="label">Palm centre in the zone</span>
         <span class="${inBox ? "yes" : "no"}">${inBox ? "YES" : "NO"}</span></div>
     </div>
     <div class="row tiny"><span class="score">pinch gap ${h.pinchRatio.toFixed(2)} · finger reach ${h.clawExt.toFixed(2)}</span></div>`;
 }
 
-export function renderHands(hands: readonly HandReading[], boxes: Record<Handedness, Box>): void {
-  renderCard(cards[0], hands[0], hands[0] ? boxes[hands[0].hand] : boxes.Right);
-  renderCard(cards[1], hands[1], hands[1] ? boxes[hands[1].hand] : boxes.Right);
+export function renderHands(hands: readonly HandReading[], zone: Box): void {
+  renderCard(cards[0], hands[0], zone);
+  renderCard(cards[1], hands[1], zone);
 }
 
 export function setFps(fps: number | null): void {

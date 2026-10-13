@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Box, Vec2 } from "./box";
 import { PRESETS } from "./box";
-import { initialClutchState, stepClutches, type ClutchHand, type ClutchState, type ClutchView } from "./clutch";
+import { initialClutchState, stepClutches, twoHandRoles, type ClutchHand, type ClutchState, type ClutchView } from "./clutch";
 import { CLUTCH, type ClutchConfig } from "./config";
 import { LM, type Handedness, type Point3 } from "./hand";
 import { clawExtension, othersReach, palmCentre, pinchRatio } from "./handFeatures";
@@ -21,7 +21,7 @@ class Bench {
   view!: ClutchView;
   constructor(
     public cfg: ClutchConfig = CLUTCH,
-    public box: Box = PRESETS.right,
+    public box: Box | Record<Handedness, Box> = PRESETS.right,
   ) {}
   show(ms: number, hands: readonly ClutchHand[] | ((elapsed: number) => readonly ClutchHand[]) = []): void {
     const start = this.t;
@@ -155,47 +155,79 @@ describe("claw", () => {
   });
 });
 
+/** The modifier (left) hand may be anywhere; the steering (right) hand must start in the right half (the zone, in the older tests). */
+const TWO_BOXES = { Left: PRESETS.whole, Right: PRESETS.right };
+
 describe("two-hand modifier", () => {
   const modifier = (x: number): ClutchHand => ch("Left", { shape: "Open_Palm", palm: { x, y: 0.5 } });
   const steering = (x: number, shape = "None"): ClutchHand => ch("Right", { shape, palm: { x, y: 0.5 } });
 
   it("grabbed when the screen-left hand is an open palm and the other hand is in the box", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(200, [modifier(0.2), steering(0.75)]);
     expect(b.view.twoHand).toBe(true);
   });
 
   it("not grabbed with just one hand, or with the modifier showing another shape", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(200, [modifier(0.2)]);
     expect(b.view.twoHand).toBe(false);
     b.show(200, [ch("Left", { shape: "Victory", palm: { x: 0.2, y: 0.5 } }), steering(0.75)]);
     expect(b.view.twoHand).toBe(false);
   });
 
-  it("tells the hands apart by screen side, not by the model's left/right label", () => {
-    const b = new Bench();
-    // both labelled "Right" (the model can flip): still the left-of-screen one is the modifier
-    const left = ch("Right", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } });
-    const right = ch("Left", { shape: "None", palm: { x: 0.75, y: 0.5 } });
+  it("R6: the hands are told apart by the dancer's hand (the thumb), not by the screen side: crossed arms still work", () => {
+    const b = new Bench(CLUTCH, { Left: PRESETS.whole, Right: PRESETS.whole });
+    // the LEFT hand is on the right of the picture and shows the palm; the RIGHT hand is on the left of the picture
+    const left = ch("Left", { shape: "Open_Palm", palm: { x: 0.8, y: 0.5 } });
+    const right = ch("Right", { shape: "None", palm: { x: 0.2, y: 0.5 } });
     b.show(200, [right, left]);
+    expect(b.view.twoHand).toBe(true);
+    expect(twoHandRoles([right, left], CLUTCH)).toEqual({ modifier: left, steering: right });
+    // the same pictures with the left hand on the left of the picture: the same roles
+    const left2 = ch("Left", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } });
+    const right2 = ch("Right", { shape: "None", palm: { x: 0.8, y: 0.5 } });
+    expect(twoHandRoles([left2, right2], CLUTCH)).toEqual({ modifier: left2, steering: right2 });
+  });
+
+  it("hands with no label to go on (the same one twice) fall back to the screen side, as before R6", () => {
+    const b = new Bench(CLUTCH, { Left: PRESETS.whole, Right: PRESETS.whole });
+    const left = ch("Right", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } });
+    const right = ch("Right", { shape: "None", palm: { x: 0.75, y: 0.5 } });
+    b.show(200, [right, left]);
+    expect(b.view.twoHand).toBe(true);
+    expect(twoHandRoles([{ palm: { x: 0.7, y: 0.5 } }, { palm: { x: 0.3, y: 0.5 } }], CLUTCH)?.modifier.palm.x).toBe(0.3);
+  });
+
+  it("R6: both palm centres must be in the zone to START (the modifier too); the steering hand may leave afterwards", () => {
+    const b = new Bench(CLUTCH, { Left: PRESETS.topQuarter, Right: PRESETS.topQuarter });
+    const mod = (x: number, y: number) => ch("Left", { shape: "Open_Palm", palm: { x, y } });
+    const st = (x: number, y: number) => ch("Right", { palm: { x, y } });
+    b.show(200, [mod(0.2, 0.6), st(0.8, 0.1)]); // the modifier is below the zone
+    expect(b.view.twoHand).toBe(false);
+    b.show(200, [mod(0.2, 0.1), st(0.8, 0.6)]); // the steering hand is below the zone
+    expect(b.view.twoHand).toBe(false);
+    b.show(200, [mod(0.2, 0.1), st(0.8, 0.1)]);
+    expect(b.view.twoHand).toBe(true);
+    b.show(200, [mod(0.2, 0.1), st(0.8, 0.6)]);
     expect(b.view.twoHand).toBe(true);
   });
 
   it("an open palm on the wrong side of the screen is not the modifier", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(200, [steering(0.2), ch("Left", { shape: "Open_Palm", palm: { x: 0.75, y: 0.5 } })]);
     expect(b.view.twoHand).toBe(false);
   });
 
   it("modifier side is configurable", () => {
-    const b = new Bench({ ...CLUTCH, twoHand: { ...CLUTCH.twoHand, modifierSide: "right" } }, PRESETS.left);
-    b.show(200, [steering(0.2), ch("Left", { shape: "Open_Palm", palm: { x: 0.9, y: 0.5 } })]);
+    // modifier side "right" = the dancer's RIGHT hand is the modifier (R6: by hand, not by screen side)
+    const b = new Bench({ ...CLUTCH, twoHand: { ...CLUTCH.twoHand, modifierSide: "right" } }, { Left: PRESETS.left, Right: PRESETS.whole });
+    b.show(200, [ch("Left", { shape: "None", palm: { x: 0.2, y: 0.5 } }), ch("Right", { shape: "Open_Palm", palm: { x: 0.9, y: 0.5 } })]);
     expect(b.view.twoHand).toBe(true);
   });
 
   it("the steering hand must start in the box, but may leave it afterwards", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(200, [modifier(0.1), steering(0.4)]); // steering hand outside the right-half box
     expect(b.view.twoHand).toBe(false);
     b.show(200, [modifier(0.1), steering(0.8)]);
@@ -205,7 +237,7 @@ describe("two-hand modifier", () => {
   });
 
   it("releases when the modifier hand drops, after the grace", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(200, [modifier(0.2), steering(0.75)]);
     b.show(CLUTCH.releaseGraceMs - 100, [steering(0.75)]);
     expect(b.view.twoHand).toBe(true);
@@ -220,25 +252,25 @@ describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and
 
   it("R4d: a grab starts with palm, V or index; a fist (or no steering shape) held up does not grab", () => {
     for (const shape of ["fist", null] as const) {
-      const b = new Bench();
+      const b = new Bench(CLUTCH, TWO_BOXES);
       b.show(400, [left(shape), right()]);
       expect(b.view.twoHand).toBe(false);
     }
     for (const shape of ["palm", "v", "index"] as const) {
-      const b = new Bench();
+      const b = new Bench(CLUTCH, TWO_BOXES);
       b.show(100, [left(shape), right()]);
       expect(b.view.twoHand, shape).toBe(true);
     }
   });
 
   it("R4d: ...but only with the right hand in its box (a V alone is a mark, not a grab)", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(400, [left("v"), right(0.2)]);
     expect(b.view.twoHand).toBe(false);
   });
 
   it("once grabbed it holds through palm, fist, V and index, in any order, with no release", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(100, [left("palm"), right()]);
     for (const shape of ["fist", "palm", "v", "index", "fist", "v", "palm"] as const) {
       b.show(600, [left(shape), right()]);
@@ -247,7 +279,7 @@ describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and
   });
 
   it("a shape that is none of the four is not 'present': it lets go after the grace period, not before", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(100, [left("palm"), right()]);
     b.show(CLUTCH.releaseGraceMs - 100, [left(null), right()]);
     expect(b.view.twoHand).toBe(true);
@@ -256,7 +288,7 @@ describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and
   });
 
   it("a short gap (a fist the model dropped for a few frames) is bridged by the grace", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(100, [left("palm"), right()]);
     b.show(150, [left(null), right()]);
     b.show(200, [left("fist"), right()]);
@@ -264,7 +296,7 @@ describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and
   });
 
   it("without steerShape, only an open palm label counts (R4b callers)", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(100, [ch("Left", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } }), right()]);
     expect(b.view.twoHand).toBe(true);
   });
@@ -272,7 +304,7 @@ describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and
 
 describe("independence", () => {
   it("pinch, claw and two-hand report separately", () => {
-    const b = new Bench();
+    const b = new Bench(CLUTCH, TWO_BOXES);
     b.show(200, [ch("Left", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } }), ch("Right", { pinchRatio: 0.05, clawExt: 1.9 })]);
     expect(b.view).toEqual({ pinch: "Right", claw: null, twoHand: true });
   });

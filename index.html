@@ -32,7 +32,7 @@
             <canvas id="overlay"></canvas>
           </div>
           <!-- The HUD (command box, rings) is NOT mirrored: it is drawn and mouse-edited in display coordinates. -->
-          <canvas id="hud" aria-label="command box: drag to move, drag an edge or corner to resize"></canvas>
+          <canvas id="hud" aria-label="command zone: drag to move, drag an edge or corner to resize"></canvas>
           <div id="banner" hidden aria-live="assertive"><div id="banner-main"></div><div id="banner-sub"></div></div>
           <!-- R4a: shown huge for a moment after each nudge of the loop START. -->
           <div id="nudge-readout" hidden aria-live="polite">
@@ -70,19 +70,14 @@
         </section>
 
         <section class="panel" id="controls">
-          <h2>Command boxes (one per hand)</h2>
-          <div class="note">Right hand (blue): transport and scrub. Left hand (purple, dashed): marks. A shape counts only while that hand's palm centre is in that hand's box.</div>
-          <div class="presets"><span class="note">Right-hand box</span>
-            <button type="button" data-hand="Right" data-preset="right">Right half</button>
-            <button type="button" data-hand="Right" data-preset="left">Left half</button>
-            <button type="button" data-hand="Right" data-preset="whole">Whole frame</button>
+          <h2>Command zone (shared by both hands)</h2>
+          <div class="note">A command or a grab counts only while that hand's palm centre is inside the zone (the top quarter of the picture by default). Which hand is which comes from the thumb (the palm is assumed to face the camera); the L / R chips on the video show it.</div>
+          <div class="presets"><span class="note">Zone</span>
+            <button type="button" data-zone="topQuarter">Top quarter</button>
+            <button type="button" data-zone="topHalf">Top half</button>
+            <button type="button" data-zone="whole">Whole frame</button>
           </div>
-          <div class="presets"><span class="note">Left-hand box</span>
-            <button type="button" data-hand="Left" data-preset="left">Left half</button>
-            <button type="button" data-hand="Left" data-preset="right">Right half</button>
-            <button type="button" data-hand="Left" data-preset="whole">Whole frame</button>
-          </div>
-          <div id="box-readout" class="note">drag a box on the video to move it; drag an edge or corner to resize</div>
+          <div id="box-readout" class="note">drag the zone on the video to move it; drag an edge or corner to resize</div>
 
           <h2>Tuning</h2>
           <label class="slider">
@@ -138,9 +133,15 @@
           <button type="button" id="btn-faster" title="0.025 faster (up to 1.0x)">faster <kbd>=</kbd></button>
           <button type="button" id="btn-speed-reset" title="Back to 1x">1× <kbd>0</kbd></button>
         </span>
+        <span class="group" aria-label="command zone and zoom">
+          <span class="note">Zone</span>
+          <button type="button" data-zone="topQuarter" title="The command zone: the top quarter of the picture">Top quarter</button>
+          <button type="button" data-zone="whole" title="The command zone: the whole picture">Whole frame</button>
+          <label class="check" title="Crop the camera picture to the zone (plus a margin) before the hand model sees it. Hands outside the zone are then not tracked at all."><input id="zoom-toggle" type="checkbox" /> Zoom <span id="zoom-note" class="note"></span></label>
+        </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · <b>hold thumbs up</b> = 2× while held, back to your speed when you let go; an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in its box, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END · <b>shaka</b> (thumb + pinky out) = speed: circle the right hand to step the speed by 0.025 (0.5 to 1.0×, four full circles), the music keeps playing. Keys: - / = 0.025 slower / faster, 0 = 1×, T = 2× / 1×, Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · <b>hold thumbs up</b> = 2× while held, back to your speed when you let go; an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in the zone, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END · <b>shaka</b> (thumb + pinky out) = speed: circle the right hand to step the speed by 0.025 (0.5 to 1.0×, four full circles), the music keeps playing. Keys: - / = 0.025 slower / faster, 0 = 1×, T = 2× / 1×, Shift+[ ] = 1 s nudge. <b>Zone:</b> hands count only inside the zone (top quarter of the picture); which hand is which comes from the thumb (palm to the camera), shown as L / R on the video, and a lone hand with no clear thumb is taken as the right.</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
@@ -150,7 +151,7 @@
           <div class="knob-col">
             <label class="field"><span>Moves (target)</span><select id="knob-target"></select></label>
             <label class="field"><span>Grab (clutch)</span><select id="knob-clutch"></select></label>
-            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT hand as a palm, V or index (right hand in its box) and circle the right hand (or tilt it, if you pick Tilt below). Left open palm = playhead, music left as it is · fist = playhead, paused while closed (a palm resumes it) · V = loop START · index = loop END · shaka = speed in 0.025 steps. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
+            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT hand as a palm, V or index (right hand in the zone) and circle the right hand (or tilt it, if you pick Tilt below). Left open palm = playhead, music left as it is · fist = playhead, paused while closed (a palm resumes it) · V = loop START · index = loop END · shaka = speed in 0.025 steps. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
             <label class="field"><span>Turning (motion)</span><select id="knob-motion"></select></label>
             <label class="field"><span>Mapping</span><select id="knob-mapping"></select></label>
             <label class="slider"><span>Gain <b id="knob-gain-value"></b></span><input id="knob-gain" type="range" /></label>
