@@ -53,8 +53,9 @@ export const APP = {
   wasmPath: "wasm",
   numHands: 2,
   camera: {
-    width: 1280,
-    height: 720,
+    /** 1080p (R6 amendment): more real pixels per hand for the landmark crop and the zoom crop. An "ideal", so a 720p camera still works. */
+    width: 1920,
+    height: 1080,
     frameRate: 30,
   },
   /**
