@@ -5,16 +5,16 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B6 | R5b amendment (0.025 steps, more travel/tick) on `r5b-speed`; then R6 top-quarter zone + zoom crop + thumb handedness on `r6-zone` | ship | `r5b-speed` (+1), `r6-zone` | 2026-10-12 |
 
 ## Waiting on user
-- R4d + R5b tested (2026-10-12): finer speed wheel requested → B6. The R5b worktree `agent-a89f1574c4aaba37e` is detached at b0953ee and still serves :5187.
+- Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
 ## Done (last 10)
+- B6 — R5b amendment 0311d40 (0.025 steps, 72°/step, 4 turns full range) on `r5b-speed`; R6 (`r6-zone`, 2 commits, 583 tests, zone.mjs 30/30). Finding: full-width zone zoom = ×1.00; half-width ×1.76. Worktree `.claude/worktrees/agent-ad2be58932550cc04` — 2026-10-12
 - B4d — R4d (`r4d-hands`, 3 commits, 502 tests; circling direction in ~36–55°) and R5b (`r5b-speed`, 3 commits, 530 tests; hold-2× engages ~340 ms, releases ~144 ms; 0.05 steps per 36°) — pushed, NOT merged; worktree `.claude/worktrees/agent-a89f1574c4aaba37e` — 2026-10-12
 - B4c — R4c (`r4c-steer`, 5 commits, 431 tests, 26/26 steer e2e; lag cause = joystick mapping + release grace; paused stop 474→110 ms) and R5 (`r5-speed`, 2 commits, 459 tests, 29/29 speed e2e) — both pushed, NOT merged; worktree `.claude/worktrees/agent-ae531b24ea41c8084` — 2026-10-12
 - B4b — R4b built: tap/hold removed (921ae4f), knob pipeline, two-hand scrub-then-mark, audible scrub ≤17 seeks/s; 366 tests; 50/50 sim e2e — branch `r4b-knob` (pushed, NOT merged), worktree `.claude/worktrees/agent-a9024670d83792788` — 2026-10-12

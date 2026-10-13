@@ -70,6 +70,8 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Web Audio engine for true scrubbing** instead of seeks | later | Surfaced in R4c |
 | **Arming feedback for the 0.3 s thumbs-up hold** (no ring now) | QoL | Surfaced in R5b |
 | **Mini 0.5–1.0 speed gauge in speed mode** instead of text | QoL | Surfaced in R5b |
+| **Hand-following crop window** (zoom that tracks the hand, with hysteresis) so zoom helps a full-width zone | later | R6 finding: a full-width top-quarter crop gives ×1.00 (the model scales by the long side); needs a real hand to tune |
+| **Zoom toggle key; persisted zone margin** | QoL | Surfaced in R6 |
 
 ## Unresolved threads
 
@@ -138,3 +140,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Hold-to-2× overwrites any key speed change made during the boost** | overlooked | Surfaced in R5b |
 | **Hands dropping with the left fist closed leaves the music paused** | unresolved | R4d decision 2; the user to confirm |
 | **Scrubbing with no IN/OUT set: you must lower the right hand to mark, then steer** | unresolved | User 2026-10-12: "a little bit more to be desired"; wants a stress test first before redesigning |
+| **Thumb rule flips L/R if the back of the hand is shown** | risk | Assumption: palm always faces camera (user) |
+| **Very small hands rejected even when zoomed**; zone below ~12% of the frame is clamped | risk | Surfaced in R6 |
+| **`scripts/e2e/lag.mjs` didn't finish within 7 min after R6 hand-position edits** | bug? | Unknown whether hung or slow |

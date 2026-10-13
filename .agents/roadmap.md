@@ -13,8 +13,8 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 | R4c | Steering-wheel loop editing: left-hand shape picks the mode (palm = play+scrub, fist = pause+scrub, V = START, index = END), snappy steering, waveform | **active** |
 | R5 | Speed: toggle the whole track to 2× and back (redefined 2026-10-12) | built (`r5-speed`), tested: "pretty good" |
 | R4d | Hands rework: left hand = mode anchor only (fist = pause while closed); right fist = play/pause; circling wheel default | tested |
-| R5b | Speed rework: hold right thumbs up = 2× while held; left shaka + right wheel = fine speed in 0.05 steps, heard live | tested; amend: finer wheel (0.025 steps, more travel per tick) |
-| R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | **active** (`r6-zone` on `r5b-speed`) |
+| R5b | Speed rework: hold right thumbs up = 2× while held; left shaka + right wheel = fine speed in 0.05 steps, heard live | tested; finer wheel amended (0311d40) |
+| R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | built (`r6-zone`), awaiting test. Full-width zoom gives ×1.00 |
 
 ---
 
