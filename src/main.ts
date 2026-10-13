@@ -3,7 +3,10 @@ import { analyze, type HandReading } from "./analyze";
 import { Bench } from "./bench";
 import { contains, normalizeBox, type Box } from "./box";
 import { attachBoxEditor } from "./boxEditor";
-import { CameraError, openCamera, openImage, openVideoFile, type FrameSource } from "./camera";
+import { CameraError, deliveredOf, openImage, openVideoFile, requestedSize, type FrameSource } from "./camera";
+import { CameraPicker } from "./cameraPicker";
+import { LatencyPanel } from "./latencyPanel";
+import { PresentedRate } from "./latency";
 import { initialClutchState, stepClutches, twoHandRoles, type ClutchView } from "./clutch";
 import { chordAgrees, type MachineView } from "./commands";
 import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, SPEED, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
@@ -57,6 +60,14 @@ class FpsMeter {
 
 const settings = loadSettings();
 const bench = new Bench(settings, { setZone, zoomChanged: () => updateZoomUi(null) });
+/** R7: the camera picker (null in the dev ?image / ?video / ?sim modes) and the timing panel. */
+let picker: CameraPicker | null = null;
+const latency = new LatencyPanel(
+  () => deliveredOf(video)?.label ?? "",
+  () => ({ width: video.videoWidth, height: video.videoHeight }),
+);
+/** The captureTime of the frame being processed now (null: the browser gave none), to time "frame captured -> command fired". */
+let frameCapture: number | null = null;
 /** R4b: one command classifier per hand, each with its own box. */
 let machines: HandMachines = INITIAL_MACHINES;
 let clutch = initialClutchState();
@@ -148,7 +159,7 @@ function planCrop(width: number, height: number): CropLayout | null {
 
 /** The zoom note next to the toggle. `crop` null: work it out from a typical 16:9 frame (before the first frame, or a zone edit). */
 function updateZoomUi(crop: CropLayout | null): void {
-  const c = crop ?? (settings.zoom ? planCrop(APP.camera.width, APP.camera.height) : null);
+  const c = crop ?? (settings.zoom ? planCrop(requestedSize(picker?.pref.shape).width, requestedSize(picker?.pref.shape).height) : null);
   if (!c) return bench.setZoomNote("off: the whole picture is tracked");
   const mag = magnification(c);
   bench.setZoomNote(
@@ -251,6 +262,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
       rate: player.rate,
     });
     const result = action ? practice.perform(action, { markAt }) : null;
+    if (frameCapture !== null) latency.captureToFire.push(performance.now() - frameCapture);
     if (import.meta.env.DEV) recordTiming(`${fired.hand} ${fired.shape}`, ts, before, result?.label ?? null, markAt);
     bench.fire(fired, result?.label);
   }
@@ -280,7 +292,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   redrawHud();
   if (import.meta.env.DEV) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    Object.assign(dance, { hands, views, clutchView, zone: settings.zone, crop: currentCrop, cropMs: cropper?.avgMs ?? 0, recognizeMs, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
+    Object.assign(dance, { picker, latency, hands, views, clutchView, zone: settings.zone, crop: currentCrop, cropMs: cropper?.avgMs ?? 0, recognizeMs, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
   }
 }
 
@@ -492,7 +504,8 @@ async function openSource(): Promise<FrameSource> {
   const clip = params.get("video");
   if (image) return openImage(still, image);
   if (clip) return openVideoFile(video, clip);
-  return openCamera(video);
+  picker = new CameraPicker(video);
+  return picker.start();
 }
 
 async function main(): Promise<void> {
@@ -539,11 +552,26 @@ async function main(): Promise<void> {
   let lastSimFrame = -Infinity;
   let lastTs = -1;
   let lastVideoTime = -1;
+  const presented = new PresentedRate();
+  // A new stream (the camera was switched): its clock and frame counter start over.
+  if (picker) {
+    picker.onSwitched = () => {
+      lastVideoTime = -1;
+      presented.reset();
+      cropper = null;
+    };
+  }
 
-  const frame = () => {
+  const frame = (now: number, meta?: VideoFrameCallbackMetadata) => {
     const { width, height } = source.size();
     if (width === 0 || height === 0) return;
     sizeCanvases(width, height);
+    // R7: when the camera captured this frame (Chrome's captureTime), and the rate the page is really given frames at.
+    const captured = meta?.captureTime ?? null;
+    frameCapture = captured;
+    if (meta?.presentedFrames !== undefined) presented.push(now, meta.presentedFrames);
+    if (captured !== null) latency.cameraToApp.push(now - captured);
+    if (source.element instanceof HTMLVideoElement) latency.onFrame(source.element, now, captured);
     // Skip duplicate frames (the loop can run faster than the camera).
     if (source.moving && source.element instanceof HTMLVideoElement) {
       const t = source.element.currentTime;
@@ -568,18 +596,23 @@ async function main(): Promise<void> {
       let input: TexImageSource = source.element;
       if (crop) input = (cropper ??= new Cropper()).draw(source.element, crop);
       result = recognizer.recognizeForVideo(input, ts);
-      recognizeMs += (performance.now() - t0 - recognizeMs) * 0.1;
+      const took = performance.now() - t0;
+      recognizeMs += (took - recognizeMs) * 0.1;
+      latency.model.push(took);
     } else {
       result = sim!.simRecognize(simRaws, crop);
     }
     const found = analyze(result, width, height, crop ? (lm) => lm.map((p) => ({ ...p, ...toFullFrame(p, crop) })) : undefined);
     processFrame(ts, found, width, height);
     setFps(meter.tick(ts));
+    if (captured !== null) latency.captureToDone.push(performance.now() - captured);
+    latency.refresh(now);
+    picker?.render(presented.fps);
   };
 
-  const loop = () => {
+  const loop = (now: number = performance.now(), meta?: VideoFrameCallbackMetadata) => {
     try {
-      frame();
+      frame(now, meta);
     } catch (err) {
       console.error(err);
       setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`, true);

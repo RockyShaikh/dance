@@ -53,9 +53,14 @@ export const APP = {
   wasmPath: "wasm",
   numHands: 2,
   camera: {
-    /** 1080p (R6 amendment): more real pixels per hand for the landmark crop and the zoom crop. An "ideal", so a 720p camera still works. */
-    width: 1920,
-    height: 1080,
+    /**
+     * The requested picture (R7), as "ideal" constraints, so a camera that cannot do it still opens at what it has. The
+     * delivered size is read back and shown on screen. 1080p since the R6 amendment (more real pixels per hand for the landmark
+     * crop and the zoom crop). 2K / 4K are a wishlist thread: change this one value and nothing else.
+     */
+    requested: { width: 1920, height: 1080 },
+    /** The alternative picture shape, chosen in the camera picker: 4:3 (Continuity Camera offers 1920x1440), more vertical coverage. */
+    requested43: { width: 1920, height: 1440 },
     frameRate: 30,
   },
   /**
