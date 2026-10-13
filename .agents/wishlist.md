@@ -72,6 +72,9 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Mini 0.5–1.0 speed gauge in speed mode** instead of text | QoL | Surfaced in R5b |
 | **Hand-following crop window** (zoom that tracks the hand, with hysteresis) so zoom helps a full-width zone | later | R6 finding: a full-width top-quarter crop gives ×1.00 (the model scales by the long side); needs a real hand to tune |
 | **Zoom toggle key; persisted zone margin** | QoL | Surfaced in R6 |
+| **Pose as the left/right source** (body knows its own arms) | later | S3 2026-10-13 |
+| **Body-relative command zone** (above head from pose) | later | S3 2026-10-13; links to the deferred above-head zone |
+| **macOS Center Stage as a zero-code zoom test** | QoL | S3 2026-10-13; only if the Mac/camera supports it |
 
 ## Unresolved threads
 
@@ -143,3 +146,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Thumb rule flips L/R if the back of the hand is shown** | risk | Assumption: palm always faces camera (user) |
 | **Very small hands rejected even when zoomed**; zone below ~12% of the frame is clamped | risk | Surfaced in R6 |
 | **`scripts/e2e/lag.mjs` didn't finish within 7 min after R6 hand-position edits** | bug? | Unknown whether hung or slow |
+| **HolisticLandmarker GPU bug (#5166); no gesture labels; always runs the face model** | risk | S3 2026-10-13 |
+| **Palm detection runs every frame while only one hand is up** (cost) | risk | S3 2026-10-13 |
+| **Finger shapes at 3–5 m unmeasured**: crops fix detection only; landmark pixels are the same (~65 px hand at 4 m) | unresolved | No-code test: grab near, step back |

@@ -5,10 +5,9 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| S3 | Scout: distance hand tracking (MediaPipe detector sizes, web HolisticLandmarker, pose → wrist crop, alternatives) → `.agents/research/distance-hand-tracking.md` | scout | n/a | 2026-10-13 |
 
 ## Waiting on user
-- User baselines the current version's distance range (R6 at :5188, now 1080p; reload the page).
+- User: no-code step-back test (detect near, step back holding each shape) + baseline range on :5188; tell us the Mac model. Then the R7 spike.
 - Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
@@ -16,6 +15,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- S3 — distance research: the detector (192² input) is the bottleneck, 1080p can't help detection; no ROI option; web HolisticLandmarker exists (no gesture labels, GPU bug); recommend a no-code step-back test, then a ?track= spike — `.agents/research/distance-hand-tracking.md` — 2026-10-13
 - B6 — R5b amendment 0311d40 (0.025 steps, 72°/step, 4 turns full range) on `r5b-speed`; R6 (`r6-zone`, 2 commits, 583 tests, zone.mjs 30/30). Finding: full-width zone zoom = ×1.00; half-width ×1.76. Worktree `.claude/worktrees/agent-ad2be58932550cc04` — 2026-10-12
 - B4d — R4d (`r4d-hands`, 3 commits, 502 tests; circling direction in ~36–55°) and R5b (`r5b-speed`, 3 commits, 530 tests; hold-2× engages ~340 ms, releases ~144 ms; 0.05 steps per 36°) — pushed, NOT merged; worktree `.claude/worktrees/agent-a89f1574c4aaba37e` — 2026-10-12
 - B4c — R4c (`r4c-steer`, 5 commits, 431 tests, 26/26 steer e2e; lag cause = joystick mapping + release grace; paused stop 474→110 ms) and R5 (`r5-speed`, 2 commits, 459 tests, 29/29 speed e2e) — both pushed, NOT merged; worktree `.claude/worktrees/agent-ae531b24ea41c8084` — 2026-10-12
