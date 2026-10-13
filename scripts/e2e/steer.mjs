@@ -22,8 +22,8 @@ const prelude = `
   window.T = {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     set: (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input')); },
-    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.5 }, curl: 0, tilt, ...o }),
-    left: (shape, o = {}) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.5 }, ...o }),
+    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.14 }, curl: 0, tilt, ...o }),
+    left: (shape, o = {}) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.14 }, ...o }),
     show: async (specs, ms) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { __dance.setHands(specs); await T.sleep(16); } },
     // A turn of the right hand from a to b over ms, with the given left hand.
     turn: async (left, a, b, ms) => { const t0 = performance.now(); for (;;) { const f = Math.min(1, (performance.now() - t0) / ms); __dance.setHands([left, T.right(a + (b - a) * f)]); if (f >= 1) break; await T.sleep(16); } },

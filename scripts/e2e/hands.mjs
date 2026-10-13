@@ -23,8 +23,8 @@ const prelude = `
   window.T = {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     set: (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input')); },
-    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.5 }, curl: 0, tilt, ...o }),
-    left: (shape, o = {}) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.5 }, ...o }),
+    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.14 }, curl: 0, tilt, ...o }),
+    left: (shape, o = {}) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.14 }, ...o }),
     show: async (specs, ms) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { __dance.setHands(specs); await T.sleep(16); } },
     // The right hand's palm going round a circle (radius in frame heights; dir +1 = clockwise on screen) while the left hand shows 'left'.
     // Records the true degrees travelled and what the wheel reports (knobView.turnedDeg) every 16 ms into 'rec'.
@@ -32,12 +32,12 @@ const prelude = `
       const t0 = performance.now(); const aspect = 16 / 9;
       for (;;) {
         const el = performance.now() - t0; const deg = dir * (el / 1000) * rev * 360; const a = ((180 + deg) * Math.PI) / 180;
-        __dance.setHands([left, T.right(0, { palm: { x: 0.75 + (radius / aspect) * Math.cos(a), y: 0.5 + radius * Math.sin(a) } })]);
+        __dance.setHands([left, T.right(0, { palm: { x: 0.75 + (radius / aspect) * Math.cos(a), y: 0.14 + radius * Math.sin(a) } })]);
         if (rec) rec.push({ t: el, trueDeg: deg, reported: __dance.knobView ? __dance.knobView.turnedDeg : null });
         if (el >= ms) break; await T.sleep(16);
       }
     },
-    atStart: (left, ms, radius = 0.08) => T.show([left, T.right(0, { palm: { x: 0.75 - radius / (16 / 9), y: 0.5 } })], ms),
+    atStart: (left, ms, radius = 0.08) => T.show([left, T.right(0, { palm: { x: 0.75 - radius / (16 / 9), y: 0.14 } })], ms),
     state: () => __dance.player.state,
     cur: () => __dance.player.currentTime,
     loop: () => __dance.practice.loopState,
@@ -119,8 +119,8 @@ await ev(`__dance.player.seek(10); await __dance.player.play(); await T.sleep(30
 await ev(`await T.show([T.left('Victory')], 1000)`);
 check("no right hand: left V sets START (a mark, no grab)", (await ev(`return T.loop().start`)) !== null && !(await ev(`return T.grabbed()`)));
 await ev(`await T.show([], 1600)`);
-await ev(`await T.show([T.left('Pointing_Up'), T.right(0, { palm: { x: 0.2, y: 0.5 } })], 1000)`);
-check("right hand outside its box: left index sets END (a mark, no grab)", (await ev(`return T.loop().end`)) !== null && !(await ev(`return T.grabbed()`)));
+await ev(`await T.show([T.left('Pointing_Up'), T.right(0, { palm: { x: 0.2, y: 0.6 } })], 1000)`);
+check("right hand outside the zone (below it): left index sets END (a mark, no grab)", (await ev(`return T.loop().end`)) !== null && !(await ev(`return T.grabbed()`)));
 
 console.log("\n== 4. Right hand: open palm inert, fist = play/pause, a hand leaving does nothing");
 await fresh();
@@ -179,13 +179,13 @@ await fresh();
 await ev(`__dance.player.seek(30); await __dance.player.play(); await T.sleep(200)`);
 await ev(`await T.atStart(T.left('Open_Palm'), 600)`);
 const c0 = await ev(`return T.cur()`);
-await ev(`await T.circle(T.left('Open_Palm'), { dir: 1, rev: 1, ms: 1000 }); await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 300)`);
+await ev(`await T.circle(T.left('Open_Palm'), { dir: 1, rev: 1, ms: 1000 }); await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 300)`);
 const c1 = await ev(`return T.cur()`);
 check("one clockwise circle in 1 s moves the playhead forward (3 s of scrub per turn, 1 s of play, minus the first ~40 degrees)", c1 - c0 > 3.2, `${c0.toFixed(2)} -> ${c1.toFixed(2)}`);
-await ev(`T.calls.length = 0; await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 1200)`);
+await ev(`T.calls.length = 0; await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 1200)`);
 const seeksLate = await ev(`return T.calls.filter((c) => c.m === 'seek' && c.t > performance.now() - 900).length`);
 const r0 = await ev(`return T.cur()`);
-await ev(`await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 1000)`);
+await ev(`await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 1000)`);
 const r1 = await ev(`return T.cur()`);
 check("circling stopped: no more seeks, and the music just plays on at 1x", seeksLate === 0 && Math.abs(r1 - r0 - 1) < 0.15, `${seeksLate} seeks in the last 0.9 s; ${(r1 - r0).toFixed(2)} s of music in 1 s`);
 await ev(`await T.atStart(T.left('Open_Palm'), 600)`);

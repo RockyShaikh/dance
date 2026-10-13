@@ -18,9 +18,9 @@ const prelude = `
   window.T = {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     set: (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input')); },
-    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.5 }, curl: 0, tilt, ...o }),
-    claw: (tilt) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.5 }, curl: 0.6, tilt }),
-    left: (shape) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.5 } }),
+    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.14 }, curl: 0, tilt, ...o }),
+    claw: (tilt) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.14 }, curl: 0.6, tilt }),
+    left: (shape) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.14 } }),
   };
   T.tick = (ms) => T.sleep(ms);
   // Sends specs(tilt) every 16 ms while the tilt goes from a to b over ms. Resolves with the time the tilt last changed.

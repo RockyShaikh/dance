@@ -22,8 +22,8 @@ const shot = (n) => p.shot(`${SHOTS}/${n}.png`);
 const prelude = `
   window.T = {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
-    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.5 }, curl: 0, tilt, ...o }),
-    left: (shape, o = {}) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.5 }, ...o }),
+    right: (tilt, o = {}) => ({ shape: 'None', hand: 'Right', palm: { x: 0.75, y: 0.14 }, curl: 0, tilt, ...o }),
+    left: (shape, o = {}) => ({ shape, hand: 'Left', palm: { x: 0.25, y: 0.14 }, ...o }),
     thumb: (o = {}) => T.right(0, { shape: 'Thumb_Up', curl: 1, ...o }),
     shaka: () => T.left('None', { fingers: '10001' }),
     show: async (specs, ms) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { __dance.setHands(specs); await T.sleep(16); } },
@@ -33,12 +33,12 @@ const prelude = `
       const t0 = performance.now(); const aspect = 16 / 9;
       for (;;) {
         const el = performance.now() - t0; const deg = dir * (el / 1000) * rev * 360; const a = ((startDeg + deg) * Math.PI) / 180;
-        __dance.setHands([left, T.right(0, { palm: { x: 0.75 + (radius / aspect) * Math.cos(a), y: 0.5 + radius * Math.sin(a) } })]);
+        __dance.setHands([left, T.right(0, { palm: { x: 0.75 + (radius / aspect) * Math.cos(a), y: 0.14 + radius * Math.sin(a) } })]);
         if (rec) rec.push({ t: el, trueDeg: deg, rate: __dance.player.rate });
         if (el >= ms) break; await T.sleep(16);
       }
     },
-    atStart: (left, ms, radius = 0.08) => T.show([left, T.right(0, { palm: { x: 0.75 - radius / (16 / 9), y: 0.5 } })], ms),
+    atStart: (left, ms, radius = 0.08) => T.show([left, T.right(0, { palm: { x: 0.75 - radius / (16 / 9), y: 0.14 } })], ms),
     rate: () => __dance.player.rate,
     state: () => __dance.player.state,
     cur: () => __dance.player.currentTime,
@@ -89,12 +89,12 @@ await ev(`await T.show([T.thumb({ fingers: '00000' })], 2500)`);
 check("label Thumb_Up but the thumb is in (a fist): nothing", (await ev(`return T.rate()`)) === 1);
 await ev(`await T.show([T.right(0, { shape: 'Closed_Fist', fingers: '10000', curl: 1 })], 2500)`);
 check("label Closed_Fist but the thumb is out: no play/pause either", (await ev(`return T.state()`)) === "playing" && (await ev(`return T.rate()`)) === 1);
-await ev(`await T.show([], 1000); await T.show([T.thumb({ palm: { x: 0.25, y: 0.5 } })], 2000)`);
-check("right thumbs up outside the right hand's box: nothing", (await ev(`return T.rate()`)) === 1);
+await ev(`await T.show([], 1000); await T.show([T.thumb({ palm: { x: 0.25, y: 0.6 } })], 2000)`);
+check("right thumbs up outside the zone (below it): nothing", (await ev(`return T.rate()`)) === 1);
 await ev(`await T.show([], 800); await T.show([T.left('Thumb_Up', { curl: 1 })], 2000)`);
 check("LEFT thumbs up: nothing", (await ev(`return T.rate()`)) === 1);
-await ev(`await T.show([], 800); await T.show([T.thumb({ away: true })], 700)`);
-check("right thumbs up with the back of the hand to the camera: arms", (await ev(`return T.rate()`)) === 2);
+await ev(`await T.show([], 800); await T.show([T.thumb({ label: 'Left' })], 700)`);
+check("R6: right thumbs up arms though the model's label says Left (palm facing is a readout now)", (await ev(`return T.rate()`)) === 2);
 await ev(`await T.show([], 600)`);
 
 console.log("\n== 3. Left shaka + circling wheel: 0.025 steps, 72 degrees each, the music keeps playing");
@@ -104,7 +104,7 @@ await ev(`await T.atStart(T.shaka(), 600)`);
 check("shaka + right hand in its box: grabbed, mode speed, still playing at 1x", (await ev(`return JSON.stringify([!!__dance.knob.grabbed, __dance.steer.mode, T.state(), T.rate()])`)) === '[true,"speed","playing",1]');
 await ev(`T.calls.length = 0; T.rec = []`);
 await ev(`await T.circle(T.shaka(), { dir: -1, rev: 1, ms: 4900, rec: T.rec })`); // 4.9 turns counter-clockwise
-await ev(`await T.show([T.shaka(), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 300)`);
+await ev(`await T.show([T.shaka(), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 300)`);
 const rec = JSON.parse(await ev(`return JSON.stringify(T.rec)`));
 const seq = [...new Set(rec.map((r) => r.rate))];
 const diffs = seq.slice(1).map((v, i) => Math.round((seq[i] - v) * 1000));
@@ -121,7 +121,7 @@ await shot("02-speed-mode-hud");
 const bsize = await ev(`const b = document.getElementById('speed-badge').getBoundingClientRect(); return Math.round(b.height)`);
 check("the badge is modest (under 70 px tall at this window)", bsize < 70, `${bsize} px`);
 await ev(`T.rec = []; await T.circle(T.shaka(), { dir: 1, rev: 1, ms: 4900, rec: T.rec, startDeg: 180 - 4.9 * 360 })`);
-await ev(`await T.show([T.shaka(), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 300)`);
+await ev(`await T.show([T.shaka(), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 300)`);
 check("clockwise 4.9 turns: back up to 1.0x and stays there (a natural stop)", (await ev(`return T.rate()`)) === 1);
 const held = await ev(`const r = T.rate(); await T.show([T.shaka(), T.right(0)], 1500); return r === T.rate()`);
 check("hand held still in speed mode: no change", held);
@@ -130,10 +130,10 @@ check("one grab, music never stopped, no command fired", (await ev(`return T.sta
 console.log("\n== 4. Shaka is not a thumbs up or a fist");
 await fresh();
 await ev(`__dance.player.seek(40); await __dance.player.play(); await T.sleep(200)`);
-await ev(`await T.show([T.left('Thumb_Up', { curl: 1 }), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 600)`);
+await ev(`await T.show([T.left('Thumb_Up', { curl: 1 }), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 600)`);
 check("left thumbs up + right hand: not a shaka (no speed mode; a loose fist does not start a grab)", (await ev(`return JSON.stringify([!!__dance.knob.grabbed, __dance.steer.mode])`)) === "[false,null]");
 await ev(`await T.show([], 500); await T.atStart(T.left('Open_Palm'), 600)`);
-await ev(`await T.show([T.left('Thumb_Up', { curl: 1 }), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 500)`);
+await ev(`await T.show([T.left('Thumb_Up', { curl: 1 }), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 500)`);
 await ev(`await T.circle(T.left('Thumb_Up', { curl: 1 }), { dir: -1, rev: 0.5, ms: 2000 })`);
 check("during a grab, a left thumbs up is never read as the speed mode, and the speed is untouched", (await ev(`return __dance.steer.mode`)) !== "speed" && (await ev(`return T.rate()`)) === 1);
 
@@ -172,7 +172,7 @@ await fresh();
 await ev(`__dance.player.setRate(0.6); __dance.player.seek(30); await __dance.player.play(); await T.sleep(200)`);
 await ev(`await T.atStart(T.left('Open_Palm'), 600)`);
 const c0 = await ev(`return T.cur()`);
-await ev(`await T.circle(T.left('Open_Palm'), { dir: 1, rev: 1, ms: 1000 }); await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.5 } })], 400)`);
+await ev(`await T.circle(T.left('Open_Palm'), { dir: 1, rev: 1, ms: 1000 }); await T.show([T.left('Open_Palm'), T.right(0, { palm: { x: 0.75 - 0.08 / (16 / 9), y: 0.14 } })], 400)`);
 const c1 = await ev(`return T.cur()`);
 check("scrubbing at 0.6x: a clockwise circle moves the playhead ahead (about 3 s per turn plus 0.6 s per second of play)", c1 - c0 > 2.5, `${c0.toFixed(2)} -> ${c1.toFixed(2)}`);
 check("still 0.6x and playing after the scrub", (await ev(`return T.rate()`)) === 0.6 && (await ev(`return T.state()`)) === "playing");
