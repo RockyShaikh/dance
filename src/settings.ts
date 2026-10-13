@@ -1,4 +1,5 @@
 import { DEFAULT_ZONE, normalizeBox, type Box } from "./box";
+import type { TrackMode } from "./autoTrack";
 import { CLUTCH, COMMANDS } from "./config";
 
 /** The test bench's adjustable settings. Kept in the browser's localStorage so the box and sliders survive a reload. */
@@ -7,6 +8,8 @@ export interface Settings {
   zone: Box;
   /** R6: crop the camera frame to the zone (plus a margin) before the hand model sees it. */
   zoom: boolean;
+  /** R8: auto-track (off / person / wrists): pose decides where to crop, and the crop goes to the hand model. While on, `zoom` is ignored. */
+  autoTrack: TrackMode;
   /** Dwell before the first ring is full, in milliseconds. */
   dwellMs: number;
   /** Pinch grab threshold (palm sizes). */
@@ -21,6 +24,7 @@ export function defaultSettings(): Settings {
   return {
     zone: { ...DEFAULT_ZONE },
     zoom: false,
+    autoTrack: "off",
     dwellMs: COMMANDS.dwellMs,
     pinchGrab: CLUTCH.pinch.grabRatio,
     stillness: COMMANDS.stillness.enabled,
@@ -48,6 +52,7 @@ export function loadSettings(): Settings {
     return {
       zone: readBox(j.zone, d.zone),
       zoom: typeof j.zoom === "boolean" ? j.zoom : d.zoom,
+      autoTrack: j.autoTrack === "person" || j.autoTrack === "wrists" || j.autoTrack === "off" ? j.autoTrack : d.autoTrack,
       dwellMs: num(j.dwellMs, COMMANDS.dwellMinMs, COMMANDS.dwellMaxMs, d.dwellMs),
       pinchGrab: num(j.pinchGrab, CLUTCH.pinch.sliderMin, CLUTCH.pinch.sliderMax, d.pinchGrab),
       stillness: typeof j.stillness === "boolean" ? j.stillness : d.stillness,

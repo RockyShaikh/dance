@@ -1,8 +1,10 @@
+import { PoseLandmarker } from "@mediapipe/tasks-vision";
 import { contains, type Box, type Handle } from "./box";
 import type { Handedness } from "./hand";
 import type { MachineView } from "./commands";
 import type { HandSource } from "./handedness";
 import { drawKnob, type KnobDraw } from "./knobHud";
+import type { PoseLm } from "./poseCrop";
 
 /**
  * The HUD canvas: the command zone, palm-centre markers with an L / R label, and the dwell rings.
@@ -29,6 +31,8 @@ export interface HudInput {
   knob?: KnobDraw | null;
   /** R6: with zoom on, what the model is given (display space) and how much bigger that makes a hand to it. */
   crop?: { box: Box; magnification: number } | null;
+  /** R8 auto-track: the pose skeleton (full-frame raw coordinates, as the pose model gives them) and the crops the hand model was given (display space). */
+  track?: { pose: readonly PoseLm[] | null; crops: readonly { box: Box; label: string; magnification: number }[] } | null;
 }
 
 /** The dancer's right hand is blue, the left purple (the L / R labels on the hands). */
@@ -118,6 +122,8 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
     text(ctx, `ZOOM ×${input.crop.magnification.toFixed(1)}: only this is tracked`, (c.x + c.w) * W - 14 * s, (c.y + c.h) * H + 24 * s, 20 * s, WARN, "right");
   }
 
+  if (input.track) drawTrack(ctx, input.track, W, H, s);
+
   // Drag handles: small squares on the corners and edge midpoints.
   for (const [h, hx, hy] of handlePoints(zone)) {
     const lit = input.active === h;
@@ -194,5 +200,52 @@ export function drawHud(ctx: CanvasRenderingContext2D, input: HudInput): void {
     text(ctx, prettyShape(view.shape), x, below, 26 * s, "#fff", "center");
     const note = view.phase === "dwell" ? "keep holding..." : view.phase === "spent" ? "fired: drop the hand to re-arm" : "";
     if (note) text(ctx, note, x, below + 28 * s, 20 * s, full ? ON : "#ffd23f", "center");
+  }
+}
+
+const POSE_COLOR = "rgba(255,255,255,0.75)";
+const CROP_COLOR = "#ff7ad9";
+
+/** R8: the pose skeleton (thin; the wrists as dots) and each crop's outline with its magnification. The HUD is not mirrored, so raw x flips. */
+function drawTrack(ctx: CanvasRenderingContext2D, track: NonNullable<HudInput["track"]>, W: number, H: number, s: number): void {
+  const pose = track.pose;
+  if (pose) {
+    const ok = (p: PoseLm | undefined): p is PoseLm => !!p && (p.visibility ?? 1) >= 0.3;
+    const px = (p: PoseLm) => (1 - p.x) * W;
+    const py = (p: PoseLm) => p.y * H;
+    ctx.save();
+    ctx.lineWidth = 1.5 * s;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = POSE_COLOR;
+    ctx.beginPath();
+    for (const { start, end } of PoseLandmarker.POSE_CONNECTIONS) {
+      // The face dots and the legs are noise here: head, torso and arms only.
+      if (start > 22 || end > 22) continue;
+      const a = pose[start];
+      const b = pose[end];
+      if (!ok(a) || !ok(b)) continue;
+      ctx.moveTo(px(a), py(a));
+      ctx.lineTo(px(b), py(b));
+    }
+    ctx.stroke();
+    for (const [i, side] of [[15, "L"], [16, "R"]] as const) {
+      const p = pose[i];
+      if (!ok(p)) continue;
+      ctx.fillStyle = CROP_COLOR;
+      ctx.beginPath();
+      ctx.arc(px(p), py(p), 4 * s, 0, Math.PI * 2);
+      ctx.fill();
+      text(ctx, side, px(p) + 8 * s, py(p) - 6 * s, 14 * s, CROP_COLOR);
+    }
+    ctx.restore();
+  }
+  for (const c of track.crops) {
+    ctx.save();
+    ctx.setLineDash([8 * s, 6 * s]);
+    ctx.lineWidth = 2 * s;
+    ctx.strokeStyle = CROP_COLOR;
+    ctx.strokeRect(c.box.x * W, c.box.y * H, c.box.w * W, c.box.h * H);
+    ctx.restore();
+    text(ctx, `${c.label} ×${c.magnification.toFixed(1)}`, c.box.x * W + 6 * s, c.box.y * H + 18 * s, 15 * s, CROP_COLOR);
   }
 }

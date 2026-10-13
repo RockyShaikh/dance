@@ -153,6 +153,11 @@ export class Bench {
     this.setText("zoom-note", text);
   }
 
+  /** R8: the zone-zoom checkbox does nothing while Auto-track is on. */
+  setZoomDisabled(disabled: boolean): void {
+    el<HTMLInputElement>("zoom-toggle").disabled = disabled;
+  }
+
   setPinchLive(ratios: readonly number[]): void {
     this.setText("pinch-live", ratios.length ? ratios.map((r) => r.toFixed(2)).join(" / ") : "no hand");
   }

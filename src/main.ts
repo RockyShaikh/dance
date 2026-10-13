@@ -1,5 +1,7 @@
 import "./style.css";
 import { analyze, type HandReading } from "./analyze";
+import { AutoTracker, type TrackFrame, type TrackMode } from "./autoTrack";
+import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { Bench } from "./bench";
 import { contains, normalizeBox, type Box } from "./box";
 import { attachBoxEditor } from "./boxEditor";
@@ -11,13 +13,14 @@ import { initialClutchState, stepClutches, twoHandRoles, type ClutchView } from 
 import { chordAgrees, type MachineView } from "./commands";
 import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, SPEED, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
 import { drawHands } from "./draw";
-import { Cropper, cropAsDisplayBox, cropLayout, cropRectForZone, magnification, toFullFrame, type CropLayout } from "./zoom";
+import { cropAsDisplayBox, cropLayout, cropRectForZone, magnification, toFullFrame, type CropLayout } from "./zoom";
 import type { Handedness } from "./hand";
 import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
 import { drawHud } from "./hud";
 import { createBrowserPlayer } from "./audioPlayer";
 import { Practice } from "./practice";
 import { loadRecognizer } from "./recognizer";
+import { TrackPanel } from "./trackPanel";
 import { renderHands, setFps, setMessage, setStatus } from "./readout";
 import { loadSettings, saveSettings } from "./settings";
 import { markPlayhead, trackRingStart, type RingStamp } from "./loop";
@@ -146,19 +149,27 @@ const editor = attachBoxEditor(hudCanvas, () => settings.zone, setZone, () => re
 
 // --- R6: zoom (crop the frame to the zone + margin and give only the crop to the hand model) ---
 
-let cropper: Cropper | null = null;
 /** The crop used on the last frame (null: zoom off, or no frame yet). */
 let currentCrop: CropLayout | null = null;
 /** DEV stat: a short running average of the crop + model call, in ms (window.__dance.recognizeMs). */
 let recognizeMs = 0;
 
+// --- R8: auto-track (pose decides where to crop; see autoTrack.ts). Null in the dev ?sim mode (no models there). ---
+
+let tracker: AutoTracker | null = null;
+let trackPanel: TrackPanel | null = null;
+/** The last frame's tracker output (pose, crops), for the HUD. */
+let trackFrame: TrackFrame | null = null;
+
 /** The crop for the current zone and frame size, or null with zoom off. */
 function planCrop(width: number, height: number): CropLayout | null {
-  return settings.zoom ? cropLayout(cropRectForZone(settings.zone, width, height), width, height) : null;
+  return settings.zoom && settings.autoTrack === "off" ? cropLayout(cropRectForZone(settings.zone, width, height), width, height) : null;
 }
 
 /** The zoom note next to the toggle. `crop` null: work it out from a typical 16:9 frame (before the first frame, or a zone edit). */
 function updateZoomUi(crop: CropLayout | null): void {
+  bench.setZoomDisabled(settings.autoTrack !== "off");
+  if (settings.autoTrack !== "off") return bench.setZoomNote("ignored: Auto-track is on (it picks the crop)");
   const c = crop ?? (settings.zoom ? planCrop(requestedSize(picker?.pref.shape).width, requestedSize(picker?.pref.shape).height) : null);
   if (!c) return bench.setZoomNote("off: the whole picture is tracked");
   const mag = magnification(c);
@@ -176,6 +187,7 @@ function redrawHud(): void {
     views,
     knob: knobDraw,
     crop: currentCrop ? { box: cropAsDisplayBox(currentCrop), magnification: magnification(currentCrop) } : null,
+    track: trackFrame && (settings.autoTrack !== "off" || tracker?.measurePose) ? { pose: trackFrame.pose, crops: settings.autoTrack !== "off" ? trackFrame.crops.map((c) => ({ box: cropAsDisplayBox(c.layout), label: c.label, magnification: c.magnification })) : [] } : null,
   });
 }
 
@@ -292,7 +304,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   redrawHud();
   if (import.meta.env.DEV) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    Object.assign(dance, { picker, latency, hands, views, clutchView, zone: settings.zone, crop: currentCrop, cropMs: cropper?.avgMs ?? 0, recognizeMs, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
+    Object.assign(dance, { picker, latency, hands, views, clutchView, zone: settings.zone, crop: currentCrop, cropMs: tracker?.cropMs ?? 0, recognizeMs, tracker, trackFrame, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
   }
 }
 
@@ -538,6 +550,38 @@ async function main(): Promise<void> {
   setStatus(sim ? "Simulated hands (dev ?sim mode)" : `Running (${loaded!.delegate})`);
 
   const recognizer = loaded?.recognizer ?? null;
+  if (recognizer) {
+    const params = new URLSearchParams(location.search);
+    tracker = new AutoTracker(recognizer, params.get("wrists") === "image" ? "image" : "video", () => trackPanel?.showMode(settings.autoTrack));
+    tracker.measurePose = params.has("measure");
+    const t = tracker;
+    trackPanel = new TrackPanel(t, settings.autoTrack, {
+      modeChanged: (mode: TrackMode) => {
+        settings.autoTrack = mode;
+        saveSettings(settings);
+        void t.setMode(mode).then(() => trackPanel?.showMode(t.mode));
+        updateZoomUi(null);
+        trackPanel?.showMode(mode);
+      },
+      measureChanged: (on: boolean) => {
+        t.measurePose = on;
+        t.stats.reset();
+        void t.load();
+      },
+    });
+    void t.setMode(settings.autoTrack);
+    if (import.meta.env.DEV) {
+      // Dev / test drivers: window.__dance.setTrackMode("person")
+      const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
+      dance.setTrackMode = async (mode: TrackMode) => {
+        settings.autoTrack = mode;
+        await t.setMode(mode);
+        trackPanel?.showMode(mode);
+        updateZoomUi(null);
+      };
+    }
+  }
+  updateZoomUi(null);
   let simRaws: import("./sim").SimRaw[] = [];
   if (sim) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
@@ -558,7 +602,7 @@ async function main(): Promise<void> {
     picker.onSwitched = () => {
       lastVideoTime = -1;
       presented.reset();
-      cropper = null;
+      tracker?.reset();
     };
   }
 
@@ -586,25 +630,29 @@ async function main(): Promise<void> {
     lastTs = ts;
 
     // R6 zoom: the model is given only the zone (plus a margin) cropped out of the frame; its landmarks come back in the
-    // crop's coordinates and are mapped to the full frame, so everything downstream is unchanged.
+    // crop's coordinates and are mapped to the full frame, so everything downstream is unchanged. R8 auto-track does the same
+    // with crops chosen from body pose: the tracker always hands back full-frame coordinates.
     const crop = planCrop(width, height);
     if (JSON.stringify(crop) !== JSON.stringify(currentCrop)) updateZoomUi(crop);
     currentCrop = crop;
     let result;
-    if (recognizer) {
+    let remap: ((lm: NormalizedLandmark[]) => NormalizedLandmark[]) | undefined;
+    if (tracker) {
       const t0 = performance.now();
-      let input: TexImageSource = source.element;
-      if (crop) input = (cropper ??= new Cropper()).draw(source.element, crop);
-      result = recognizer.recognizeForVideo(input, ts);
+      trackFrame = tracker.run(source.element, width, height, ts, crop);
+      result = trackFrame.result;
       const took = performance.now() - t0;
       recognizeMs += (took - recognizeMs) * 0.1;
       latency.model.push(took);
     } else {
       result = sim!.simRecognize(simRaws, crop);
+      if (crop) remap = (lm) => lm.map((p) => ({ ...p, ...toFullFrame(p, crop) }));
     }
-    const found = analyze(result, width, height, crop ? (lm) => lm.map((p) => ({ ...p, ...toFullFrame(p, crop) })) : undefined);
+    const found = analyze(result, width, height, remap);
     processFrame(ts, found, width, height);
-    setFps(meter.tick(ts));
+    const fps = meter.tick(ts);
+    setFps(fps);
+    trackPanel?.render(fps);
     if (captured !== null) latency.captureToDone.push(performance.now() - captured);
     latency.refresh(now);
     picker?.render(presented.fps);

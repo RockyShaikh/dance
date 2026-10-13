@@ -170,8 +170,16 @@
           <button type="button" data-zone="whole" title="The command zone: the whole picture">Whole frame</button>
           <label class="check" title="Crop the camera picture to the zone (plus a margin) before the hand model sees it. Hands outside the zone are then not tracked at all."><input id="zoom-toggle" type="checkbox" /> Zoom <span id="zoom-note" class="note"></span></label>
         </span>
+        <span class="group" aria-label="auto-track">
+          <span class="note">Auto-track</span>
+          <select id="track-mode" title="Off: the whole picture (or the Zoom crop). Person: body pose frames you and the crop goes to the hand model. Wrists: pose finds each wrist and each hand gets its own crop."></select>
+          <label class="check" title="Show the measurement overlay (model times, magnification, palm pixels, detection rate). With Auto-track off this also runs the pose model, only for the counters, which costs time."><input id="track-measure" type="checkbox" /> Measure</label>
+          <span id="track-note" class="note"></span>
+        </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
+      <!-- R8: the auto-track measurement readout: shown when Auto-track is on or Measure is ticked. -->
+      <div id="track-hud" hidden><pre id="track-hud-body"></pre><button type="button" id="track-reset" class="small">Reset counters</button></div>
       <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · <b>hold thumbs up</b> = 2× while held, back to your speed when you let go; an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in the zone, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END · <b>shaka</b> (thumb + pinky out) = speed: circle the right hand to step the speed by 0.025 (0.5 to 1.0×, four full circles), the music keeps playing. Keys: - / = 0.025 slower / faster, 0 = 1×, T = 2× / 1×, Shift+[ ] = 1 s nudge. <b>Zone:</b> hands count only inside the zone (top quarter of the picture); which hand is which comes from the thumb (palm to the camera), shown as L / R on the video, and a lone hand with no clear thumb is taken as the right.</div>
       <div id="hint" hidden></div>
 
