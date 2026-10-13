@@ -81,6 +81,8 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Bump capture to 2K/4K and run CV on it** | next up | User 2026-10-13: start at 1080p, then try 2K/4K. Note (S4): Continuity Camera maxes out at 1080p / 1920×1440, so 4K needs a different camera |
 | **iPhone-native companion**: the iPhone runs all the CV and sends commands to the laptop | later | User 2026-10-13: keep as an option after the direct-on-Mac test |
 | **Native macOS Vision helper** (Apple hand pose on the Mac) as an alternative to an iPhone app | later | S4 2026-10-13 |
+| **Latency results: include camera label, CSV export** | QoL | Surfaced in R7 |
+| **Run the hand model in a worker** (separate it from the frame callback; cleaner latency) | later | Surfaced in R7 |
 
 ## Unresolved threads
 
@@ -159,3 +161,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Continuity Camera streaming latency** (wireless vs USB) | unresolved | Measure in R7 |
 | **macOS Reactions draw effects into camera frames on V sign / thumbs up** (our gestures!) | bug? | S4 2026-10-13: turn Reactions off in the menu-bar Video menu; affects the built-in camera too |
 | **2× zoom at 4 m frames only about 1.56 m tall** (head + raised hands, not the full body) | unresolved | S4 2026-10-13; fine for the top-zone design, a problem for future full-body pose |
+| **Glass-to-glass test needs the camera to see the screen** (built-in camera needs a mirror) | risk | Surfaced in R7 |
+| **Real Continuity Camera labels/ids across sleep/wake, Desk View listing** | unresolved | Untested in R7 |
+| **With phone zoom, the screen-fixed zone moves relative to the body** | unresolved | Surfaced in R7 |

@@ -5,10 +5,9 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B7 | R7 iPhone camera: picker + hot-plug, 1080p with delivered-resolution readout, glass-to-glass latency tool | ship | `r7-camera` on `r6-zone` | 2026-10-13 |
 
 ## Waiting on user
-- User: no-code step-back test (detect near, step back holding each shape) + baseline range on :5188; tell us the Mac model. Then the R7 spike.
+- User tests R7 at http://localhost:5189/?track=/test/click-track.wav: pick the iPhone, latency test (FaceTime HD / iPhone wireless / USB), walk-back at 1×/2×/3×/Center Stage. Merge chain on the user's word.
 - Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
 - Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
@@ -16,6 +15,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- B7 — R7 camera picker + hot-plug, delivered-resolution readout, 4:3 option, latency tools; 626 tests, camera.mjs 27/27 (fake cams) — `r7-camera` (pushed, NOT merged), worktree `.claude/worktrees/agent-ac76d8a72fea64893` — 2026-10-13
 - S4 — iPhone research: Continuity Camera works in Chrome, max 1080p/1920×1440 (no 4K), Video-menu zoom 0.5–3×, Center Stage on iPhone 11+; 2× zoom roughly doubles palm pixels; macOS Reactions may alter frames — `.agents/research/iphone-camera.md` — 2026-10-13
 - S3 — distance research: the detector (192² input) is the bottleneck, 1080p can't help detection; no ROI option; web HolisticLandmarker exists (no gesture labels, GPU bug); recommend a no-code step-back test, then a ?track= spike — `.agents/research/distance-hand-tracking.md` — 2026-10-13
 - B6 — R5b amendment 0311d40 (0.025 steps, 72°/step, 4 turns full range) on `r5b-speed`; R6 (`r6-zone`, 2 commits, 583 tests, zone.mjs 30/30). Finding: full-width zone zoom = ×1.00; half-width ×1.76. Worktree `.claude/worktrees/agent-ad2be58932550cc04` — 2026-10-12
