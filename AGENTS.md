@@ -61,7 +61,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->
 - MediaPipe's Left/Right label matches the user's own hand on the un-mirrored frame (`swapHandedness: false`; verified live 2026-10-11). Palm-facing depends on it.
-- The user's machine: MacBook Pro M1 Max, 64 GB (Apple Silicon); built-in 1080p FaceTime HD camera.
+- The user's machine: MacBook Pro M1 Max, 64 GB (Apple Silicon), macOS 26.6.2; built-in 1080p FaceTime HD camera. iPhone: **iPhone 16 Pro Max** (macOS lists it as a Continuity camera, verified with `system_profiler SPCameraDataType` 2026-10-13).
 - Hand detection and labels work at ~1 m and at 3–5 m with the built-in MacBook webcam (user's live test, 2026-10-11).
 - Git repo, default branch `main`, remote https://github.com/RockyShaikh/dance (public). Repo-local git identity: RockyShaikh <91840937+RockyShaikh@users.noreply.github.com> (no global git identity on this machine).
 
