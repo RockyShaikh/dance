@@ -52,7 +52,7 @@ for (const m of media) {
         ),
       );
     }
-    const st = JSON.parse(await ev(`const s = window.__dance.tracker.stats; return JSON.stringify({ frames: s.frames, hand: s.handFrames, wrist: s.wristFrames, handWhenWrist: s.handWhenWrist, pose: s.poseFrames, poseRan: s.poseRan })`));
+    const st = JSON.parse(await ev(`const s = window.__dance.tracker.stats, tr = window.__dance.tracker; return JSON.stringify({ moved: tr.cropFrames ? (100 * tr.cropMoved) / tr.cropFrames : 0, frames: s.frames, hand: s.handFrames, wrist: s.wristFrames, handWhenWrist: s.handWhenWrist, pose: s.poseFrames, poseRan: s.poseRan })`));
     const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
     const hs = samples.flatMap((s) => s.hands);
     const mags = samples.map((s) => (s.crops.length ? Math.min(...s.crops.map((c) => c.mag)) : 1));
@@ -63,6 +63,7 @@ for (const m of media) {
       handPct: (100 * st.hand) / Math.max(1, st.frames),
       wristPct: st.poseRan ? (100 * st.wrist) / Math.max(1, st.frames) : NaN,
       handWhenWristPct: st.wrist ? (100 * st.handWhenWrist) / st.wrist : NaN,
+      moved: st.moved,
       handsMean: mean(samples.map((s) => s.hands.length)),
       palmFrame: mean(hs.map((h) => h.framePx)),
       palmDet: mean(hs.map((h) => h.detectorPx)),
@@ -77,7 +78,7 @@ for (const m of media) {
     rows.push(row);
     const f = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "-");
     console.log(
-      `${path.padEnd(26)} ${c.name.padEnd(16)} hand ${f(row.handPct, 0).padStart(3)}%  (while pose sees a wrist ${f(row.handWhenWristPct, 0)}%)  hands/frame ${f(row.handsMean, 2)}  palm ${f(row.palmFrame)} px frame / ${f(row.palmDet)} px at detector (hand length ${f(row.lenFrame, 0)} / ${f(row.lenDet)})  mag x${f(row.mag, 2)}  pose ${f(row.poseMs)} ms  gesture ${f(row.gestureMs)} ms  fps ${f(row.fps)}  | ${row.note}`,
+      `${path.padEnd(26)} ${c.name.padEnd(16)} hand ${f(row.handPct, 0).padStart(3)}%  (while pose sees a wrist ${f(row.handWhenWristPct, 0)}%)  hands/frame ${f(row.handsMean, 2)}  palm ${f(row.palmFrame)} px frame / ${f(row.palmDet)} px at detector (hand length ${f(row.lenFrame, 0)} / ${f(row.lenDet)})  mag x${f(row.mag, 2)}  pose ${f(row.poseMs)} ms  gesture ${f(row.gestureMs)} ms  fps ${f(row.fps)}  crop changed ${f(row.moved, 0)}% of frames  | ${row.note}`,
     );
   }
 }

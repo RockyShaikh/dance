@@ -75,6 +75,10 @@ export class AutoTracker {
   /** What is being loaded / why the tracker is not running yet ("" when ready). */
   loading = "";
   last: TrackFrame | null = null;
+  /** Frames since the last reset, and how many of them had a different crop from the frame before (a steady crop is what keeps the recognizer's tracking valid). */
+  cropFrames = 0;
+  cropMoved = 0;
+  private lastCropKey = "";
 
   private pose: PoseLandmarker | null = null;
   private poseDelegate = "";
@@ -109,6 +113,9 @@ export class AutoTracker {
     this.personState = IDLE_SMOOTH;
     this.wristState = { left: IDLE_SMOOTH, right: IDLE_SMOOTH };
     this.stats.reset();
+    this.cropFrames = 0;
+    this.cropMoved = 0;
+    this.lastCropKey = "";
     this.last = null;
   }
 
@@ -253,6 +260,10 @@ export class AutoTracker {
     const order = result.landmarks.map((lm, i) => ({ i, x: lm[0].x })).sort((a, b) => b.x - a.x).map((o) => o.i);
     const sortedHands = order.map((i) => hands[i]);
 
+    const key = crops.map((c) => `${c.label}:${c.layout.x0},${c.layout.y0},${c.layout.cw},${c.layout.ch}`).join("|");
+    this.cropFrames++;
+    if (key !== this.lastCropKey) this.cropMoved++;
+    this.lastCropKey = key;
     this.stats.push({ pose: poseRuns ? pose !== null : null, wristVisible: poseRuns ? visibleWrists(pose).length > 0 : null, hand: result.landmarks.length > 0 });
     this.last = { result, pose, crops, hands: sortedHands, poseMs, gestureMs, note };
     return this.last;

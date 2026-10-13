@@ -87,6 +87,7 @@ export class TrackPanel {
       f.hands.forEach((h, i) => lines.push(`hand ${i + 1}: palm ${h.framePx.toFixed(1)} px in frame · ${h.detectorPx.toFixed(1)} px at detector (hand length ${h.lenPx.toFixed(0)} · ${h.lenDetectorPx.toFixed(1)})${h.crop ? ` [${h.crop}]` : ""}`));
     }
     lines.push(`detection: ${t.stats.text()}`);
+    if (t.mode !== "off") lines.push(`crop changed on ${t.cropFrames ? Math.round((100 * t.cropMoved) / t.cropFrames) : 0}% of frames (steady is good: the dead-band holds it still)`);
     const text = lines.join("\n");
     if (text !== this.lastText) {
       this.lastText = text;

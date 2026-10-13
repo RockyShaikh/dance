@@ -24,7 +24,7 @@ export function defaultSettings(): Settings {
   return {
     zone: { ...DEFAULT_ZONE },
     zoom: false,
-    autoTrack: "off",
+    autoTrack: "person",
     dwellMs: COMMANDS.dwellMs,
     pinchGrab: CLUTCH.pinch.grabRatio,
     stillness: COMMANDS.stillness.enabled,

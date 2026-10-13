@@ -11,10 +11,10 @@ const p = await launch(Number(process.env.DANCE_CDP_PORT ?? 9340));
 const ev = (code) => p.eval(code);
 
 const configs = [
-  ["zoom off (whole frame)", { zone: { x: 0, y: 0, w: 1, h: 0.25 }, zoom: false }],
-  ["zoom on, default zone (full-width top quarter)", { zone: { x: 0, y: 0, w: 1, h: 0.25 }, zoom: true }],
-  ["zoom on, half-width zone", { zone: { x: 0.5, y: 0, w: 0.5, h: 0.25 }, zoom: true }],
-  ["zoom off again (to see the run-to-run spread)", { zone: { x: 0, y: 0, w: 1, h: 0.25 }, zoom: false }],
+  ["zoom off (whole frame)", { zone: { x: 0, y: 0, w: 1, h: 0.25 }, zoom: false, autoTrack: "off" }],
+  ["zoom on, default zone (full-width top quarter)", { zone: { x: 0, y: 0, w: 1, h: 0.25 }, zoom: true, autoTrack: "off" }],
+  ["zoom on, half-width zone", { zone: { x: 0.5, y: 0, w: 0.5, h: 0.25 }, zoom: true, autoTrack: "off" }],
+  ["zoom off again (to see the run-to-run spread)", { zone: { x: 0, y: 0, w: 1, h: 0.25 }, zoom: false, autoTrack: "off" }],
 ];
 
 for (const [name, settings] of configs) {

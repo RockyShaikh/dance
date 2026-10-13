@@ -494,7 +494,7 @@ export const TRACK = {
     minSideFrac: 0.14,
     maxSideFrac: 0.6,
     fallbackSideFrac: 0.25,
-    smooth: { tauMs: 120, enterPos: 0.08, exitPos: 0.03, enterSize: 0.15, exitSize: 0.05, zoomInPerSec: 0.8, zoomOutPerSec: 1.6, lostAfterMs: 300 } as SmoothConfig,
+    smooth: { tauMs: 120, enterPos: 0.12, exitPos: 0.04, enterSize: 0.22, exitSize: 0.08, zoomInPerSec: 0.8, zoomOutPerSec: 1.6, lostAfterMs: 300 } as SmoothConfig,
     /** A hand the model finds in a wrist crop counts for that wrist only within this distance of it, as a fraction of the crop's side. */
     maxAnchorFrac: 0.7,
     /** Two crops finding the same hand (hands together): wrists closer than this fraction of the frame height are one hand. */

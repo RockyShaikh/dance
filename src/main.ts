@@ -161,15 +161,20 @@ let trackPanel: TrackPanel | null = null;
 /** The last frame's tracker output (pose, crops), for the HUD. */
 let trackFrame: TrackFrame | null = null;
 
+/** Auto-track is on: a mode other than Off is chosen AND there is a tracker (the dev ?sim mode has no models, so there it is always off). */
+function autoOn(): boolean {
+  return tracker !== null && settings.autoTrack !== "off";
+}
+
 /** The crop for the current zone and frame size, or null with zoom off. */
 function planCrop(width: number, height: number): CropLayout | null {
-  return settings.zoom && settings.autoTrack === "off" ? cropLayout(cropRectForZone(settings.zone, width, height), width, height) : null;
+  return settings.zoom && !autoOn() ? cropLayout(cropRectForZone(settings.zone, width, height), width, height) : null;
 }
 
 /** The zoom note next to the toggle. `crop` null: work it out from a typical 16:9 frame (before the first frame, or a zone edit). */
 function updateZoomUi(crop: CropLayout | null): void {
-  bench.setZoomDisabled(settings.autoTrack !== "off");
-  if (settings.autoTrack !== "off") return bench.setZoomNote("ignored: Auto-track is on (it picks the crop)");
+  bench.setZoomDisabled(autoOn());
+  if (autoOn()) return bench.setZoomNote("ignored: Auto-track is on (it picks the crop)");
   const c = crop ?? (settings.zoom ? planCrop(requestedSize(picker?.pref.shape).width, requestedSize(picker?.pref.shape).height) : null);
   if (!c) return bench.setZoomNote("off: the whole picture is tracked");
   const mag = magnification(c);
@@ -187,7 +192,7 @@ function redrawHud(): void {
     views,
     knob: knobDraw,
     crop: currentCrop ? { box: cropAsDisplayBox(currentCrop), magnification: magnification(currentCrop) } : null,
-    track: trackFrame && (settings.autoTrack !== "off" || tracker?.measurePose) ? { pose: trackFrame.pose, crops: settings.autoTrack !== "off" ? trackFrame.crops.map((c) => ({ box: cropAsDisplayBox(c.layout), label: c.label, magnification: c.magnification })) : [] } : null,
+    track: trackFrame && (autoOn() || tracker?.measurePose) ? { pose: trackFrame.pose, crops: autoOn() ? trackFrame.crops.map((c) => ({ box: cropAsDisplayBox(c.layout), label: c.label, magnification: c.magnification })) : [] } : null,
   });
 }
 
