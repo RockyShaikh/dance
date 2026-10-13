@@ -5,6 +5,7 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B7 | R7 iPhone camera: picker + hot-plug, 1080p with delivered-resolution readout, glass-to-glass latency tool | ship | `r7-camera` on `r6-zone` | 2026-10-13 |
 | S4 | Scout: iPhone camera hypothesis (Continuity Camera + Center Stage, native Vision, hybrid streaming, other cameras) → `.agents/research/iphone-camera.md` | scout | n/a | 2026-10-13 |
 
 ## Waiting on user

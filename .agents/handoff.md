@@ -11,7 +11,7 @@ Distance: the iPhone back-camera hypothesis first (Continuity Camera / Center St
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for S4. Give the user the cheapest test steps (probably Continuity Camera + Center Stage on the current app). Offer the fist-rework ship. The merge chain is still pending the user's word.
+Wait for S4 (research) and B7 (build). Then give the user steps: connect the iPhone (wireless and USB), pick it in the app, run the latency test, compare with FaceTime HD and the distance range. Fist rework queued. The merge chain is still pending the user's word.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
