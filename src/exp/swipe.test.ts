@@ -167,6 +167,16 @@ describe("swipe: the measurements", () => {
     expect(j.result!.touchedFrac).toBeGreaterThan(0.9);
   });
 
+  it("the jitter meter separates the flicker (path length) from the net drift (where the playhead ends up)", () => {
+    const j = new JitterMeter();
+    j.start(0, 2);
+    // +0.01 / -0.01 alternating: a lot of path, no drift.
+    for (let t = 33, i = 0; t <= 2100; t += 33, i++) j.push(t, true, i % 2 ? -0.01 : 0.01, i % 2 ? -0.01 : 0.01);
+    expect(j.result!.rawPerSec).toBeGreaterThan(0.2);
+    expect(Math.abs(j.result!.netRawSec)).toBeLessThan(0.011);
+    expect(Math.abs(j.result!.netAppliedSec)).toBeLessThan(0.011);
+  });
+
   it("the jitter meter only counts time with the hand down", () => {
     const j = new JitterMeter();
     j.start(0, 1);

@@ -276,6 +276,15 @@ All thresholds are in `src/config.ts` (`COMMANDS`, `BOX`, `CLUTCH`).
 
 `http://localhost:5173/?sim` runs the bench with no camera or model. Script hands from the console, e.g. `__dance.setHands([{ shape: "Victory", palm: { x: 0.75, y: 0.5 } }])` (palm is in display coordinates; options: `hand`, `score`, `away`, `pinch`, `curl`), and `__dance.setHands([])` for none. See `src/sim.ts`. It is not in the production build.
 
+## EXP: push + swipe measurement bench (`?exp=push`, branch `exp-push-swipe`)
+
+An experiment, not a product feature: add `?exp=push` to the URL (Auto-track is set to Person for the session) and a floating panel appears at the right. Nothing is wired to a command; the one change is that the **right hand scrubs by swiping and its normal commands are off** while "swipe on" is ticked. The normal app (no flag) is unchanged.
+
+- **Swipe slider:** the right hand inside the command zone is a touch; moving it sideways moves the playhead relatively (gain: 10 / 20 / 40 s per picture width, or the whole track); leaving the zone lifts; re-enter to go further. A scrub bar follows the hand and shows the time under it. The panel measures the rest jitter ("Hold still", 5 s), the accidental scrub as the hand arrives and leaves (per touch), and the hand-stop to scrub-stop time (not including the camera and model delay).
+- **Push signals**, per hand, graphed live (each row over its own threshold): (a) palm size growth in 250 ms, (b) forearm foreshortening (2D elbow-wrist over shoulder width, from pose), (c) pose wrist depth (world z against the shoulders), (d) the combined score. A detector (threshold, peak, "then stops", with a sideways-travel rule against arm swings) logs PUSH events with the hand, its height level (above head / head / chest / below) and the shape. Optional "say push" is off by default.
+- **Recording:** label, length, start delay, **Record**. The take downloads as JSON (signals, pose points, events, camera label and resolution, settings).
+- Dev checks: `node scripts/e2e/push.mjs` (dev server on :5192, `?exp=push&sim`; silent: Chrome muted, speech spied). Offline logic: `src/exp/*.test.ts`. The sim scene (`src/exp/simScene.ts`) checks the logic only; what a real pose and hand model do at 2-5 m is what the recordings are for.
+
 ## Dev test mode (no live hand needed)
 
 Run the same detection and drawing on a still image or a looping video instead of the camera:

@@ -165,22 +165,28 @@ export function summarizeTouch(frames: readonly TouchFrame[], tDown: number, tUp
   };
 }
 
-/** "Hold still for N seconds": how much the playhead would wander (raw) and does wander (applied), per second. */
+/**
+ * "Hold still for N seconds": how much the playhead would wander (raw) and does wander (applied). Two numbers each: the path
+ * length per second (every flicker counted: what an audible scrub would stutter on) and the net drift (where it ends up, in
+ * seconds: jitter that averages out is a random walk, so this is smaller).
+ */
 export class JitterMeter {
   private t0 = 0;
   private until = 0;
   private raw = 0;
   private applied = 0;
+  private netRaw = 0;
+  private netApplied = 0;
   private touchedMs = 0;
   private lastT = 0;
   running = false;
   /** The last finished measurement (null before the first). */
-  result: { rawPerSec: number; appliedPerSec: number; seconds: number; touchedFrac: number } | null = null;
+  result: { rawPerSec: number; appliedPerSec: number; netRawSec: number; netAppliedSec: number; seconds: number; touchedFrac: number } | null = null;
 
   start(t: number, seconds: number): void {
     this.t0 = this.lastT = t;
     this.until = t + seconds * 1000;
-    this.raw = this.applied = this.touchedMs = 0;
+    this.raw = this.applied = this.netRaw = this.netApplied = this.touchedMs = 0;
     this.running = true;
   }
 
@@ -189,13 +195,15 @@ export class JitterMeter {
     if (touching) {
       this.raw += Math.abs(rawSec);
       this.applied += Math.abs(appliedSec);
+      this.netRaw += rawSec;
+      this.netApplied += appliedSec;
       this.touchedMs += t - this.lastT;
     }
     this.lastT = t;
     if (t >= this.until) {
       const sec = (t - this.t0) / 1000;
       this.running = false;
-      this.result = { rawPerSec: this.raw / sec, appliedPerSec: this.applied / sec, seconds: sec, touchedFrac: this.touchedMs / (t - this.t0) };
+      this.result = { rawPerSec: this.raw / sec, appliedPerSec: this.applied / sec, netRawSec: this.netRaw, netAppliedSec: this.netApplied, seconds: sec, touchedFrac: this.touchedMs / (t - this.t0) };
     }
   }
 }

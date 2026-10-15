@@ -609,8 +609,8 @@ async function main(): Promise<void> {
         return { label: d?.label ?? (sim ? "sim" : "file / image"), width: size.width, height: size.height, shape: picker?.pref.shape ?? null, frameRate: d?.frameRate ?? null };
       },
       trackMode: () => (autoOn() ? settings.autoTrack : "off"),
+      sim: !!sim,
     });
-    document.body.classList.add("bench-open"); // the panel lives in the side column (not remembered: the normal app keeps its own choice)
     if (import.meta.env.DEV) ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {}).exp = exp;
   }
   let simRaws: import("./sim").SimRaw[] = [];

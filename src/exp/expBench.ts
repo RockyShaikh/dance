@@ -26,6 +26,8 @@ export interface ExpHost {
   zone(): Box;
   camera(): { label: string; width: number; height: number; shape: string | null; frameRate: number | null };
   trackMode(): string;
+  /** The dev ?sim mode: the take's file says so, so it is never mistaken for a real one. */
+  sim?: boolean;
   /** Speak a word (the bench's optional audio cue). Replaceable so tests never make a sound. */
   speak?(word: string): void;
   /** Shown in the panel title area. */
@@ -227,7 +229,7 @@ export class ExpBench {
         trackMode: this.host.trackMode(),
         userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         settings: { push: sw.push, swipe: sw.swipe, swipeOn: sw.swipeOn, requirePalm: sw.requirePalm, scrubMode: sw.scrubMode },
-        sim: this.simBody !== null && f.pose === null ? true : undefined,
+        sim: this.host.sim ? true : undefined,
       });
       this.say("recording");
     }
@@ -278,7 +280,7 @@ export class ExpBench {
       this.panel.setTouches(this.metrics.records);
     }
     const j = this.jitter.result;
-    this.panel.setJitter(this.jitter.running ? "measuring… hold the hand still in the zone" : j ? `rest jitter: raw ${j.rawPerSec.toFixed(3)} s/s, applied ${j.appliedPerSec.toFixed(3)} s/s (${Math.round(j.touchedFrac * 100)}% of ${j.seconds.toFixed(0)} s touched)` : "no measurement yet");
+    this.panel.setJitter(this.jitter.running ? "measuring… hold the hand still in the zone" : j ? `rest jitter, scrub-seconds per second (raw / applied): flicker ${j.rawPerSec.toFixed(3)} / ${j.appliedPerSec.toFixed(3)}, net drift ${j.netRawSec.toFixed(2)} / ${j.netAppliedSec.toFixed(2)} s over ${j.seconds.toFixed(0)} s (${Math.round(j.touchedFrac * 100)}% touched)` : "no measurement yet");
     const rs = this.recorder.running ? `RECORDING ${this.recorder.remaining(t).toFixed(0)} s left · ${this.recorder.frameCount} frames` : this.recordStartAt !== null ? `starting in ${Math.max(0, (this.recordStartAt - t) / 1000).toFixed(0)} s: step back` : this.lastRecording ? `saved ${this.lastRecording.name}` : "idle";
     this.panel.setRecording(rs, this.recorder.running || this.recordStartAt !== null);
     this.panel.setLive(`${havePose ? "pose: yes" : "pose: NONE (Auto-track needs Person; a/b/c need it)"} · events from ${SIGNAL_NAMES[this.settings.primary]} · frames ${this.frames}`);

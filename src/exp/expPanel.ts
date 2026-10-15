@@ -1,6 +1,6 @@
 /**
- * EXP: the bench's panel (DOM only): controls, the rolling graphs, the readouts and the recording button. Built in code and put at
- * the top of the side column, so index.html and style.css stay as they are.
+ * EXP: the bench's panel (DOM only): controls, the rolling graphs, the readouts and the recording button. Built in code and put in
+ * a floating box at the right, so index.html and style.css stay as they are.
  */
 import { PUSH_KEYS, SIGNAL_NAMES, type PushSignalKey } from "./config";
 import type { ExpSettings } from "./expSettings";
@@ -8,7 +8,9 @@ import type { PushSample } from "./pushSignals";
 import type { TouchRecord } from "./swipe";
 
 const CSS = `
-#exp-panel { border: 1px solid #c8782a; }
+#exp-panel { border: 1px solid #c8782a; position: fixed; right: 10px; top: 52px; width: 450px; max-height: calc(100vh - 64px); overflow-y: auto; z-index: 30; background: #10151c; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+#exp-panel.collapsed > :not(h2:first-child) { display: none; }
+#exp-panel h2 .hide { float: right; }
 #exp-panel h2 .tag { font-size: 11px; font-weight: 600; color: #ffb020; margin-left: 6px; }
 #exp-panel .row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 6px 0; font-size: 13px; }
 #exp-panel .row label { display: inline-flex; gap: 4px; align-items: center; }
@@ -68,7 +70,7 @@ export class ExpPanel {
     this.root.className = "panel";
     this.root.id = "exp-panel";
     this.root.innerHTML = `
-      <h2>EXP: push + swipe bench <span class="tag">?exp=push · measuring, nothing is wired to a command</span></h2>
+      <h2>EXP: push + swipe bench <span class="tag">measuring only, nothing is wired to a command</span> <button type="button" id="exp-hide" class="small hide">hide</button></h2>
 
       <h2>Swipe slider (zone as a trackpad)</h2>
       <div class="note">The right hand in the zone is a touch; moving it sideways scrubs the playhead relatively; leaving the zone lifts. The right hand's normal commands are off while this is on.</div>
@@ -116,8 +118,7 @@ export class ExpPanel {
       <div id="exp-rec-status" class="mono">idle</div>
       <div class="row"><a id="exp-dl" href="#" hidden>download last take</a></div>
     `;
-    const side = doc.getElementById("side");
-    if (side) side.insertBefore(this.root, side.firstChild);
+    doc.body.appendChild(this.root);
     this.graphs = { Right: this.q("exp-g-right") as HTMLCanvasElement, Left: this.q("exp-g-left") as HTMLCanvasElement };
 
     const primary = this.q<HTMLSelectElement>("exp-primary");
@@ -131,6 +132,10 @@ export class ExpPanel {
         hooks.changed();
       });
     }
+    on("exp-hide", "click", () => {
+      this.root.classList.toggle("collapsed");
+      this.q("exp-hide").textContent = this.root.classList.contains("collapsed") ? "show" : "hide";
+    });
     on("exp-jitter", "click", () => hooks.measureJitter());
     on("exp-rec", "click", () => hooks.record());
     on("exp-clear", "click", () => hooks.clearLog());
