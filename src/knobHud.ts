@@ -33,8 +33,8 @@ export interface KnobDraw {
 
 /** The four left-hand modes as chips: what each shape does, with the one in force lit. */
 const CHIPS: { mode: SteerMode; shape: SteerShape; text: string }[] = [
-  { mode: "play", shape: "palm", text: "PALM  play" },
-  { mode: "pause", shape: "fist", text: "FIST  pause" },
+  { mode: "palm", shape: "palm", text: "PALM  playhead" },
+  { mode: "fist", shape: "fist", text: "FIST  pause" },
   { mode: "start", shape: "v", text: "V  START" },
   { mode: "end", shape: "index", text: "INDEX  END" },
 ];

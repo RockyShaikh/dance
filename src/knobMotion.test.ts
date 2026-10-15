@@ -125,14 +125,18 @@ describe("circling motion", () => {
     expect(s.angle - before).toBeLessThan(170);
   });
 
-  it("measures nothing while the hand just sits (inside the minimum radius), and nothing during warm-up", () => {
+  it("measures nothing while the hand just sits, or circles too small to be a circle", () => {
     const still = circle({ ms: 2000, turnsPerSec: 0, radius: 0.1 });
     expect(still.angle).toBe(0);
     const tiny = circle({ ms: 2000, turnsPerSec: 1, radius: 0.01 });
     expect(tiny.angle).toBe(0);
-    const early = circle({ ms: 200, turnsPerSec: 1 });
-    expect(early.warm).toBe(false);
-    expect(early.angle).toBe(0);
+    expect(tiny.warm).toBe(false);
+  });
+
+  it("R4d: it reports a direction almost at once (no warm-up): the dial is live within a few frames", () => {
+    const early = circle({ ms: 150, turnsPerSec: 1 });
+    expect(early.warm).toBe(true);
+    expect(early.angle).toBeGreaterThan(0);
   });
 
   it("reports the estimated centre of the circle", () => {

@@ -16,15 +16,20 @@ describe("actionForFire (two hands)", () => {
   const R = (shape: string) => actionForFire({ hand: "Right", shape });
   const L = (shape: string) => actionForFire({ hand: "Left", shape });
 
-  it("right hand = transport: open palm toggles, index up restarts (loop start if set, else 0:00), V clears the loop", () => {
-    expect(R("Open_Palm")).toBe("toggle");
+  it("right hand = transport: the FIST toggles (R4d), index up restarts (loop start if set, else 0:00), V clears the loop", () => {
+    expect(R("Closed_Fist")).toBe("toggle");
     expect(R("Pointing_Up")).toBe("restart");
     expect(R("Victory")).toBe("clearLoop");
   });
-  it("left hand = marks: V sets IN (START), index up sets OUT (END), open palm also toggles", () => {
+  it("left hand = marks: V sets IN (START), index up sets OUT (END); it never plays or pauses (R4d)", () => {
     expect(L("Victory")).toBe("setStart");
     expect(L("Pointing_Up")).toBe("setEnd");
-    expect(L("Open_Palm")).toBe("toggle");
+    expect(L("Open_Palm")).toBeNull();
+    expect(L("Closed_Fist")).toBeNull();
+  });
+  it("R4d: an open palm is nobody's command", () => {
+    expect(R("Open_Palm")).toBeNull();
+    expect(L("Open_Palm")).toBeNull();
   });
   it("the V-cycle action is no longer reachable by any gesture (key / button only), nor is the top-of-track", () => {
     const all = (["Right", "Left"] as const).flatMap((hand) => ["Open_Palm", "Pointing_Up", "Victory", "Closed_Fist", "Thumb_Up", "None"].map((shape) => actionForFire({ hand, shape })));
@@ -32,7 +37,8 @@ describe("actionForFire (two hands)", () => {
     expect(all).not.toContain("restartTop");
   });
   it("ignores other shapes", () => {
-    expect(actionForFire({ hand: "Right", shape: "Closed_Fist" })).toBeNull();
+    expect(actionForFire({ hand: "Right", shape: "ILoveYou" })).toBeNull();
+    expect(actionForFire({ hand: "Right", shape: "None" })).toBeNull();
   });
   it("R5: the right thumbs up toggles the speed; the left thumbs up does nothing", () => {
     expect(actionForFire({ hand: "Right", shape: "Thumb_Up" })).toBe("speedToggle");

@@ -4,9 +4,10 @@
  *
  *  - tilt: the wrist-to-middle-knuckle needle against straight up (see `tiltDeg` in handFeatures.ts),
  *    lightly smoothed and unwrapped so it never jumps at +-180. Limited by the wrist.
- *  - circling: the palm centre going round a circle. The circle's centre is the average palm position
- *    over the last ~1 s; the palm's angle around it is measured each frame and the changes are added
- *    up (clockwise = forward). Unlimited, like a jog wheel.
+ *  - circling: the palm centre going round a circle (R4d: the default). The turn is read from the palm's
+ *    heading, the direction it is moving in: each frame's heading change is added up (clockwise = forward).
+ *    No circle centre has to be estimated first, so the direction is right within a few frames; the heading
+ *    changes add up (telescope), so landmark noise does not pile up. Unlimited, like a jog wheel.
  *
  * Both give ONE number, `angle`, in degrees, clockwise positive: for tilt the (unwrapped) needle angle,
  * for circling the total turned since the grab. A mapping (knobMapping.ts) turns it into a value.
@@ -36,13 +37,13 @@ export interface MotionState {
   kind: MotionKind;
   /** The number the mapping reads (degrees, clockwise positive, unwrapped). */
   angle: number;
-  /** Circling only: recent palm positions, and the last measured angle around the centre (null = not circling right now). */
+  /** Circling only: recent palm positions, and the last measured heading (null = not moving right now). */
   trail: TrailPoint[];
   lastCircleAngle: number | null;
   /** Circling only, for the display: the estimated centre (display-normalized) and the palm's distance from it (frame heights). */
   centre: Vec2 | null;
   radius: number;
-  /** Circling only: whether the window holds enough history to measure yet. */
+  /** Circling only: the palm is moving fast enough to have a heading right now (the dial says keep circling until it does). */
   warm: boolean;
 }
 
@@ -85,12 +86,9 @@ function stepCircling(s: MotionState, input: MotionInput, cfg: KnobConfig): Moti
   const c = cfg.circling;
   const p = point(input);
   const trail = [...s.trail, p].filter((q) => q.t >= input.t - c.windowMs);
-  const span = p.t - trail[0].t;
-  const next: MotionState = { ...s, trail, warm: span >= c.warmupMs };
-  if (!next.warm) {
-    next.lastCircleAngle = null;
-    return next;
-  }
+  const next: MotionState = { ...s, trail, warm: false };
+
+  // For the dial only: the average palm position is the circle's centre, and the palm's distance from it the radius.
   let cx = 0;
   let cy = 0;
   for (const q of trail) {
@@ -100,17 +98,30 @@ function stepCircling(s: MotionState, input: MotionInput, cfg: KnobConfig): Moti
   cx /= trail.length;
   cy /= trail.length;
   next.centre = { x: cx / input.aspect, y: cy };
-  const dx = p.x - cx;
-  const dy = p.y - cy;
-  next.radius = Math.hypot(dx, dy);
-  if (next.radius < c.minRadius) {
-    // Hovering near the middle: not a circle. Forget the last angle so the first real move doesn't lurch.
+  next.radius = Math.hypot(p.x - cx, p.y - cy);
+
+  // The heading: the direction of the palm's recent movement, from the newest earlier position that is far enough away.
+  let from: TrailPoint | null = null;
+  for (let i = trail.length - 2; i >= 0; i--) {
+    const q = trail[i];
+    if (p.t - q.t > c.lookbackMs) break;
+    if (Math.hypot(p.x - q.x, p.y - q.y) >= c.minChord) {
+      from = q;
+      break;
+    }
+  }
+  if (!from) {
+    // Hovering (or too slow to tell): no heading. Forget the last one so the first real move doesn't lurch.
     next.lastCircleAngle = null;
     return next;
   }
+  next.warm = true;
   // Screen y points down, so atan2(dy, dx) grows clockwise as the user sees it.
-  const here = (Math.atan2(dy, dx) * 180) / Math.PI;
-  if (s.lastCircleAngle !== null) next.angle = s.angle + wrap180(here - s.lastCircleAngle);
+  const here = (Math.atan2(p.y - from.y, p.x - from.x) * 180) / Math.PI;
+  if (s.lastCircleAngle !== null) {
+    const turn = wrap180(here - s.lastCircleAngle);
+    if (Math.abs(turn) <= c.maxStepDeg) next.angle = s.angle + turn;
+  }
   next.lastCircleAngle = here;
   return next;
 }

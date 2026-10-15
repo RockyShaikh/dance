@@ -65,6 +65,39 @@ describe("R5: the thumbs up is a right-hand command", () => {
   });
 });
 
+describe("R4d: the fist is the right hand's play / pause; the open palm is nobody's command", () => {
+  const FIST = { T: false, I: false, M: false, R: false, P: false };
+  it("the right fist fires (palm facing not required)", () => {
+    const b = new Bench();
+    b.show(900, [obs("Right", "Closed_Fist", R, { palmFacing: false, chord: FIST })]);
+    expect(b.fires).toMatchObject([{ hand: "Right", shape: "Closed_Fist" }]);
+  });
+
+  it("the LEFT fist is not armed: it never fires and never cools the right hand down", () => {
+    const b = new Bench();
+    b.show(2000, [obs("Left", "Closed_Fist", L, { chord: FIST })]);
+    expect(b.fires).toEqual([]);
+    expect(b.views.Left.shape).toBeNull();
+    b.show(900, [obs("Right", "Pointing_Up")]);
+    expect(b.fires).toMatchObject([{ hand: "Right", shape: "Pointing_Up" }]);
+  });
+
+  it("an open palm, either hand, anywhere in its box, however long: nothing (no ring, no command)", () => {
+    const b = new Bench();
+    b.show(10_000, [obs("Right", "Open_Palm"), obs("Left", "Open_Palm")]);
+    expect(b.fires).toEqual([]);
+    expect(b.views.Right.progress).toBe(0);
+    expect(b.views.Left.progress).toBe(0);
+  });
+
+  it("a hand leaving the frame fires nothing", () => {
+    const b = new Bench();
+    b.show(400, [obs("Right", "Closed_Fist", R, { chord: FIST })]); // a ring part-filled...
+    b.show(3000, []); // ...and the hand is gone
+    expect(b.fires).toEqual([]);
+  });
+});
+
 describe("per-hand boxes", () => {
   it("default: the right hand's box is the right half, the left hand's the left half", () => {
     expect(DEFAULT_BOXES.Right).toEqual(PRESETS.right);
@@ -73,7 +106,7 @@ describe("per-hand boxes", () => {
 
   it("each hand is tested against its own box only", () => {
     const b = new Bench();
-    b.show(1500, [obs("Right", "Open_Palm", L), obs("Left", "Open_Palm", R)]);
+    b.show(1500, [obs("Right", "Victory", L), obs("Left", "Victory", R)]);
     expect(b.fires).toEqual([]);
     expect(b.views.Right.blocked).toBe("outside box");
     expect(b.views.Left.blocked).toBe("outside box");
@@ -81,10 +114,10 @@ describe("per-hand boxes", () => {
 
   it("the boxes are independent: moving one does not change the other", () => {
     const b = new Bench({ Left: PRESETS.whole, Right: PRESETS.right });
-    b.show(1000, [obs("Left", "Open_Palm", R)]); // the left hand's box is the whole frame now
+    b.show(1000, [obs("Left", "Victory", R)]); // the left hand's box is the whole frame now
     expect(b.fires).toHaveLength(1);
     const c = new Bench({ Left: PRESETS.whole, Right: PRESETS.right });
-    c.show(1000, [obs("Right", "Open_Palm", L)]); // the right hand's box is still the right half
+    c.show(1000, [obs("Right", "Victory", L)]); // the right hand's box is still the right half
     expect(c.fires).toEqual([]);
   });
 });
@@ -92,7 +125,7 @@ describe("per-hand boxes", () => {
 describe("suppression is per hand", () => {
   it("a suppressed hand never fires, the other still does", () => {
     const b = new Bench();
-    b.show(3000, [obs("Right", "Open_Palm"), obs("Left", "Victory")], { Left: false, Right: true });
+    b.show(3000, [obs("Right", "Pointing_Up"), obs("Left", "Victory")], { Left: false, Right: true });
     expect(b.fires).toMatchObject([{ hand: "Left", shape: "Victory" }]);
   });
 
@@ -110,7 +143,7 @@ describe("suppression is per hand", () => {
 describe("one command at a time", () => {
   it("when one hand fires, the other cannot START a ring until the cooldown has passed", () => {
     const b = new Bench();
-    b.show(700, [obs("Right", "Open_Palm")]);
+    b.show(700, [obs("Right", "Pointing_Up")]);
     expect(b.fires).toHaveLength(1);
     b.show(COMMANDS.cooldownMs - 300, [obs("Left", "Victory")]);
     expect(b.views.Left.phase).toBe("idle");

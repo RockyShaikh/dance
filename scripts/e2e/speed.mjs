@@ -37,6 +37,7 @@ async function fresh() {
   await p.goto(URL);
   await ev(`await new Promise(r=>setTimeout(r,1500))`);
   await ev(prelude);
+  await ev(`T.set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input')); }; T.set('knob-motion', 'tilt'); T.set('knob-mapping', 'relative')`); // the tilt wheel (R4d's default is circling; hands.mjs)
 }
 const shot = (n) => p.shot(`${SHOTS}/${n}.png`);
 
@@ -46,19 +47,19 @@ await ev(`__dance.player.seek(10); await __dance.player.play(); await T.sleep(40
 check("starts at 1x, no badge", (await ev(`return T.rate()`)) === 1 && (await ev(`return T.badge()`)) === null);
 const fires0 = await ev(`return __dance.log.length`);
 const at0 = await ev(`return T.cur()`);
-await ev(`await T.show([T.right(0, { shape: 'Thumb_Up' })], 3000)`);
+await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1 })], 3000)`);
 check("right thumbs up (held 3 s): 2x, once", (await ev(`return T.rate()`)) === 2 && (await ev(`return __dance.log.length`)) === fires0 + 1, `rate ${await ev(`return T.rate()`)}, fires +${(await ev(`return __dance.log.length`)) - fires0}`);
 check("the music kept playing through it, and ran at 2x after the ring filled", (await ev(`return T.state()`)) === "playing" && (await ev(`return T.cur()`)) - at0 > 3 + 1.5, `${at0.toFixed(2)} -> ${(await ev(`return T.cur()`)).toFixed(2)} in ~3.4 s`);
 check("pitch preserved (preservesPitch on, playbackRate 2)", (await ev(`const m = __dance.player.media; return m.preservesPitch === true && m.playbackRate === 2`)));
 check("the speed is shown big: 2×", (await ev(`return T.badge()`)) === "2×");
 await p.shot(`${SHOTS}/08-speed-2x-badge.png`);
 await ev(`await T.show([], 1500)`);
-await ev(`await T.show([T.right(0, { shape: 'Thumb_Up' })], 1000)`);
+await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1 })], 1000)`);
 check("thumbs up again: back to 1x, badge gone", (await ev(`return T.rate()`)) === 1 && (await ev(`return T.badge()`)) === null);
 
 console.log("\n== 2. A thumbs up shows the back of the hand: it must not need the palm facing");
 await fresh();
-await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', away: true })], 1000)`);
+await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1, away: true })], 1000)`);
 check("back of the hand to the camera: still counts", (await ev(`return T.rate()`)) === 2);
 await fresh();
 await ev(`await T.show([T.right(0, { shape: 'Victory', away: true })], 1500)`);
@@ -66,14 +67,14 @@ check("...but a V with the back to the camera still does not (unchanged)", (awai
 
 console.log("\n== 3. Collisions: left thumbs up, thumbs up while grabbing, other shapes");
 await fresh();
-await ev(`await T.show([T.left('Thumb_Up', { hand: 'Left' })], 3000)`);
+await ev(`await T.show([T.left('Thumb_Up', { hand: 'Left', curl: 1 })], 3000)`);
 check("LEFT thumbs up does nothing at all", (await ev(`return T.rate()`)) === 1 && (await ev(`return __dance.log.length`)) === 0);
 await ev(`await T.show([T.right(0, { shape: 'Closed_Fist' })], 2000)`);
 check("a right fist is not a thumbs up", (await ev(`return T.rate()`)) === 1);
-await ev(`await T.show([T.left('Open_Palm'), T.right(0, { shape: 'Thumb_Up' })], 1500)`);
+await ev(`await T.show([T.left('Open_Palm'), T.right(0, { shape: 'Thumb_Up', curl: 1 })], 1500)`);
 check("while the wheel is held the right hand's commands are blocked, so no speed change", (await ev(`return T.rate()`)) === 1);
 await ev(`await T.show([], 800)`);
-await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1 })], 1000)`);
+await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1, curl: 1 })], 1000)`);
 check("a thumbs up is not read as a claw or pinch grab (no knob grab, speed toggles)", (await ev(`return !!__dance.knob.grabbed`)) === false && (await ev(`return T.rate()`)) === 2);
 
 console.log("\n== 4. Keys: T toggles, - and = step through 0.5 0.75 1 1.5 2");
@@ -118,7 +119,7 @@ await shot("10-loop-at-2x");
 
 console.log("\n== 6. Scrubbing at 2x (playing, then fist = paused, then palm = resume)");
 await fresh();
-await ev(`T.key('KeyT'); __dance.player.seek(30); await T.show([T.left('Open_Palm'), T.right(0)], 500)`);
+await ev(`T.key('KeyT'); __dance.player.seek(30); await __dance.player.play(); await T.show([T.left('Open_Palm'), T.right(0)], 500)`);
 check("2x, grabbed, playing", (await ev(`return JSON.stringify([T.rate(), !!__dance.knob.grabbed, T.state()])`)) === "[2,true,\"playing\"]");
 const a0 = await ev(`return T.cur()`);
 await ev(`await T.turn(T.left('Open_Palm'), 0, 35, 600); await T.show([T.left('Open_Palm'), T.right(35)], 700)`);

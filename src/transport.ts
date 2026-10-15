@@ -30,16 +30,16 @@ export type TransportAction =
 
 /**
  * Which action a fired command is. Every command fires once, when its ring fills. R4b's two-hand scheme:
- *  - RIGHT hand = transport (+ scrub, by the knob): open palm = play/pause, index up = restart (to the loop
- *    START if set, else 0:00), V = clear the loop.
+ *  - RIGHT hand = transport (+ scrub, by the knob): FIST = play/pause (R4d; an open palm is no command, so a hand
+ *    coming into frame never pauses), index up = restart (to the loop START if set, else 0:00), V = clear the loop.
  *  - LEFT hand = marks: V = set IN (START) at the playhead, index up = set OUT (END) at the playhead and
- *    loop; open palm = play/pause as well.
+ *    loop. The left hand never plays or pauses by a command (its fist only pauses while steering: steerAudio.ts).
  * The V key / Mark button still cycle START, END, clear (`loopStep`); no gesture does.
  * R5: the RIGHT hand's thumbs up toggles the speed (2x <-> 1x).
  */
 export function actionForFire(ev: Pick<HandFire, "shape" | "hand">): TransportAction | null {
-  if (ev.shape === "Open_Palm") return "toggle";
   if (ev.hand === "Right") {
+    if (ev.shape === "Closed_Fist") return "toggle";
     if (ev.shape === "Pointing_Up") return "restart";
     if (ev.shape === "Victory") return "clearLoop";
     if (ev.shape === "Thumb_Up") return "speedToggle";

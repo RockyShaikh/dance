@@ -18,6 +18,7 @@
  */
 import { contains, type Box, type Vec2 } from "./box";
 import type { CommandConfig } from "./config";
+import type { PseudoChord } from "./pseudoChord";
 
 /** What the classifier needs to know about one detected hand. */
 export interface HandObs {
@@ -27,6 +28,24 @@ export interface HandObs {
   palmFacing: boolean;
   /** Palm centre in display-normalized coordinates (see box.ts). */
   palm: Vec2;
+  /**
+   * R4d: which fingers are out (pseudoChord.ts). When given, the fist and the thumbs up must agree with it
+   * (see `chordAgrees`); the model confuses those two. Left out (the older tests), no check is made.
+   */
+  chord?: PseudoChord;
+}
+
+/**
+ * R4d guard against the model's most common confusion: a closed fist read as a thumbs up and the other way round.
+ * The label counts only if the thumb-extension chord agrees: a fist has no finger out and the thumb in; a thumbs up
+ * has the thumb out and the four fingers curled. Other shapes are not checked here.
+ */
+export function chordAgrees(shape: string, chord: PseudoChord | undefined): boolean {
+  if (!chord) return true;
+  const fingersIn = !chord.I && !chord.M && !chord.R && !chord.P;
+  if (shape === "Closed_Fist") return fingersIn && !chord.T;
+  if (shape === "Thumb_Up") return fingersIn && chord.T;
+  return true;
 }
 
 export interface FireEvent {
@@ -38,7 +57,7 @@ export interface FireEvent {
 export type Phase = "idle" | "dwell" | "spent";
 
 /** Why a hand showing a command shape is not counting right now. */
-export type BlockReason = "outside box" | "two hands" | "low confidence" | "palm not facing";
+export type BlockReason = "outside box" | "two hands" | "low confidence" | "palm not facing" | "fingers disagree";
 
 export interface MachineState {
   phase: Phase;
@@ -123,6 +142,7 @@ export function evaluateHands(hands: readonly HandObs[], box: Box, cfg: CommandC
   if (hand.shapeScore < cfg.minShapeScore) return { hand: null, blocked: "low confidence" };
   // A thumbs up shows the back of the fingers, not the palm: the facing rule does not apply to it.
   if (cfg.requirePalmFacing && !hand.palmFacing && !cfg.palmFacingExempt.includes(hand.shape)) return { hand: null, blocked: "palm not facing" };
+  if (!chordAgrees(hand.shape, hand.chord)) return { hand: null, blocked: "fingers disagree" };
   return { hand, blocked: null };
 }
 

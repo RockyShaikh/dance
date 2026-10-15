@@ -6,6 +6,9 @@ import { COMMANDS, type CommandConfig } from "./config";
 
 const FRAME = 33; // ~30 fps
 
+// The classifier is generic: these tests use the open palm as a plain command shape (it is no command in the app since R4d).
+const GENERIC: CommandConfig = { ...COMMANDS, shapes: ["Open_Palm", ...COMMANDS.shapes] };
+
 const INSIDE: Vec2 = { x: 0.75, y: 0.5 }; // right half of the display
 const OUTSIDE: Vec2 = { x: 0.25, y: 0.5 };
 
@@ -20,7 +23,7 @@ class Bench {
   fires: FireEvent[] = [];
   view!: MachineView;
   constructor(
-    public cfg: CommandConfig = COMMANDS,
+    public cfg: CommandConfig = GENERIC,
     public box: Box = PRESETS.right,
   ) {}
 
@@ -44,7 +47,7 @@ class Bench {
   }
 }
 
-const cfg = (o: Partial<CommandConfig>): CommandConfig => ({ ...COMMANDS, ...o });
+const cfg = (o: Partial<CommandConfig>): CommandConfig => ({ ...GENERIC, ...o });
 
 describe("dwell: a shape must be held", () => {
   it("open palm fires once the first ring is full, not before", () => {
@@ -115,10 +118,18 @@ describe("dwell: a shape must be held", () => {
 
   it("shapes that are not commands never fire", () => {
     const b = new Bench();
-    for (const shape of ["Closed_Fist", "Thumb_Down", "ILoveYou", "None"]) {
+    for (const shape of ["Thumb_Down", "ILoveYou", "None"]) {
       b.show(5000, [hand(shape)]);
     }
     expect(b.fires).toHaveLength(0);
+  });
+
+  it("R4d: with the app's own config the open palm is no command at all (a hand coming into frame never fires)", () => {
+    const b = new Bench(COMMANDS);
+    b.show(10_000, [hand("Open_Palm")]);
+    expect(b.fires).toHaveLength(0);
+    expect(b.view.progress).toBe(0);
+    expect(b.view.seen).toBeNull();
   });
 
   it("R5: Thumb_Up is a command (it toggles the speed), and fires once when its ring fills", () => {
@@ -291,7 +302,7 @@ describe("the command box", () => {
       b.show(2000, [hand(shape, INSIDE)]);
       b.idle(1500);
     }
-    expect(b.fires.map((f) => f.shape)).toEqual(["Open_Palm", "Pointing_Up", "Victory", "Thumb_Up"]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist", "Pointing_Up", "Victory", "Thumb_Up"]);
   });
 
   it("the palm centre decides, edges included", () => {
@@ -333,7 +344,7 @@ describe("the command box", () => {
   });
 
   it("whole-frame preset accepts a hand anywhere", () => {
-    const b = new Bench(COMMANDS, PRESETS.whole);
+    const b = new Bench(GENERIC, PRESETS.whole);
     b.show(1000, [hand("Open_Palm", { x: 0.02, y: 0.98 })]);
     expect(b.fires).toHaveLength(1);
   });
@@ -375,7 +386,7 @@ describe("gates: palm facing, confidence, one hand at a time", () => {
 
   it("a second hand showing something that is not a command does not block", () => {
     const b = new Bench();
-    b.show(1000, [hand("Closed_Fist", { x: 0.9, y: 0.5 }), hand("Open_Palm", INSIDE)]);
+    b.show(1000, [hand("ILoveYou", { x: 0.9, y: 0.5 }), hand("Open_Palm", INSIDE)]);
     expect(b.fires).toHaveLength(1);
   });
 
@@ -445,7 +456,7 @@ describe("timing is by clock, not by frame count", () => {
     let state = INITIAL_STATE;
     const times: number[] = [];
     for (let t = frameMs; t <= holdMs; t += frameMs) {
-      const r = stepCommands(state, { t, hands: [hand(shape)], box: PRESETS.right }, COMMANDS);
+      const r = stepCommands(state, { t, hands: [hand(shape)], box: PRESETS.right }, GENERIC);
       state = r.state;
       if (r.fired) times.push(r.fired.t);
     }
@@ -500,5 +511,58 @@ describe("the hand leaving view (tracking lost) mid-gesture", () => {
     b.idle(500);
     b.show(COMMANDS.dwellMs - 200, [hand("Open_Palm")]);
     expect(b.fires).toHaveLength(0);
+  });
+});
+
+describe("R4d: the fist is a command, and the fist / thumbs up guard", () => {
+  const FIST = { T: false, I: false, M: false, R: false, P: false };
+  const THUMB = { T: true, I: false, M: false, R: false, P: false };
+  const POINT = { T: false, I: true, M: false, R: false, P: false };
+
+  it("a closed fist fires when its ring fills (any way round: the palm-facing rule does not apply to it)", () => {
+    const b = new Bench(COMMANDS);
+    b.show(COMMANDS.dwellMs + 200, [hand("Closed_Fist", INSIDE, { palmFacing: false, chord: FIST })]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
+  });
+
+  it("a fist the model labels Thumb_Up (the thumb is not out) does NOT fire as a thumbs up", () => {
+    const b = new Bench(COMMANDS);
+    b.show(5000, [hand("Thumb_Up", INSIDE, { chord: FIST })]);
+    expect(b.fires).toHaveLength(0);
+    expect(b.view.blocked).toBe("fingers disagree");
+  });
+
+  it("a thumbs up the model labels Closed_Fist (the thumb is out) does NOT fire as a fist", () => {
+    const b = new Bench(COMMANDS);
+    b.show(5000, [hand("Closed_Fist", INSIDE, { chord: THUMB })]);
+    expect(b.fires).toHaveLength(0);
+    expect(b.view.blocked).toBe("fingers disagree");
+  });
+
+  it("each fires when label and fingers agree", () => {
+    const fist = new Bench(COMMANDS);
+    fist.show(2000, [hand("Closed_Fist", INSIDE, { chord: FIST })]);
+    expect(fist.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
+    const up = new Bench(COMMANDS);
+    up.show(2000, [hand("Thumb_Up", INSIDE, { chord: THUMB })]);
+    expect(up.fires.map((f) => f.shape)).toEqual(["Thumb_Up"]);
+  });
+
+  it("a fist with a finger still out is not a fist either", () => {
+    const b = new Bench(COMMANDS);
+    b.show(5000, [hand("Closed_Fist", INSIDE, { chord: POINT })]);
+    expect(b.fires).toHaveLength(0);
+  });
+
+  it("the guard does not touch the other shapes (V, index)", () => {
+    const b = new Bench(COMMANDS);
+    b.show(2000, [hand("Victory", INSIDE, { chord: FIST })]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Victory"]);
+  });
+
+  it("without a chord (older callers) no check is made", () => {
+    const b = new Bench(COMMANDS);
+    b.show(2000, [hand("Closed_Fist")]);
+    expect(b.fires).toHaveLength(1);
   });
 });

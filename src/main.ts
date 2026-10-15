@@ -25,6 +25,7 @@ import { KnobPanel } from "./knobPanel";
 import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, TARGET_NAMES, loadKnobSettings } from "./knobSettings";
 import { IDLE_SCRUB, stepScrub, type ScrubMode } from "./scrub";
 import { IDLE_STEER, classifySteerShape, stepSteerMode, targetOf, type SteerMode } from "./steerMode";
+import { IDLE_STEER_AUDIO, stepSteerAudio } from "./steerAudio";
 import type { ZoomDraw } from "./waveDraw";
 
 const video = document.getElementById("video") as HTMLVideoElement;
@@ -74,8 +75,8 @@ let knobPanel: KnobPanel;
 
 /** R4c: the steering wheel's mode (the left hand's shape, debounced). */
 let steer = IDLE_STEER;
-/** Claw / pinch have no modes: the music keeps doing what it was doing when the grab began. */
-let grabScrubMode: ScrubMode = "play";
+/** R4d: what the left hand has done to the music during this grab (a fist's pause, and so the scrub mode). Claw / pinch have no modes: the music keeps doing what it was doing. */
+let steerAudio = IDLE_STEER_AUDIO;
 
 /** Audible scrub of the playhead. */
 let scrub = IDLE_SCRUB;
@@ -95,6 +96,7 @@ knobPanel = new KnobPanel(knobSettings, () => {
   knob = IDLE_KNOB;
   knobDraw = null;
   steer = IDLE_STEER;
+  steerAudio = IDLE_STEER_AUDIO;
   practice.setZoomActive(false);
   valueAtGrab = null;
 });
@@ -194,7 +196,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   // Per-hand commands. The steering hand is blocked while grabbed; with the two-hand clutch the left hand is
   // the modifier, so its commands (the marks) are off altogether.
   const suppress = suppressFor(knobSettings.clutch, grabbed, pick.steering?.hand ?? null);
-  const obs = hands.map((h) => ({ hand: h.hand, shape: h.shape, shapeScore: h.shapeScore, palmFacing: h.palmFacing, palm: h.palm }));
+  const obs = hands.map((h) => ({ hand: h.hand, shape: h.shape, shapeScore: h.shapeScore, palmFacing: h.palmFacing, palm: h.palm, chord: h.chord }));
   const r = stepHandCommands(machines, { t: ts, hands: obs, boxes: settings.boxes, aspect, suppress }, commandCfg());
   machines = r.state;
   views = r.views;
@@ -256,7 +258,6 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
   if (out.started) {
     valueAtGrab = targetValue(target);
     grabMovedSec = 0;
-    grabScrubMode = player.state === "playing" ? "play" : "pause";
     practice.setNudgeHold(true, valueAtGrab === null ? `no loop ${target.toUpperCase()} yet` : "no change yet", target);
   } else if (out.grabbed && lastTarget !== null && target !== lastTarget) {
     // The left hand switched what the wheel moves: measure "since" from here, and show the new target's time.
@@ -266,8 +267,10 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
   lastTarget = out.grabbed ? target : null;
   grabMovedSec += Math.abs(out.applySec);
 
-  // What the music should be doing while the playhead is steered: the left hand's palm / fist, or (claw, pinch) what it was doing.
-  const scrubMode: ScrubMode = mode ? (mode === "pause" ? "pause" : "play") : grabScrubMode;
+  // What the music should be doing while the playhead is steered (R4d): what it was doing at the grab, except that a left
+  // fist pauses it while closed and opening to a palm resumes it, but only if the fist did the pausing (steerAudio.ts).
+  steerAudio = stepSteerAudio(steerAudio, { grabbed: out.grabbed, mode, playing: player.state === "playing" });
+  const scrubMode: ScrubMode = steerAudio.scrub;
   if (target === "playhead") {
     // Audible scrub: the music follows the hand (see scrub.ts for the seek policy).
     const sr = stepScrub(

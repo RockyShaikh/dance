@@ -58,7 +58,7 @@ async function fresh() {
 /** One scripted steer: grab, rotate 0 -> 35 deg over 400 ms, hold, then back to 0, hold, release. */
 async function steer({ clutch, mapping, playing, extraLeft }) {
   await fresh();
-  await p.eval(`T.set('knob-clutch', '${clutch}'); T.set('knob-mapping', '${mapping}'); T.set('knob-target', 'playhead');`);
+  await p.eval(`T.set('knob-clutch', '${clutch}'); T.set('knob-motion', 'tilt'); T.set('knob-mapping', '${mapping}'); T.set('knob-target', 'playhead');`);
   await p.eval(`__dance.player.seek(30); ${playing ? "await __dance.player.play();" : ""} await T.sleep(700); T.rec.calls.length = 0; T.rec.samples.length = 0;`);
   const fist = WHEEL && clutch === "twoHand" && !playing;
   const leftShape = fist ? "Closed_Fist" : (extraLeft ?? "Open_Palm");
@@ -118,7 +118,7 @@ async function steer({ clutch, mapping, playing, extraLeft }) {
  */
 async function letGo({ clutch, mapping, how, leftShape }) {
   await fresh();
-  await p.eval(`T.set('knob-clutch', '${clutch}'); T.set('knob-mapping', '${mapping}'); T.set('knob-target', 'playhead');`);
+  await p.eval(`T.set('knob-clutch', '${clutch}'); T.set('knob-motion', 'tilt'); T.set('knob-mapping', '${mapping}'); T.set('knob-target', 'playhead');`);
   await p.eval(`__dance.player.seek(30); await T.sleep(700);`);
   const specs = clutch === "claw" ? `(tilt) => [T.claw(tilt)]` : `(tilt) => [T.left('Open_Palm'), T.right(tilt)]`;
   if (clutch === "claw") await p.eval(`await T.hold((t) => [T.right(t)], 0, 350); await T.hold(${specs}, 0, 450);`);
@@ -164,7 +164,7 @@ async function letGo({ clutch, mapping, how, leftShape }) {
  */
 async function slowSteer({ clutch, mapping, deg, ms }) {
   await fresh();
-  await p.eval(`T.set('knob-clutch', '${clutch}'); T.set('knob-mapping', '${mapping}'); T.set('knob-target', 'playhead');`);
+  await p.eval(`T.set('knob-clutch', '${clutch}'); T.set('knob-motion', 'tilt'); T.set('knob-mapping', '${mapping}'); T.set('knob-target', 'playhead');`);
   await p.eval(`__dance.player.seek(10); await __dance.player.play(); await T.sleep(500);`);
   const specs = clutch === "claw" ? `(tilt) => [T.claw(tilt)]` : `(tilt) => [T.left('Open_Palm'), T.right(tilt)]`;
   if (clutch === "claw") await p.eval(`await T.hold((t) => [T.right(t)], 0, 350); await T.hold(${specs}, 0, 450);`);
