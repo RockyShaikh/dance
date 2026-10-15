@@ -5,6 +5,8 @@ Updated: 2026-10-11
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B9 | R9 video (MP4, mirror, PiP camera), spoken feedback, claw vaulted (?claw=1) | ship | `r9-video` off main | 2026-10-15 |
+| X1 | Push/swipe measurement bench behind ?exp=push (zone-as-trackpad slider, push signals, JSON recording) | ship | `exp-push-swipe` off main | 2026-10-15 |
 
 ## Waiting on user
 - Decide whether to purge `src/test/brotherhood.mp3` from public git history (rewrite + force-push main), or leave it.

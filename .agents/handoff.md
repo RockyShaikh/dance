@@ -1,7 +1,7 @@
 # Handoff
 
 ## Current goal
-Distance: R7 (iPhone camera picker + latency) is built and awaits a real test (Chrome didn't list the iPhone; macOS does). R8 is building pose-driven auto-tracking crops.
+R9 video (local MP4, slow-mo, loops, mirror, spoken feedback, claw vaulted) and the EXP push/swipe measurement bench, in parallel. Main = R1–R8 merged (tag r8-done).
 
 ## State
 - Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
@@ -11,7 +11,7 @@ Distance: R7 (iPhone camera picker + latency) is built and awaits a real test (C
 - No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
 
 ## Next step
-Wait for B8. Then give the user a short 2–5 m test checklist (modes Off / Person / Wrists). The user has limited time to test. The fist rework is queued. The merge chain is still pending the user's word.
+Wait for B9 and X1. Give the user test steps for each. Ask about purging brotherhood.mp3 from public history. Then a v0.1-for-testers checklist via the review loop. Old worktrees can be cleaned up with the user's OK.
 
 ## Open questions
 - After-restart behaviour (lead-in?); which hand.
