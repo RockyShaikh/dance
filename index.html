@@ -32,6 +32,12 @@
           <!-- The HUD (command box, rings) is NOT mirrored: it is drawn and mouse-edited in display coordinates. -->
           <canvas id="hud" aria-label="command box: drag to move, drag an edge or corner to resize"></canvas>
           <div id="banner" hidden aria-live="assertive"><div id="banner-main"></div><div id="banner-sub"></div></div>
+          <!-- R4a: shown huge for a moment after each nudge of the loop START. -->
+          <div id="nudge-readout" hidden aria-live="polite">
+            <div id="nudge-title">LOOP START</div>
+            <div id="nudge-time">0:00.0</div>
+            <div id="nudge-sub"></div>
+          </div>
         </div>
         <div id="message" hidden></div>
       </section>
@@ -93,15 +99,32 @@
     <footer id="transport">
       <div id="timeline" role="slider" aria-label="playhead" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" tabindex="-1">
         <div id="tl-fill"></div>
+        <div id="loop-region" hidden></div>
+        <div id="flag-start" class="flag" hidden><span class="flag-label">START <b id="flag-start-time"></b></span></div>
+        <div id="flag-end" class="flag" hidden><span class="flag-label">END <b id="flag-end-time"></b></span></div>
         <div id="tl-head"></div>
       </div>
       <div id="controls-row">
         <button type="button" id="btn-open">Open track…</button>
         <button type="button" id="btn-toggle"><span id="btn-toggle-label">Play</span> <kbd>Space</kbd></button>
-        <button type="button" id="btn-restart">Restart <kbd>R</kbd> <kbd>Home</kbd></button>
+        <button type="button" id="btn-restart" title="Index tap: the loop START if one is set, else 0:00">Restart <kbd>R</kbd></button>
+        <button type="button" id="btn-top" title="Index hold: 0:00, even with a loop set">From top <kbd>Home</kbd></button>
+        <span class="group" aria-label="loop">
+          <button type="button" id="btn-loopstep" title="V tap: START, then END (loop on), then clear">Mark <kbd>V</kbd></button>
+          <button type="button" id="btn-setstart">Set start <kbd>S</kbd></button>
+          <button type="button" id="btn-setend">Set end <kbd>E</kbd></button>
+          <button type="button" id="btn-clear" title="V hold">Clear <kbd>C</kbd></button>
+        </span>
+        <span class="group" aria-label="nudge the loop start">
+          <span class="note">Nudge start</span>
+          <button type="button" data-nudge="-1" title="1 s earlier (Shift + [)">−1 s</button>
+          <button type="button" data-nudge="-0.1" title="0.1 s earlier ([)">−0.1 <kbd>[</kbd></button>
+          <button type="button" data-nudge="0.1" title="0.1 s later (])">+0.1 <kbd>]</kbd></button>
+          <button type="button" data-nudge="1" title="1 s later (Shift + ])">+1 s</button>
+        </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
-        <span id="cheat" class="note">In the box: open palm = play/pause · index up = restart</span>
       </div>
+      <div id="cheat" class="note">In the box: open palm = play/pause · index tap = back to loop start (hold = from the top) · V tap = start, end, clear (hold = clear) · keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
     </footer>
     <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />

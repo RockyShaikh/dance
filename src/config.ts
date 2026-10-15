@@ -184,13 +184,26 @@ export const CLUTCH: ClutchConfig = {
 };
 
 /**
- * R3: practice-view overrides for the command classifier.
- *
- * Index up has a hold action in the R2 bench (tap fires on RELEASE, hold fires later), because
- * R4 gives them different jobs (loop start vs song start). In R3 both restart from 0:00, and the
- * music must react the moment the ring completes, so Pointing_Up has no hold action here and
- * fires when the first ring fills, like Open_Palm. R4 puts it back.
+ * R4a: loops (docs/spec.md sections 4.5 and 4.6). Times are in seconds of music.
  */
-export const PRACTICE = {
-  holdShapes: ["Victory"] as readonly string[],
+export const LOOP = {
+  /**
+   * A gesture mark is stamped where the music was when the ring STARTED, minus this: reaction
+   * plus recognition time makes marks land late. (A key or button marks the playhead as is.)
+   */
+  markOffsetSec: 0.15,
+  /** Smallest loop: the END must be at least this far after the START (also bounds the nudge). */
+  minGapSec: 0.5,
+  /** Nudge step for [ and ], and with Shift. */
+  nudgeStepSec: 0.1,
+  nudgeBigStepSec: 1,
+  /**
+   * The wrap seeks when the playhead is within this of END. 0 = at END. A positive value cuts the
+   * end short on purpose, to cancel the check's own delay; tuned from the measured overshoot.
+   */
+  wrapLookaheadSec: 0,
+  /** How often the wrap check polls (a requestAnimationFrame check runs as well). */
+  wrapPollMs: 4,
+  /** How long the huge START time stays up after a nudge. */
+  nudgeReadoutMs: 1800,
 } as const;

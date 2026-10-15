@@ -1,10 +1,14 @@
 import type { AudioPlayer } from "./audioPlayer";
-import { formatTime, playheadFraction, runTransport, statusWord, type TransportAction, type TransportResult } from "./transport";
+import { LOOP } from "./config";
+import { NO_LOOP, type LoopState } from "./loop";
+import { LoopWrapper } from "./loopWrap";
+import { formatTime, playheadFraction, runNudge, runTransport, statusWord, type TransportAction, type TransportOptions, type TransportResult } from "./transport";
 
 /**
- * R3's practice view: file loading (picker and drag-and-drop), the giant status word, the
- * clock and timeline, and the keys and buttons. DOM only; the decisions live in transport.ts.
- * Gestures reach the player from main.ts through `perform`, the same path the keys and buttons use.
+ * The practice view: file loading (picker and drag-and-drop), the giant status word, the
+ * clock and timeline with the loop flags, and the keys and buttons. DOM only; the decisions live
+ * in transport.ts and loop.ts. Gestures reach the player from main.ts through `perform`, the same
+ * path the keys and buttons use. R4a: this also owns the loop state and the END-to-START wrap.
  */
 
 function el<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -41,10 +45,27 @@ export class Practice {
   private fileName = "";
   private dragDepth = 0;
 
+  // --- R4a: the loop ---
+  private readonly regionEl = el("loop-region");
+  private readonly flagStart = el("flag-start");
+  private readonly flagEnd = el("flag-end");
+  private readonly flagStartTime = el("flag-start-time");
+  private readonly flagEndTime = el("flag-end-time");
+  private readonly nudgeEl = el("nudge-readout");
+  private readonly nudgeTime = el("nudge-time");
+  private readonly nudgeSub = el("nudge-sub");
+  private loop: LoopState = NO_LOOP;
+  private nudgeUntil = 0;
+  private nudgeNote = "";
+  /** The END-to-START wrap. Public so the dev console can read its measurements. */
+  readonly wrapper: LoopWrapper;
+
   constructor(
     private readonly player: AudioPlayer,
     private readonly hooks: PracticeHooks,
   ) {
+    this.wrapper = new LoopWrapper(player, () => this.loop);
+    this.wrapper.start();
     el("btn-open").addEventListener("click", () => this.fileInput.click());
     this.fileInput.addEventListener("change", () => {
       const f = this.fileInput.files?.[0];
@@ -53,11 +74,25 @@ export class Practice {
     });
     this.bindButton("btn-toggle", "toggle");
     this.bindButton("btn-restart", "restart");
+    this.bindButton("btn-top", "restartTop");
+    this.bindButton("btn-loopstep", "loopStep");
+    this.bindButton("btn-setstart", "setStart");
+    this.bindButton("btn-setend", "setEnd");
+    this.bindButton("btn-clear", "clearLoop");
+    for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-nudge]")) {
+      btn.addEventListener("click", () => {
+        this.nudgeStart(Number(btn.dataset.nudge));
+        btn.blur();
+      });
+    }
     this.bindDrop();
     this.bindKeys();
 
     player.on((e) => {
-      if (e.type === "loaded") this.needClick = this.needsClick();
+      if (e.type === "loaded") {
+        this.needClick = this.needsClick();
+        this.loop = NO_LOOP; // a new track: the old marks mean nothing
+      }
       if (e.type === "blocked") this.needClick = true;
       if (e.type === "error") this.message = e.message;
       this.updateHint();
@@ -69,6 +104,7 @@ export class Practice {
       this.needClick = false;
       this.updateHint();
     };
+    window.addEventListener("resize", () => this.last.delete("loop")); // flag labels are placed by measuring
     document.addEventListener("pointerdown", clear);
     document.addEventListener("keydown", clear);
 
@@ -80,11 +116,36 @@ export class Practice {
   }
 
   /** The one entry point for every way of controlling the music. Returns what happened. */
-  perform(action: TransportAction): TransportResult {
-    const result = runTransport(this.player, action);
+  perform(action: TransportAction, opts: TransportOptions = {}): TransportResult {
+    const result = runTransport(this.player, this.loop, action, opts);
+    this.loop = result.loop;
+    // Setting END while the playhead is already past it starts the loop at once, not at the next pass.
+    this.wrapper.check(true);
     this.showHint(result.changed ? null : result.label);
     this.render();
     return result;
+  }
+
+  /**
+   * Moves the loop START by `deltaSec` (negative = earlier) and shows it huge for a moment. Only the
+   * marker moves: index-tap to hear it. Keys, buttons and (R4b) the knob all come through here.
+   */
+  nudgeStart(deltaSec: number): TransportResult {
+    const result = runNudge(this.player, this.loop, deltaSec);
+    this.loop = result.loop;
+    if (this.loop.start !== null) {
+      this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;
+      const mag = Math.round(Math.abs(deltaSec) * 1000) / 1000;
+      this.nudgeNote = `${deltaSec < 0 ? "−" : "+"}${mag} s${result.limited ? "  LIMIT" : ""}`;
+    }
+    this.showHint(this.loop.start === null ? result.label : null);
+    this.render();
+    return result;
+  }
+
+  /** The loop as the view knows it (for the dev console and tests). */
+  get loopState(): LoopState {
+    return this.loop;
   }
 
   load(file: File): void {
@@ -114,16 +175,40 @@ export class Practice {
   private bindKeys(): void {
     const keyAction = (e: KeyboardEvent): TransportAction | null => {
       if (e.ctrlKey || e.metaKey || e.altKey) return null;
-      if (e.code === "Space") return "toggle";
-      if (e.code === "Home" || e.code === "KeyR") return "restart";
-      return null;
+      switch (e.code) {
+        case "Space":
+          return "toggle";
+        case "KeyR":
+          return "restart"; // loop START if set, else 0:00 (like an index tap)
+        case "Home":
+          return "restartTop"; // 0:00 (like an index hold)
+        case "KeyV":
+          return "loopStep"; // like a V tap
+        case "KeyS":
+          return "setStart";
+        case "KeyE":
+          return "setEnd";
+        case "KeyC":
+          return "clearLoop";
+        default:
+          return null;
+      }
     };
     document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // [ and ] nudge the loop START by 0.1 s, Shift = 1 s. Holding the key repeats.
+      if (e.code === "BracketLeft" || e.code === "BracketRight") {
+        e.preventDefault();
+        this.blurFocus();
+        const step = e.shiftKey ? LOOP.nudgeBigStepSec : LOOP.nudgeStepSec;
+        this.nudgeStart(e.code === "BracketLeft" ? -step : step);
+        return;
+      }
       const action = keyAction(e);
       if (!action) return;
       e.preventDefault();
       if (e.repeat) return; // holding a key must not toggle over and over
-      if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
+      this.blurFocus();
       this.hooks.announce(this.perform(action).label, "key");
     });
     // Space also "clicks" a focused button or checkbox on key-up; swallow that.
@@ -184,8 +269,9 @@ export class Practice {
   render(): void {
     const p = this.player;
     const state = p.state;
-    this.setText("status", this.statusEl, statusWord(state));
-    this.statusEl.dataset.state = state;
+    const word = statusWord(state, this.loop);
+    this.setText("status", this.statusEl, word);
+    this.statusEl.dataset.state = word === "LOOP" ? "loop" : state;
     this.setText("elapsed", this.elapsedEl, formatTime(p.currentTime));
     this.setText("total", this.totalEl, `/ ${formatTime(p.duration, false)}`);
     this.setText("toggle", this.toggleLabel, state === "playing" ? "Pause" : "Play");
@@ -199,5 +285,71 @@ export class Practice {
       this.timeline.setAttribute("aria-valuemax", String(Math.round(p.duration)));
       this.timeline.setAttribute("aria-valuenow", String(Math.round(p.currentTime)));
     }
+    this.renderLoop(p.duration);
+  }
+
+  /** The loop flags, the highlighted region, and the huge START time while nudging. */
+  private renderLoop(duration: number): void {
+    const { start, end } = this.loop;
+    const pct = (t: number) => `${(Math.min(1, Math.max(0, t / duration)) * 100).toFixed(2)}%`;
+    const showStart = start !== null && duration > 0;
+    const showEnd = end !== null && duration > 0;
+    const key = `${showStart ? start : "-"}|${showEnd ? end : "-"}|${duration}`;
+    if (this.last.get("loop") !== key) {
+      this.last.set("loop", key);
+      this.flagStart.hidden = !showStart;
+      this.flagEnd.hidden = !showEnd;
+      this.regionEl.hidden = !(showStart && showEnd);
+      if (showStart) {
+        this.flagStart.style.left = pct(start as number);
+        this.flagStartTime.textContent = formatTime(start as number);
+      }
+      if (showEnd) {
+        this.flagEnd.style.left = pct(end as number);
+        this.flagEndTime.textContent = formatTime(end as number);
+      }
+      if (showStart && showEnd) {
+        this.regionEl.style.left = pct(start as number);
+        this.regionEl.style.width = pct((end as number) - (start as number));
+      }
+      this.layoutFlags();
+    }
+
+    const nudging = start !== null && performance.now() < this.nudgeUntil;
+    if (this.nudgeEl.hidden === nudging) this.nudgeEl.hidden = !nudging;
+    if (nudging) {
+      this.setText("nudge-time", this.nudgeTime, formatTime(start as number));
+      this.setText("nudge-sub", this.nudgeSub, this.nudgeNote);
+      this.nudgeEl.dataset.limit = this.nudgeNote.includes("LIMIT") ? "1" : "0";
+    }
+  }
+
+  /**
+   * START's label points left of its pole and END's points right, so they never meet. Near an edge
+   * of the bar a label is slid back inside; if the two still touch (a very short loop at an edge),
+   * END's label goes up a row.
+   */
+  private layoutFlags(): void {
+    const [s, e] = [this.flagStart, this.flagEnd].map((f) => f.firstElementChild as HTMLElement);
+    s.style.transform = "";
+    e.style.transform = "";
+    const bar = this.timeline.getBoundingClientRect();
+    if (!this.flagStart.hidden) {
+      const r = s.getBoundingClientRect();
+      if (r.left < bar.left) s.style.transform = `translateX(${bar.left - r.left}px)`;
+    }
+    if (!this.flagEnd.hidden) {
+      const r = e.getBoundingClientRect();
+      if (r.right > bar.right) e.style.transform = `translateX(${bar.right - r.right}px)`;
+    }
+    if (!this.flagStart.hidden && !this.flagEnd.hidden) {
+      const a = s.getBoundingClientRect();
+      const b = e.getBoundingClientRect();
+      if (a.right > b.left && b.right > a.left) e.style.transform = `${e.style.transform} translateY(-105%)`;
+    }
+  }
+
+  private blurFocus(): void {
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
   }
 }

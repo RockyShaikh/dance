@@ -2,14 +2,31 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R3 (audio + webcam, play/pause/restart by gesture), on top of R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV, and control it hands-free: open palm in the command box = play/pause, index up = restart from 0:00. The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+**This is checkpoint R4a (loops marked as the music plays), on top of R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV, and control it hands-free: open palm in the command box = play/pause, index up = restart, V = mark a loop (see "R4a loops" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+
+## R4a loops
+
+Let the music play and mark where it is; you will always mark the start a little late, so the START can be nudged back.
+
+| Gesture (in the box) | Tap (drop the hand after the ring fills) | Hold (~1.5 s) |
+|---|---|---|
+| **V** | 1st = set loop START, 2nd = set END and loop, 3rd = clear | clear the loop |
+| **Index up** | back to the loop START (0:00 if none is set), plays | 0:00, plays |
+| **Open palm** | play / pause | same |
+
+- Gesture marks are stamped where the music was when the ring **started**, minus `LOOP.markOffsetSec` (0.15 s, `src/config.ts`). Keys and buttons mark the playhead as it is.
+- An END at or before the START (closer than `LOOP.minGapSec`, 0.5 s) is ignored with a message.
+- The wrap (END back to START) is a 4 ms timer plus an animation-frame check on the audio element (`src/loopWrap.ts`); each wrap records its overshoot and seek time (`__dance.practice.wrapper.history` in dev).
+- **Keys:** `V` mark (cycle), `S` set start, `E` set end, `C` clear, `R` restart (loop start), `Home` from the top, `[` / `]` nudge the START by 0.1 s earlier / later, with `Shift` 1 s. Only the marker moves; restart to hear it. The START can't go below 0:00 or within 0.5 s of the END. There are buttons for all of them.
+- The logic is in `src/loop.ts` (pure, tested); `Practice.nudgeStart(deltaSec)` is the entry point R4b's knob will call.
+- `?sim&track=/test/click-track.wav` (dev) loads a track with scripted hands; `window.__dance.setHands([{ shape: "Victory" }])` then `setHands([])` is a V tap.
 
 ## R3 practice view
 
 - **Load a track:** drag an MP3/WAV onto the page, or click **Open track…**. Local files only.
 - **Status word** (PLAYING / PAUSED / READY), a big **clock**, and a **timeline** with a moving white playhead, readable from across the room.
-- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts from 0:00 and plays. The music reacts on the frame the ring completes. In the practice view index up fires as soon as the ring fills (tap or hold alike); the bench's tap-on-release timing is kept for R4.
-- **Keys and buttons:** `Space` = play/pause, `R` or `Home` = restart, `B` = bench.
+- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts and plays (R4a: tap = loop start, hold = 0:00; a tap fires on release, as in the bench).
+- **Keys and buttons:** `Space` = play/pause, `R` = restart, `Home` = from the top, `B` = bench (more keys in R4a below).
 - Chrome lets a hand gesture start audio only after the page has seen one click or key press; if you only dragged a file in, the page asks for one click.
 - Audio engine: `src/audioPlayer.ts` (an `HTMLAudioElement` behind a small interface: why is in its header comment). Gesture/key/button wiring: `src/transport.ts`; DOM: `src/practice.ts`.
 - Test track: `node scripts/make-test-wav.mjs` writes `public/test/click-track.wav` (a 60 s click track with a climbing scale, git-ignored). In dev, `?sim&track=/test/click-track.wav` loads it at startup.
