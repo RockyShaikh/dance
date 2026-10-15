@@ -15,6 +15,8 @@ export async function launch(port = 9333) {
       "--autoplay-policy=no-user-gesture-required",
       "--mute-audio",
       "--no-first-run",
+      // e.g. DANCE_CHROME_FLAGS="--use-fake-device-for-media-stream --use-fake-ui-for-media-stream" for a fake camera
+      ...(process.env.DANCE_CHROME_FLAGS ? process.env.DANCE_CHROME_FLAGS.split(" ") : []),
       "about:blank",
     ],
     { stdio: "ignore" },

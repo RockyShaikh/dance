@@ -8,6 +8,7 @@ import { initialClutchState, stepClutches, twoHandRoles, type ClutchView } from 
 import { chordAgrees, type MachineView } from "./commands";
 import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, SPEED, WAVE, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
 import { drawHands } from "./draw";
+import { Cropper, cropAsDisplayBox, cropLayout, cropRectForZone, magnification, toFullFrame, type CropLayout } from "./zoom";
 import type { Handedness } from "./hand";
 import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
 import { drawHud } from "./hud";
@@ -55,7 +56,7 @@ class FpsMeter {
 // --- The test bench: settings, classifier state, panels -----------------------------
 
 const settings = loadSettings();
-const bench = new Bench(settings, { setBox });
+const bench = new Bench(settings, { setZone, zoomChanged: () => updateZoomUi(null) });
 /** R4b: one command classifier per hand, each with its own box. */
 let machines: HandMachines = INITIAL_MACHINES;
 let clutch = initialClutchState();
@@ -119,23 +120,51 @@ const commandCfg = (): CommandConfig => ({
 const ringStamps: Record<Handedness, RingStamp | null> = { Left: null, Right: null };
 const clutchCfg = (): ClutchConfig => ({ ...CLUTCH, pinch: { ...CLUTCH.pinch, grabRatio: settings.pinchGrab } });
 
-function setBox(hand: Handedness, b: Box): void {
-  settings.boxes[hand] = normalizeBox(b);
+/** R6: the one shared zone, as the per-hand boxes the reducers take. */
+const zoneBoxes = (): Record<Handedness, Box> => ({ Left: settings.zone, Right: settings.zone });
+
+function setZone(b: Box): void {
+  settings.zone = normalizeBox(b);
   saveSettings(settings);
-  bench.showBoxes(settings.boxes);
+  bench.showZone(settings.zone);
+  updateZoomUi(null);
   redrawHud();
 }
 
-const editor = attachBoxEditor(hudCanvas, () => settings.boxes, setBox, () => redrawHud());
+const editor = attachBoxEditor(hudCanvas, () => settings.zone, setZone, () => redrawHud());
+
+// --- R6: zoom (crop the frame to the zone + margin and give only the crop to the hand model) ---
+
+let cropper: Cropper | null = null;
+/** The crop used on the last frame (null: zoom off, or no frame yet). */
+let currentCrop: CropLayout | null = null;
+/** DEV stat: a short running average of the crop + model call, in ms (window.__dance.recognizeMs). */
+let recognizeMs = 0;
+
+/** The crop for the current zone and frame size, or null with zoom off. */
+function planCrop(width: number, height: number): CropLayout | null {
+  return settings.zoom ? cropLayout(cropRectForZone(settings.zone, width, height), width, height) : null;
+}
+
+/** The zoom note next to the toggle. `crop` null: work it out from a typical 16:9 frame (before the first frame, or a zone edit). */
+function updateZoomUi(crop: CropLayout | null): void {
+  const c = crop ?? (settings.zoom ? planCrop(APP.camera.width, APP.camera.height) : null);
+  if (!c) return bench.setZoomNote("off: the whole picture is tracked");
+  const mag = magnification(c);
+  bench.setZoomNote(
+    mag < 1.05 ? `×${mag.toFixed(1)}: the zone is as wide as the picture, so no magnification; narrow it to zoom. Only the zone is tracked.` : `×${mag.toFixed(1)}. Only the zone is tracked.`,
+  );
+}
 
 function redrawHud(): void {
   drawHud(hudCtx, {
-    boxes: settings.boxes,
+    zone: settings.zone,
     active: editor.active,
     dragging: editor.dragging,
-    palms: hands.map((h) => ({ hand: h.hand, x: h.palm.x, y: h.palm.y })),
+    palms: hands.map((h) => ({ hand: h.hand, x: h.palm.x, y: h.palm.y, source: h.handSource })),
     views,
     knob: knobDraw,
+    crop: currentCrop ? { box: cropAsDisplayBox(currentCrop), magnification: magnification(currentCrop) } : null,
   });
 }
 
@@ -160,7 +189,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     clutch,
     {
       t: ts,
-      box: settings.boxes,
+      box: zoneBoxes(),
       hands: hands.map((h) => ({
         hand: h.hand,
         shape: h.shape,
@@ -204,7 +233,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   // the modifier, so its commands (the marks) are off altogether.
   const suppress = suppressFor(knobSettings.clutch, grabbed, pick.steering?.hand ?? null);
   const obs = hands.map((h) => ({ hand: h.hand, shape: h.shape, shapeScore: h.shapeScore, palmFacing: h.palmFacing, palm: h.palm, chord: h.chord }));
-  const r = stepHandCommands(machines, { t: ts, hands: obs, boxes: settings.boxes, aspect, suppress }, commandCfg());
+  const r = stepHandCommands(machines, { t: ts, hands: obs, boxes: zoneBoxes(), aspect, suppress }, commandCfg());
   machines = r.state;
   views = r.views;
   for (const fired of r.fired) {
@@ -230,7 +259,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   {
     const right = hands.find((h) => h.hand === "Right");
     const shape = !!right && right.shape === "Thumb_Up" && right.shapeScore >= COMMANDS.minShapeScore && chordAgrees("Thumb_Up", right.chord);
-    const thumb = shape && (hold.since !== null || contains(settings.boxes.Right, right!.palm));
+    const thumb = shape && (hold.since !== null || contains(settings.zone, right!.palm));
     const hs = stepHoldSpeed(hold, { t: ts, thumb, suppress: grabbed, rate: player.rate });
     hold = hs.state;
     if (hs.setRate !== null) {
@@ -243,7 +272,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     ringStamps[h] = trackRingStart(ringStamps[h], machines[h].shape, machines[h].since, player.currentTime, player.state === "playing");
   }
 
-  renderHands(hands, settings.boxes);
+  renderHands(hands, settings.zone);
   bench.renderCommand(r.views);
   bench.renderClutch(clutchView);
   knobPanel.setState(k.out.view?.frozen ? "HOLDING" : k.out.grabbed ? "GRABBED" : "released", k.out.grabbed);
@@ -251,7 +280,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   redrawHud();
   if (import.meta.env.DEV) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    Object.assign(dance, { hands, views, clutchView, boxes: settings.boxes, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
+    Object.assign(dance, { hands, views, clutchView, zone: settings.zone, crop: currentCrop, cropMs: cropper?.avgMs ?? 0, recognizeMs, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub, steer, hold, speedAccum });
   }
 }
 
@@ -469,7 +498,8 @@ async function openSource(): Promise<FrameSource> {
 async function main(): Promise<void> {
   setStatus("Opening camera and loading hand model…");
   setMessage("Allow camera access when Chrome asks.");
-  renderHands([], settings.boxes);
+  renderHands([], settings.zone);
+  updateZoomUi(null);
   redrawHud();
 
   // Dev-only `?sim`: no camera and no model; hands are scripted from the console or a test
@@ -495,11 +525,11 @@ async function main(): Promise<void> {
   setStatus(sim ? "Simulated hands (dev ?sim mode)" : `Running (${loaded!.delegate})`);
 
   const recognizer = loaded?.recognizer ?? null;
-  let simHands: HandReading[] = [];
+  let simRaws: import("./sim").SimRaw[] = [];
   if (sim) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    dance.setHands = (specs: Parameters<typeof sim.simReading>[0][]) => {
-      simHands = specs.map((s) => sim.simReading(s));
+    dance.setHands = (specs: import("./sim").SimHand[]) => {
+      simRaws = specs.map((s) => sim.simRaw(s));
     };
   }
 
@@ -527,7 +557,22 @@ async function main(): Promise<void> {
     if (ts <= lastTs) ts = lastTs + 1;
     lastTs = ts;
 
-    const found = recognizer ? analyze(recognizer.recognizeForVideo(source.element, ts), width, height) : simHands;
+    // R6 zoom: the model is given only the zone (plus a margin) cropped out of the frame; its landmarks come back in the
+    // crop's coordinates and are mapped to the full frame, so everything downstream is unchanged.
+    const crop = planCrop(width, height);
+    if (JSON.stringify(crop) !== JSON.stringify(currentCrop)) updateZoomUi(crop);
+    currentCrop = crop;
+    let result;
+    if (recognizer) {
+      const t0 = performance.now();
+      let input: TexImageSource = source.element;
+      if (crop) input = (cropper ??= new Cropper()).draw(source.element, crop);
+      result = recognizer.recognizeForVideo(input, ts);
+      recognizeMs += (performance.now() - t0 - recognizeMs) * 0.1;
+    } else {
+      result = sim!.simRecognize(simRaws, crop);
+    }
+    const found = analyze(result, width, height, crop ? (lm) => lm.map((p) => ({ ...p, ...toFullFrame(p, crop) })) : undefined);
     processFrame(ts, found, width, height);
     setFps(meter.tick(ts));
   };

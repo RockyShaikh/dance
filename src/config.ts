@@ -53,8 +53,9 @@ export const APP = {
   wasmPath: "wasm",
   numHands: 2,
   camera: {
-    width: 1280,
-    height: 720,
+    /** 1080p (R6 amendment): more real pixels per hand for the landmark crop and the zoom crop. An "ideal", so a 720p camera still works. */
+    width: 1920,
+    height: 1080,
     frameRate: 30,
   },
   /**
@@ -116,7 +117,7 @@ export const COMMANDS: CommandConfig = {
   suppressCooldownMs: 500,
   dropoutGraceMs: 120,
   minShapeScore: 0.5,
-  requirePalmFacing: true,
+  requirePalmFacing: false, // R6: palm-facing is assumed (the hand is told from its thumb); it is a readout only now
   palmFacingExempt: ["Thumb_Up", "Closed_Fist"],
   rightOnlyShapes: ["Closed_Fist"],
   stillness: { enabled: false, maxMove: 0.06 },
@@ -409,3 +410,29 @@ export const SPEED = {
   /** ...and 2x ends when the shape has been gone this long. */
   holdReleaseMs: 150,
 } as const;
+
+/**
+ * R6: which hand is which. The model's Left/Right label was unreliable and the old split by screen side no longer
+ * fits (the command zone spans the top of the frame, hands can cross), so the hand is told from the THUMB, assuming
+ * the palm always faces the camera: the thumb's side of the wrist-to-middle-knuckle axis (handedness.ts).
+ */
+export const HANDEDNESS = {
+  /** "thumb" = the rule above (default); "model" = MediaPipe's own label (with APP.swapHandedness), as a fallback. */
+  source: "thumb" as "thumb" | "model",
+  /** The thumb rule's confidence is the sine of the angle between the thumb's base and the hand's axis (about 0.5 to 0.9 on an open palm). Below this it is not trusted. */
+  minThumbConf: 0.25,
+  /** One hand in view with no confident thumb: assume this one (the dancer's right, the fist-and-wheel hand). */
+  defaultHand: "Right" as "Left" | "Right",
+};
+
+/**
+ * R6: the command zone (box.ts: the top quarter of the mirrored view by default) and zoom. With zoom on, the camera
+ * frame is cropped to the zone plus `margin` and only the crop goes to the Gesture Recognizer, so hands outside it are
+ * not tracked at all.
+ */
+export const ZOOM = {
+  /** Margin added around the zone before cropping, as a fraction of the frame HEIGHT, on every side (the same pixels in x and y). */
+  margin: 0.12,
+  /** The crop is never smaller than this fraction of the frame in either direction (a tiny zone would be all noise). */
+  minCropFrac: 0.12,
+};

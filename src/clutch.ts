@@ -111,12 +111,18 @@ function loseHand(s: HandClutch, t: number, cfg: ClutchConfig): HandClutch {
 }
 
 /**
- * Which of exactly two hands is the modifier and which steers, by screen side (never the model's
- * left/right label). Null unless two hands are in view. R4b's knob uses this to find the steering hand.
+ * Which of exactly two hands is the modifier and which steers. Null unless two hands are in view. R4b's knob uses this
+ * to find the steering hand.
+ * R6: by the dancer's hand (`hand`, told from the thumbs, so crossed arms still work): the modifier side "left" means the
+ * dancer's LEFT hand. Hands without a `hand`, or two with the same one, fall back to the screen side (the pre-R6 rule).
  */
-export function twoHandRoles<H extends { palm: Vec2 }>(hands: readonly H[], cfg: ClutchConfig): { modifier: H; steering: H } | null {
+export function twoHandRoles<H extends { palm: Vec2; hand?: Handedness }>(hands: readonly H[], cfg: ClutchConfig): { modifier: H; steering: H } | null {
   if (hands.length !== 2) return null;
   const [a, b] = hands;
+  if (a.hand && b.hand && a.hand !== b.hand) {
+    const modifierHand: Handedness = cfg.twoHand.modifierSide === "left" ? "Left" : "Right";
+    return a.hand === modifierHand ? { modifier: a, steering: b } : { modifier: b, steering: a };
+  }
   // Display x grows to the right as the user sees it.
   const leftMost = a.palm.x <= b.palm.x ? a : b;
   const rightMost = leftMost === a ? b : a;
@@ -130,9 +136,8 @@ function steerShapeOf(h: ClutchHand, cfg: ClutchConfig): SteerShape | null {
 }
 
 /**
- * Two-hand (the steering wheel): the hand on the modifier side of the screen is held up while the other hand
- * (the "steering" hand) is present. Hands are told apart by screen side, not by the model's left/right label
- * (which can flip). To START, the modifier shows an open palm, V, index or shaka (R4d; `STEER.startShapes`: not a fist,
+ * Two-hand (the steering wheel): the modifier hand (the dancer's left; R6: told by its thumb, see `twoHandRoles`) is held up
+ * while the other hand (the "steering" hand) is present. To START, both palm centres must be in the zone and the modifier shows an open palm, V, index or shaka (R4d; `STEER.startShapes`: not a fist,
  * which a loose hand at rest also looks like, and a fist pauses the music) and the steering hand's palm centre is in the box.
  * Once started, the grab holds while the modifier shows ANY steering shape (palm, fist, V, index: R4c, they pick
  * the mode and must not release the grab) and the steering hand may be anywhere. A modifier that shows none of
@@ -146,7 +151,11 @@ function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly Cl
   if (roles) {
     const shape = steerShapeOf(roles.modifier, cfg);
     present = shape !== null;
-    startOk = shape !== null && STEER.startShapes.includes(shape) && contains(boxes[roles.steering.hand], roles.steering.palm);
+    startOk =
+      shape !== null &&
+      STEER.startShapes.includes(shape) &&
+      contains(boxes[roles.steering.hand], roles.steering.palm) &&
+      contains(boxes[roles.modifier.hand], roles.modifier.palm);
   }
   if (!s.grabbed) {
     s.grabbed = startOk;

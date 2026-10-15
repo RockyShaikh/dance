@@ -26,6 +26,9 @@ export const PRESETS = {
   right: { x: 0.5, y: 0, w: 0.5, h: 1 },
   left: { x: 0, y: 0, w: 0.5, h: 1 },
   whole: { x: 0, y: 0, w: 1, h: 1 },
+  /** R6: the command zone: the full width of the mirrored view, its top quarter (the dancer's hands are up above the head). */
+  topQuarter: { x: 0, y: 0, w: 1, h: 0.25 },
+  topHalf: { x: 0, y: 0, w: 1, h: 0.5 },
 } as const satisfies Record<string, Box>;
 
 export type PresetName = keyof typeof PRESETS;
@@ -33,7 +36,10 @@ export type PresetName = keyof typeof PRESETS;
 /** Default: the right half of the frame as the user sees it. */
 export const DEFAULT_BOX: Box = { ...PRESETS.right };
 
-/** R4b: each hand has its own command box. Defaults: the right hand's is the right half, the left hand's the left half (as the user sees the mirrored picture). */
+/** R6: the ONE shared command zone, for both hands: the top quarter of the frame, full width. */
+export const DEFAULT_ZONE: Box = { ...PRESETS.topQuarter };
+
+/** R4b: each hand has its own command box (R6: the reducers still take one per hand; the app passes the shared zone for both). Defaults: the right hand's is the right half, the left hand's the left half (as the user sees the mirrored picture). */
 export const DEFAULT_BOXES = { Left: { ...PRESETS.left }, Right: { ...PRESETS.right } } as const satisfies Record<"Left" | "Right", Box>;
 
 /** Which part of the box the pointer is on: the inside (move), an edge, or a corner. */

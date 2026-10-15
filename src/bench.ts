@@ -26,7 +26,9 @@ export interface LogEntry {
 }
 
 export interface BenchHooks {
-  setBox(hand: Handedness, b: Box): void;
+  setZone(b: Box): void;
+  /** The zoom toggle changed (settings.zoom is already updated and saved). */
+  zoomChanged(): void;
 }
 
 const FFT_MS = 2 * 60 * 1000;
@@ -66,9 +68,20 @@ export class Bench {
     document.addEventListener("pointerdown", unlock);
     document.addEventListener("keydown", unlock);
 
-    for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-preset]")) {
-      btn.addEventListener("click", () => this.hooks.setBox(btn.dataset.hand as Handedness, { ...PRESETS[btn.dataset.preset as PresetName] }));
+    for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-zone]")) {
+      btn.addEventListener("click", () => {
+        this.hooks.setZone({ ...PRESETS[btn.dataset.zone as PresetName] });
+        btn.blur();
+      });
     }
+    const zoom = el<HTMLInputElement>("zoom-toggle");
+    zoom.checked = this.settings.zoom;
+    zoom.addEventListener("change", () => {
+      this.settings.zoom = zoom.checked;
+      save();
+      this.hooks.zoomChanged();
+      zoom.blur();
+    });
 
     this.dwell.min = String(COMMANDS.dwellMinMs / 1000);
     this.dwell.max = String(COMMANDS.dwellMaxMs / 1000);
@@ -117,7 +130,7 @@ export class Bench {
       this.log.length = 0;
       this.logList.textContent = "";
     });
-    this.showBoxes(this.settings.boxes);
+    this.showZone(this.settings.zone);
   }
 
   /** Updates a text node only when its text changed (called every frame). */
@@ -130,10 +143,14 @@ export class Bench {
     if (cls !== undefined) node.className = cls;
   }
 
-  showBoxes(boxes: Record<Handedness, Box>): void {
+  showZone(zone: Box): void {
     const pct = (v: number) => `${Math.round(v * 100)}%`;
-    const one = (name: string, b: Box) => `${name}: left ${pct(b.x)}, top ${pct(b.y)}, ${pct(b.w)} wide, ${pct(b.h)} tall`;
-    this.setText("box-readout", `${one("Right hand", boxes.Right)}. ${one("Left hand", boxes.Left)}. Drag a box on the video to move it; drag an edge or corner to resize.`);
+    this.setText("box-readout", `Zone: left ${pct(zone.x)}, top ${pct(zone.y)}, ${pct(zone.w)} wide, ${pct(zone.h)} tall. Drag it on the video to move it; drag an edge or corner to resize.`);
+  }
+
+  /** The zoom note next to the toggle: the live magnification, or why there is none. */
+  setZoomNote(text: string): void {
+    this.setText("zoom-note", text);
   }
 
   setPinchLive(ratios: readonly number[]): void {

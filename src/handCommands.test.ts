@@ -175,18 +175,33 @@ describe("stored boxes", () => {
   });
 });
 
-describe("loadSettings: the old single box becomes the right hand's box", () => {
-  it("migrates `box`, keeps a stored `boxes`, and defaults the left hand to the left half", async () => {
+describe("loadSettings: one shared zone (R6)", () => {
+  it("settings saved before R6 (per-hand boxes, or the older single box) get the default top quarter; sliders carry over", async () => {
     const { vi } = await import("vitest");
     const { loadSettings } = await import("./settings");
-    vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ box: { x: 0.6, y: 0.1, w: 0.3, h: 0.8 } }) });
+    vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ box: { x: 0.6, y: 0.1, w: 0.3, h: 0.8 }, dwellMs: 800 }) });
     const old = loadSettings();
-    expect(old.boxes.Right).toEqual({ x: 0.6, y: 0.1, w: 0.3, h: 0.8 });
-    expect(old.boxes.Left).toEqual(PRESETS.left);
+    expect(old.zone).toEqual(PRESETS.topQuarter);
+    expect(old.zoom).toBe(false);
+    expect(old.dwellMs).toBe(800);
     vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ boxes: { Left: { x: 0, y: 0, w: 0.4, h: 1 }, Right: { x: 0.5, y: 0, w: 0.5, h: 0.5 } } }) });
-    const fresh = loadSettings();
-    expect(fresh.boxes.Left.w).toBe(0.4);
-    expect(fresh.boxes.Right.h).toBe(0.5);
+    expect(loadSettings().zone).toEqual(PRESETS.topQuarter);
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps a stored zone and the zoom switch; a bad zone falls back and is forced into the frame", async () => {
+    const { vi } = await import("vitest");
+    const { loadSettings } = await import("./settings");
+    vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ zone: { x: 0.1, y: 0.05, w: 0.5, h: 0.3 }, zoom: true }) });
+    const s = loadSettings();
+    expect(s.zone).toEqual({ x: 0.1, y: 0.05, w: 0.5, h: 0.3 });
+    expect(s.zoom).toBe(true);
+    vi.stubGlobal("localStorage", { getItem: () => JSON.stringify({ zone: { x: 0.9, y: "no", w: 0.5 }, zoom: "yes" }) });
+    const bad = loadSettings();
+    expect(bad.zone.x + bad.zone.w).toBeLessThanOrEqual(1);
+    expect(bad.zoom).toBe(false);
     vi.unstubAllGlobals();
   });
 });
+
+

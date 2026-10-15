@@ -11,10 +11,12 @@
  * palm centre lands exactly at `palm` (display-normalized, as the user sees it).
  * The recognizer's shape label is simply taken from `shape`.
  */
+import type { GestureRecognizerResult } from "@mediapipe/tasks-vision";
 import { readHand, type HandReading } from "./analyze";
 import { LM, type Handedness, type Point3 } from "./hand";
 import { palmCentre } from "./handFeatures";
 import { makeHand } from "./test/fixtures";
+import { fromFullFrame, insideCrop, type CropLayout } from "./zoom";
 
 export interface SimHand {
   /** The label the Gesture Recognizer would give, e.g. "Open_Palm". */
@@ -35,6 +37,10 @@ export interface SimHand {
   curl?: number;
   /** Hand size scale (default 2). */
   scale?: number;
+  /** The label the model gives (default: `hand`). The app no longer trusts it: set a wrong one to see the thumb win. */
+  label?: Handedness;
+  /** Put the thumb's base on the hand's axis, so the thumb rule has nothing to go on (the one-hand default shows). */
+  noThumb?: boolean;
   /** Knob tilt: the hand's needle against straight up, degrees clockwise as the user sees the mirrored picture (default 0). */
   tilt?: number;
 }
@@ -73,7 +79,15 @@ const FINGERS: Record<string, string> = {
   None: "00000",
 };
 
-export function simReading(s: SimHand): HandReading {
+/** A hand laid out in the full frame: normalized landmarks (raw, un-mirrored) and what the model would say about it. */
+export interface SimRaw {
+  landmarks: { x: number; y: number; z: number; visibility: number }[];
+  label: string;
+  shape: string;
+  shapeScore: number;
+}
+
+export function simRaw(s: SimHand): SimRaw {
   const { width, height } = SIM_SIZE;
   const hand = s.hand ?? "Right";
   const bits = s.fingers ?? FINGERS[s.shape] ?? "00000";
@@ -108,6 +122,41 @@ export function simReading(s: SimHand): HandReading {
     pts[LM.THUMB_TIP] = { x: tip.x + s.pinch * palm, y: tip.y, z: tip.z };
   }
 
+  if (s.noThumb) {
+    const w = pts[LM.WRIST];
+    const m = pts[LM.MIDDLE_MCP];
+    pts[LM.THUMB_MCP] = { x: w.x + (m.x - w.x) * 0.4, y: w.y + (m.y - w.y) * 0.4, z: w.z };
+  }
+
   const landmarks = pts.map((p) => ({ x: p.x / width, y: p.y / height, z: p.z / width, visibility: 1 }));
-  return readHand(landmarks, hand, 0.95, s.shape, s.score ?? 0.9, width, height);
+  return { landmarks, label: s.label ?? hand, shape: s.shape, shapeScore: s.score ?? 0.9 };
+}
+
+/** One simulated hand as a reading with the MODEL's label (no thumb rule, no pairing): kept for tests and the console. */
+export function simReading(s: SimHand): HandReading {
+  const r = simRaw(s);
+  return readHand(r.landmarks, r.label, 0.95, r.shape, r.shapeScore, SIM_SIZE.width, SIM_SIZE.height);
+}
+
+/**
+ * A stand-in for the Gesture Recognizer in `?sim`: the scripted hands as the model would report them. With a crop (zoom
+ * on) the model only sees the crop: hands whose palm is outside it are not found at all, and the landmarks of the others
+ * are returned in the crop canvas's coordinates (exactly what the real model returns), so the app's mapping back to the
+ * full frame is exercised for real.
+ */
+export function simRecognize(raws: readonly SimRaw[], crop: CropLayout | null): GestureRecognizerResult {
+  const seen = crop ? raws.filter((r) => insideCrop(palmCentreRaw(r), crop)) : raws;
+  return {
+    landmarks: seen.map((r) => (crop ? r.landmarks.map((p) => ({ ...fromFullFrame(p, crop), visibility: 1 })) : r.landmarks)),
+    worldLandmarks: [],
+    handedness: seen.map((r) => [{ score: 0.95, index: 0, categoryName: r.label, displayName: r.label }]),
+    handednesses: seen.map((r) => [{ score: 0.95, index: 0, categoryName: r.label, displayName: r.label }]),
+    gestures: seen.map((r) => [{ score: r.shapeScore, index: 0, categoryName: r.shape, displayName: "" }]),
+  } as unknown as GestureRecognizerResult;
+}
+
+/** The palm centre in RAW frame coordinates (not mirrored). */
+function palmCentreRaw(r: SimRaw): { x: number; y: number } {
+  const d = palmCentre(r.landmarks);
+  return { x: 1 - d.x, y: d.y };
 }

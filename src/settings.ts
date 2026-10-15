@@ -1,11 +1,12 @@
-import { DEFAULT_BOXES, normalizeBox, type Box } from "./box";
-import type { Handedness } from "./hand";
+import { DEFAULT_ZONE, normalizeBox, type Box } from "./box";
 import { CLUTCH, COMMANDS } from "./config";
 
 /** The test bench's adjustable settings. Kept in the browser's localStorage so the box and sliders survive a reload. */
 export interface Settings {
-  /** R4b: each hand's own command box. */
-  boxes: Record<Handedness, Box>;
+  /** R6: the one command zone both hands use (display-normalized; default the top quarter). */
+  zone: Box;
+  /** R6: crop the camera frame to the zone (plus a margin) before the hand model sees it. */
+  zoom: boolean;
   /** Dwell before the first ring is full, in milliseconds. */
   dwellMs: number;
   /** Pinch grab threshold (palm sizes). */
@@ -18,7 +19,8 @@ const KEY = "dance.r2.settings";
 
 export function defaultSettings(): Settings {
   return {
-    boxes: { Left: { ...DEFAULT_BOXES.Left }, Right: { ...DEFAULT_BOXES.Right } },
+    zone: { ...DEFAULT_ZONE },
+    zoom: false,
     dwellMs: COMMANDS.dwellMs,
     pinchGrab: CLUTCH.pinch.grabRatio,
     stillness: COMMANDS.stillness.enabled,
@@ -40,13 +42,12 @@ export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return d;
-    // `box` is the R2/R3 single box: it becomes the right hand's box.
-    const j = JSON.parse(raw) as Partial<Omit<Settings, "boxes">> & { box?: Partial<Box>; boxes?: Partial<Record<Handedness, Partial<Box>>> };
+    // Migration (R6): the older per-hand boxes (`boxes`, and the R2/R3 single `box`) were halves of the frame and do not
+    // carry over to one shared zone: settings saved before R6 get the default top quarter (the sliders below still carry over).
+    const j = JSON.parse(raw) as Partial<Omit<Settings, "zone">> & { zone?: Partial<Box> };
     return {
-      boxes: {
-        Left: readBox(j.boxes?.Left, d.boxes.Left),
-        Right: readBox(j.boxes?.Right ?? j.box, d.boxes.Right),
-      },
+      zone: readBox(j.zone, d.zone),
+      zoom: typeof j.zoom === "boolean" ? j.zoom : d.zoom,
       dwellMs: num(j.dwellMs, COMMANDS.dwellMinMs, COMMANDS.dwellMaxMs, d.dwellMs),
       pinchGrab: num(j.pinchGrab, CLUTCH.pinch.sliderMin, CLUTCH.pinch.sliderMax, d.pinchGrab),
       stillness: typeof j.stillness === "boolean" ? j.stillness : d.stillness,
