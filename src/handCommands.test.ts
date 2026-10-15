@@ -47,6 +47,24 @@ describe("each fire says which hand made it", () => {
   });
 });
 
+describe("R5: the thumbs up is a right-hand command", () => {
+  it("the right thumbs up fires, with palm facing not required", () => {
+    const b = new Bench();
+    b.show(900, [obs("Right", "Thumb_Up", R, { palmFacing: false })]);
+    expect(b.fires).toMatchObject([{ hand: "Right", shape: "Thumb_Up" }]);
+  });
+
+  it("the LEFT thumbs up is not armed: it never fires and never cools the right hand down", () => {
+    const b = new Bench();
+    b.show(2000, [obs("Left", "Thumb_Up")]);
+    expect(b.fires).toEqual([]);
+    expect(b.views.Left.shape).toBeNull();
+    // a right-hand command right away is not blocked by a cooldown
+    b.show(900, [obs("Right", "Pointing_Up")]);
+    expect(b.fires).toMatchObject([{ hand: "Right", shape: "Pointing_Up" }]);
+  });
+});
+
 describe("per-hand boxes", () => {
   it("default: the right hand's box is the right half, the left hand's the left half", () => {
     expect(DEFAULT_BOXES.Right).toEqual(PRESETS.right);

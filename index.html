@@ -17,6 +17,8 @@
     <!-- R3 practice view: the giant status word and the clock, readable from across the room. -->
     <section id="practice-head" aria-live="polite">
       <div id="status-word" data-state="empty">LOAD A TRACK</div>
+      <!-- R5: the playback speed, huge, whenever it is not 1x. -->
+      <div id="speed-badge" hidden title="Playback speed (thumbs up with the right hand, or T, - and =)">2×</div>
       <div id="clock"><span id="t-elapsed">0:00.0</span><span id="t-total">/ 0:00</span></div>
     </section>
 
@@ -129,9 +131,15 @@
           <button type="button" data-nudge="0.1" title="0.1 s later (])">+0.1 <kbd>]</kbd></button>
           <button type="button" data-nudge="1" title="1 s later (Shift + ])">+1 s</button>
         </span>
+        <span class="group" aria-label="speed">
+          <span class="note">Speed</span>
+          <button type="button" id="btn-speed" title="Right-hand thumbs up: the whole track 2x, and back to 1x">2× / 1× <kbd>T</kbd></button>
+          <button type="button" id="btn-slower" title="The next slower preset (0.5, 0.75, 1, 1.5, 2)">slower <kbd>-</kbd></button>
+          <button type="button" id="btn-faster" title="The next faster preset">faster <kbd>=</kbd></button>
+        </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">Right hand: open palm = play/pause · index up = back to START (or 0:00) · V = clear. Left hand: V = set START (IN) · index up = set END (OUT) and loop · open palm = play/pause. <b>Steering wheel:</b> hold the LEFT open palm up with the right hand in its box, then tilt the right hand. While steering, the left hand picks what moves: open palm = playhead, music playing · fist = playhead, paused · V = loop START · index = loop END. Keys: Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">Right hand: open palm = play/pause · index up = back to START (or 0:00) · V = clear · thumbs up = speed 2× / 1× (keys T, - and =). Left hand: V = set START (IN) · index up = set END (OUT) and loop · open palm = play/pause. <b>Steering wheel:</b> hold the LEFT open palm up with the right hand in its box, then tilt the right hand. While steering, the left hand picks what moves: open palm = playhead, music playing · fist = playhead, paused · V = loop START · index = loop END. Keys: Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->

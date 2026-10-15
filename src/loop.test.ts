@@ -247,6 +247,12 @@ describe("markPlayhead (where a gesture mark lands)", () => {
   it("long after the last scrub: back to the offset", () => {
     expect(markPlayhead(stamp, { ...base, lastScrubT: 9_400 - LOOP.exactAfterScrubMs - 100 })).toBeCloseTo(39.4 - LOOP.markOffsetSec, 6);
   });
+  it("R5: at 2x the late-mark offset is twice as much music (the delay is real time), and still none while paused", () => {
+    expect(markPlayhead(stamp, { ...base, rate: 2 })).toBeCloseTo(39.4 - 2 * LOOP.markOffsetSec, 6);
+    expect(markPlayhead(stamp, { ...base, rate: 0.5 })).toBeCloseTo(39.4 - 0.5 * LOOP.markOffsetSec, 6);
+    expect(markPlayhead({ ...stamp, playing: false }, { ...base, rate: 2 })).toBe(39.4);
+    expect(markPlayhead(stamp, { ...base, rate: 1 })).toBeCloseTo(39.4 - LOOP.markOffsetSec, 6);
+  });
   it("with no ring stamp it uses the playhead now, and is clamped to the track", () => {
     expect(markPlayhead(null, { ...base, playing: false })).toBe(40);
     expect(markPlayhead(null, { ...base, current: 0.05 })).toBe(0);

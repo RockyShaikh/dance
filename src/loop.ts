@@ -155,6 +155,8 @@ export interface MarkNow {
   lastScrubT: number;
   t: number;
   duration: number;
+  /** R5: the playback speed. The mark is late by real time (reaction + recognition), which is `rate` times as much music. Default 1. */
+  rate?: number;
 }
 
 /**
@@ -167,5 +169,5 @@ export function markPlayhead(stamp: RingStamp | null, now: MarkNow): number {
   const touched = now.scrubbing || (stamp !== null && now.lastScrubT >= stamp.since);
   if (touched) return markTime(now.current, now.duration, 0);
   const offset = markOffsetFor({ playing: stamp?.playing ?? now.playing, scrubbing: false, msSinceScrub: now.t - now.lastScrubT });
-  return markTime(stamp?.playhead ?? now.current, now.duration, offset);
+  return markTime(stamp?.playhead ?? now.current, now.duration, offset * (now.rate ?? 1));
 }

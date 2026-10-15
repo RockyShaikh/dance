@@ -30,6 +30,7 @@ class FakeMedia implements MediaLike {
   readonly duration = DURATION;
   paused = true;
   ended = false;
+  playbackRate = 1;
   calls: string[] = [];
   play(): Promise<void> {
     this.paused = false;

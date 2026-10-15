@@ -93,6 +93,10 @@ export interface CommandConfig {
   /** Ignore a shape label the model is less sure of than this. */
   minShapeScore: number;
   requirePalmFacing: boolean;
+  /** Shapes that do not show the palm to the camera by nature (a thumbs up): the palm-facing rule does not apply to them. */
+  palmFacingExempt: readonly string[];
+  /** Shapes only the right hand commands with (the left hand is not armed for them, so it cannot cool the right hand down). */
+  rightOnlyShapes: readonly string[];
   stillness: {
     /** Optional extra filter, off by default: the palm centre must stay put during the hold. */
     enabled: boolean;
@@ -102,7 +106,8 @@ export interface CommandConfig {
 }
 
 export const COMMANDS: CommandConfig = {
-  shapes: ["Open_Palm", "Pointing_Up", "Victory"],
+  // R5: Thumb_Up (right hand) toggles the whole track between 2x and 1x.
+  shapes: ["Open_Palm", "Pointing_Up", "Victory", "Thumb_Up"],
   dwellMs: 600,
   dwellMinMs: 600,
   dwellMaxMs: 1200,
@@ -111,6 +116,8 @@ export const COMMANDS: CommandConfig = {
   dropoutGraceMs: 120,
   minShapeScore: 0.5,
   requirePalmFacing: true,
+  palmFacingExempt: ["Thumb_Up"],
+  rightOnlyShapes: ["Thumb_Up"],
   stillness: { enabled: false, maxMove: 0.06 },
 };
 
@@ -368,4 +375,16 @@ export const WAVE = {
   binSamples: 32,
   /** The zoomed steering view shows this many seconds either side of what is being steered. */
   zoomHalfWindowSec: 3,
+} as const;
+
+/**
+ * R5: playback speed. Not a knob (user: "just speeding up and slowing down the entire track and just letting it
+ * play"): the right-hand thumbs up toggles the whole track between 2x and 1x, and `-` / `=` step through presets.
+ */
+export const SPEED = {
+  /** The toggle's two speeds. */
+  fast: 2,
+  normal: 1,
+  /** `-` and `=` step through these. */
+  steps: [0.5, 0.75, 1, 1.5, 2],
 } as const;

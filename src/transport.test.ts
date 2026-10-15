@@ -34,6 +34,80 @@ describe("actionForFire (two hands)", () => {
   it("ignores other shapes", () => {
     expect(actionForFire({ hand: "Right", shape: "Closed_Fist" })).toBeNull();
   });
+  it("R5: the right thumbs up toggles the speed; the left thumbs up does nothing", () => {
+    expect(actionForFire({ hand: "Right", shape: "Thumb_Up" })).toBe("speedToggle");
+    expect(actionForFire({ hand: "Left", shape: "Thumb_Up" })).toBeNull();
+  });
+});
+
+describe("speed (R5)", () => {
+  it("toggle: 1x -> 2x -> 1x, applied to the player with the pitch kept, and the music just carries on", async () => {
+    const { player, media } = loadedPlayer();
+    await player.play();
+    media.advance(3);
+    expect(runTransport(player, NO_LOOP, "speedToggle")).toEqual({ label: "SPEED 2×", changed: true, loop: NO_LOOP });
+    expect(player.rate).toBe(2);
+    expect(media.preservesPitch).toBe(true);
+    expect(player.state).toBe("playing");
+    expect(player.currentTime).toBe(3); // no jump
+    media.advance(1);
+    expect(player.currentTime).toBe(5); // 1 s of real time = 2 s of music
+    expect(runTransport(player, NO_LOOP, "speedToggle").label).toBe("SPEED 1×");
+    expect(player.rate).toBe(1);
+    media.advance(1);
+    expect(player.currentTime).toBe(6);
+  });
+
+  it("works while paused too, and takes effect when the music starts", () => {
+    const { player, media } = loadedPlayer();
+    runTransport(player, NO_LOOP, "speedToggle");
+    expect(player.rate).toBe(2);
+    expect(player.state).not.toBe("playing");
+    void player.play();
+    media.advance(1);
+    expect(player.currentTime).toBe(2);
+  });
+
+  it("from a slowed speed the toggle goes back to normal; - and = step through the presets and stop at the ends", () => {
+    const { player } = loadedPlayer();
+    const seen: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      runTransport(player, NO_LOOP, "speedDown");
+      seen.push(player.rate);
+    }
+    expect(seen).toEqual([0.75, 0.5, 0.5, 0.5]);
+    const done = runTransport(player, NO_LOOP, "speedDown");
+    expect(done).toEqual({ label: "SPEED 0.5×", changed: false, loop: NO_LOOP });
+    expect(runTransport(player, NO_LOOP, "speedToggle").label).toBe("SPEED 1×");
+    const up: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      runTransport(player, NO_LOOP, "speedUp");
+      up.push(player.rate);
+    }
+    expect(up).toEqual([1.5, 2, 2, 2]);
+  });
+
+  it("a new track starts at 1x again", () => {
+    const { player, media } = loadedPlayer();
+    runTransport(player, NO_LOOP, "speedToggle");
+    player.loadFile(new Blob(["y"]));
+    media.finishLoading();
+    expect(player.rate).toBe(1);
+  });
+
+  it("with no track it does nothing", () => {
+    const media = new FakeMedia();
+    const player = new AudioPlayer(media, new FakeUrls());
+    expect(runTransport(player, NO_LOOP, "speedToggle").changed).toBe(false);
+    expect(player.rate).toBe(1);
+  });
+
+  it("the rate is clamped to what browsers keep audible, and a bad number is 1x", () => {
+    const { player } = loadedPlayer();
+    expect(player.setRate(100)).toBe(4);
+    expect(player.setRate(0)).toBe(0.25);
+    expect(player.setRate(NaN)).toBe(1);
+  });
 });
 
 describe("runTransport", () => {

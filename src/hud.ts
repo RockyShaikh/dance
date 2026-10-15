@@ -30,7 +30,7 @@ export interface HudInput {
 
 /** The dancer's right hand appears on the right of the mirrored picture, so its box is blue; the left hand's is purple. */
 const HAND_COLOR: Record<Handedness, string> = { Right: ACCENT, Left: "#c79bff" };
-const HAND_LABEL: Record<Handedness, string> = { Right: "RIGHT HAND: PLAY / RESTART / CLEAR", Left: "LEFT HAND: MARK START / END" };
+const HAND_LABEL: Record<Handedness, string> = { Right: "RIGHT HAND: PLAY / RESTART / CLEAR / SPEED", Left: "LEFT HAND: MARK START / END" };
 
 export function prettyShape(label: string): string {
   const s = label.replace(/_/g, " ");
