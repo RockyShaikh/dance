@@ -1,6 +1,8 @@
 import type { Vec2 } from "./box";
 import { KNOB } from "./config";
 import type { KnobView } from "./knob";
+import type { SteerMode, SteerShape } from "./steerMode";
+import { drawZoom, type ZoomDraw } from "./waveDraw";
 
 /**
  * R4b: what the HUD canvas shows while the knob is grabbed: a big GRABBED word, and a dial at the
@@ -23,7 +25,19 @@ export interface KnobDraw {
   deadZoneDeg: number;
   /** Under GRABBED: "no loop START yet", etc. Empty for none. */
   note: string;
+  /** R4c, two-hand wheel only: the left-hand modes, the one in force and the shape waiting out the debounce. */
+  modes?: { active: SteerMode; pending: SteerShape | null } | null;
+  /** R4c: the zoomed waveform around what is being steered. */
+  zoom?: ZoomDraw | null;
 }
+
+/** The four left-hand modes as chips: what each shape does, with the one in force lit. */
+const CHIPS: { mode: SteerMode; shape: SteerShape; text: string }[] = [
+  { mode: "play", shape: "palm", text: "PALM  play" },
+  { mode: "pause", shape: "fist", text: "FIST  pause" },
+  { mode: "start", shape: "v", text: "V  START" },
+  { mode: "end", shape: "index", text: "INDEX  END" },
+];
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
@@ -60,6 +74,30 @@ function spoke(ctx: CanvasRenderingContext2D, cx: number, cy: number, r0: number
   ctx.stroke();
 }
 
+function drawChips(ctx: CanvasRenderingContext2D, modes: { active: SteerMode; pending: SteerShape | null }, cx: number, y: number, s: number): void {
+  ctx.font = `800 ${24 * s}px system-ui, sans-serif`;
+  const pad = 14 * s;
+  const gap = 10 * s;
+  const widths = CHIPS.map((c) => ctx.measureText(c.text).width + pad * 2);
+  let x = cx - (widths.reduce((a, b) => a + b, 0) + gap * (CHIPS.length - 1)) / 2;
+  CHIPS.forEach((c, i) => {
+    const on = c.mode === modes.active;
+    const waiting = c.shape === modes.pending;
+    ctx.fillStyle = on ? ON : "rgba(0,0,0,0.6)";
+    ctx.beginPath();
+    ctx.roundRect(x, y - 28 * s, widths[i], 40 * s, 10 * s);
+    ctx.fill();
+    ctx.lineWidth = 3 * s;
+    ctx.strokeStyle = waiting ? LOOP : on ? ON : "rgba(255,255,255,0.35)";
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = on ? "#06150d" : "#fff";
+    ctx.fillText(c.text, x + widths[i] / 2, y);
+    x += widths[i] + gap;
+  });
+}
+
 export function drawKnob(ctx: CanvasRenderingContext2D, k: KnobDraw): void {
   const { width: W, height: H } = ctx.canvas;
   const s = W / 1280;
@@ -70,6 +108,8 @@ export function drawKnob(ctx: CanvasRenderingContext2D, k: KnobDraw): void {
   label(ctx, view.frozen ? "HOLDING: hand lost" : "GRABBED", W / 2, 118 * s, 76 * s, accent);
   label(ctx, k.title, W / 2, 152 * s, 24 * s, "#fff");
   if (k.note) label(ctx, k.note, W / 2, 184 * s, 24 * s, WARN);
+  if (k.modes) drawChips(ctx, k.modes, W / 2, 222 * s, s);
+  if (k.zoom) drawZoom(ctx, k.zoom);
 
   // The dial at the hand.
   const cx = k.palm.x * W;

@@ -3,6 +3,8 @@ import { LOOP } from "./config";
 import { NO_LOOP, type LoopState } from "./loop";
 import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
+import { drawOverview } from "./waveDraw";
+import { decodePeaks, type Peaks } from "./waveform";
 import { formatTime, playheadFraction, runNudge, runTransport, statusWord, type TransportAction, type TransportOptions, type TransportResult } from "./transport";
 
 /**
@@ -63,6 +65,13 @@ export class Practice {
   /** Which time the huge readout shows: the loop START, END or the playhead. */
   private readoutTarget: "start" | "end" | "playhead" = "start";
   private readonly nudgeTitle = el("nudge-title");
+  // --- R4c: the waveform ---
+  private readonly waveEl = el<HTMLCanvasElement>("tl-wave");
+  private peaks: Peaks | null = null;
+  /** Bumped by each load, so a slow decode of an earlier track can't land on a newer one. */
+  private waveToken = 0;
+  /** The zoomed steering view is up (it carries the time itself), so the big readout stays down. */
+  private zoomActive = false;
   /** The END-to-START wrap. Public so the dev console can read its measurements. */
   readonly wrapper: LoopWrapper;
 
@@ -111,6 +120,7 @@ export class Practice {
       this.updateHint();
     };
     window.addEventListener("resize", () => this.last.delete("loop")); // flag labels are placed by measuring
+    new ResizeObserver(() => drawOverview(this.waveEl, this.peaks)).observe(this.timeline);
     document.addEventListener("pointerdown", clear);
     document.addEventListener("keydown", clear);
 
@@ -190,6 +200,16 @@ export class Practice {
     this.nudgeNote = note;
   }
 
+  /** The decoded peaks of the loaded track (null until decoded, or if it can't be decoded). */
+  get waveform(): Peaks | null {
+    return this.peaks;
+  }
+
+  /** R4c: the zoomed steering view is showing; it carries the target's time itself, so the big readout steps aside. */
+  setZoomActive(active: boolean): void {
+    this.zoomActive = active;
+  }
+
   /** The loop as the view knows it (for the dev console and tests). */
   get loopState(): LoopState {
     return this.loop;
@@ -204,6 +224,23 @@ export class Practice {
     this.showHint(null);
     this.player.loadFile(file);
     this.render();
+    void this.decodeWaveform(file);
+  }
+
+  /** Decodes the track once for the waveform; the player has its own copy and plays regardless. */
+  private async decodeWaveform(file: File): Promise<void> {
+    const token = ++this.waveToken;
+    this.peaks = null;
+    drawOverview(this.waveEl, null);
+    let peaks: Peaks | null = null;
+    try {
+      peaks = await decodePeaks(await file.arrayBuffer());
+    } catch {
+      peaks = null;
+    }
+    if (token !== this.waveToken) return;
+    this.peaks = peaks;
+    drawOverview(this.waveEl, peaks);
   }
 
   private needsClick(): boolean {
@@ -363,7 +400,7 @@ export class Practice {
     }
 
     const shown = this.readoutTarget === "playhead" ? this.player.currentTime : this.loop[this.readoutTarget];
-    const nudging = shown !== null && performance.now() < this.nudgeUntil;
+    const nudging = shown !== null && performance.now() < this.nudgeUntil && !this.zoomActive;
     if (this.nudgeEl.hidden === nudging) this.nudgeEl.hidden = !nudging;
     if (nudging) {
       this.setText("nudge-title", this.nudgeTitle, this.readoutTarget === "playhead" ? "PLAYHEAD" : this.readoutTarget === "start" ? "LOOP START" : "LOOP END");

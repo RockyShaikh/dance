@@ -4,16 +4,16 @@ import { formatResults, markVariant, recordNudge, setNote, variantKey, type Knob
 import { defaultKnobSettings, loadKnobSettings, sanitizeKnobSettings } from "./knobSettings";
 
 describe("knob settings", () => {
-  it("default to claw + tilt + joystick, moving the playhead", () => {
+  it("default to the two-hand steering wheel + tilt + relative, moving the playhead (R4c)", () => {
     const d = defaultKnobSettings();
-    expect([d.clutch, d.motion, d.mapping, d.target]).toEqual(["claw", "tilt", "joystick", "playhead"]);
+    expect([d.clutch, d.motion, d.mapping, d.target]).toEqual(["twoHand", "tilt", "relative", "playhead"]);
     expect(d.gain).toBe(KNOB.defaults.gain);
   });
 
   it("sanitize: bad values fall back, numbers are clamped, circling forces jog", () => {
     const s = sanitizeKnobSettings({ clutch: "foot", motion: "circling", mapping: "absolute", target: "volume", gain: 99, deadZoneDeg: -4, invert: "yes" });
     expect(s.target).toBe("playhead");
-    expect(s.clutch).toBe("claw");
+    expect(s.clutch).toBe(defaultKnobSettings().clutch);
     expect(s.motion).toBe("circling");
     expect(s.mapping).toBe("jog");
     expect(s.gain).toBe(KNOB.gainMax);

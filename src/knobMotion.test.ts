@@ -65,10 +65,11 @@ describe("tilt motion", () => {
 
   it("smooths a jittery reading", () => {
     let s = startMotion("tilt", at(0, 0));
-    s = stepMotion(s, at(33, 10), KNOB); // smoothing 0.5
-    expect(s.angle).toBeCloseTo(5);
+    const a = KNOB.tilt.smoothing;
+    s = stepMotion(s, at(33, 10), KNOB);
+    expect(s.angle).toBeCloseTo(10 * a);
     s = stepMotion(s, at(66, 10), KNOB);
-    expect(s.angle).toBeCloseTo(7.5);
+    expect(s.angle).toBeCloseTo(10 * (1 - (1 - a) ** 2));
   });
 
   it("does not jump when the needle crosses +-180 (a 2-degree step stays 2 degrees)", () => {

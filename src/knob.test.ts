@@ -32,6 +32,11 @@ class Rig {
   tilt(deg: number, ms: number): void {
     this.show(ms, pose(deg));
   }
+  /** A steady turn from one angle to another over `ms`. */
+  turn(fromDeg: number, toDeg: number, ms: number): void {
+    const frames = Math.max(1, Math.round(ms / FRAME));
+    for (let i = 1; i <= frames; i++) this.show(FRAME, pose(fromDeg + ((toDeg - fromDeg) * i) / frames));
+  }
 }
 
 const pose = (tiltDeg: number, palm = { x: 0.75, y: 0.5 }): KnobSample => ({ tiltDeg, palm });
@@ -183,16 +188,41 @@ describe("relative + ratchet through the pipeline", () => {
   it("re-grabbing continues from where the START was: no jump at the re-grab, turns add up", () => {
     const r = new Rig({ ...CHOICE, mapping: "relative" });
     r.tilt(0, 100);
-    r.tilt(60, 400);
+    r.turn(0, 60, 3000); // a slow turn (20 deg/s): 1x
     const first = r.loop.start as number;
-    expect(first).toBeGreaterThan(22); // moved by about 60 degrees x 0.06 s
+    expect(first - 20).toBeGreaterThan(1.5); // about 60 degrees x 0.03 s
+    expect(first - 20).toBeLessThan(1.9);
     r.show(300, pose(0), false); // released; the hand turns back with an open hand
     expect(r.loop.start).toBe(first);
     r.tilt(0, 100); // re-grab at 0 degrees
     expect(r.loop.start).toBe(first);
-    r.tilt(60, 400);
-    expect((r.loop.start as number) - first).toBeGreaterThan(2);
+    r.turn(0, 60, 3000);
+    expect((r.loop.start as number) - first).toBeGreaterThan(1.5);
     expect(r.events.started).toBe(2);
+  });
+
+  it("stopping the turn stops the value within a frame or two (the wheel's snappiness)", () => {
+    const r = new Rig({ ...CHOICE, mapping: "relative", target: "start" });
+    r.tilt(0, 100);
+    r.turn(0, 40, 400); // a quick turn: boosted
+    r.show(FRAME * 4, pose(40)); // the smoothing's tail runs out
+    const stopped = r.loop.start;
+    r.show(2000, pose(40)); // held at 40 degrees: nothing more, ever
+    expect(r.loop.start).toBe(stopped);
+  });
+
+  it("the target can change under a held grab (the left hand's shape); the turn carries on from the same pose", () => {
+    const r = new Rig({ ...CHOICE, mapping: "relative", target: "playhead" });
+    r.tilt(0, 100);
+    r.turn(0, 20, 1000);
+    const start = r.state;
+    // The next frames move the START instead: same pose, new target, and no jump.
+    const a = stepKnob(start, { t: r.t + FRAME, grabbed: true, hand: pose(20), aspect: 16 / 9, target: "start" }, r.choice, KNOB, CLUTCH.releaseGraceMs);
+    expect(a.out.target).toBe("start");
+    expect(a.out.applySec).toBe(0);
+    const b = stepKnob(a.state, { t: r.t + 2 * FRAME, grabbed: true, hand: pose(26), aspect: 16 / 9, target: "start" }, r.choice, KNOB, CLUTCH.releaseGraceMs);
+    expect(b.out.target).toBe("start");
+    expect(b.out.applySec).toBeGreaterThan(0);
   });
 });
 

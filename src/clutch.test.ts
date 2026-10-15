@@ -214,6 +214,54 @@ describe("two-hand modifier", () => {
   });
 });
 
+describe("two-hand steering wheel (R4c): the modifier's shape picks the mode and must not let go", () => {
+  const left = (steerShape: ClutchHand["steerShape"], shape = "None"): ClutchHand => ch("Left", { shape, steerShape, palm: { x: 0.2, y: 0.5 } });
+  const right = (x = 0.75): ClutchHand => ch("Right", { palm: { x, y: 0.5 } });
+
+  it("a grab starts only with the palm: V, index or fist held up do not grab", () => {
+    for (const shape of ["v", "index", "fist", null] as const) {
+      const b = new Bench();
+      b.show(400, [left(shape), right()]);
+      expect(b.view.twoHand).toBe(false);
+    }
+    const b = new Bench();
+    b.show(100, [left("palm"), right()]);
+    expect(b.view.twoHand).toBe(true);
+  });
+
+  it("once grabbed it holds through palm, fist, V and index, in any order, with no release", () => {
+    const b = new Bench();
+    b.show(100, [left("palm"), right()]);
+    for (const shape of ["fist", "palm", "v", "index", "fist", "v", "palm"] as const) {
+      b.show(600, [left(shape), right()]);
+      expect(b.view.twoHand).toBe(true);
+    }
+  });
+
+  it("a shape that is none of the four is not 'present': it lets go after the grace period, not before", () => {
+    const b = new Bench();
+    b.show(100, [left("palm"), right()]);
+    b.show(CLUTCH.releaseGraceMs - 100, [left(null), right()]);
+    expect(b.view.twoHand).toBe(true);
+    b.show(300, [left(null), right()]);
+    expect(b.view.twoHand).toBe(false);
+  });
+
+  it("a short gap (a fist the model dropped for a few frames) is bridged by the grace", () => {
+    const b = new Bench();
+    b.show(100, [left("palm"), right()]);
+    b.show(150, [left(null), right()]);
+    b.show(200, [left("fist"), right()]);
+    expect(b.view.twoHand).toBe(true);
+  });
+
+  it("without steerShape, only an open palm label counts (R4b callers)", () => {
+    const b = new Bench();
+    b.show(100, [ch("Left", { shape: "Open_Palm", palm: { x: 0.2, y: 0.5 } }), right()]);
+    expect(b.view.twoHand).toBe(true);
+  });
+});
+
 describe("independence", () => {
   it("pinch, claw and two-hand report separately", () => {
     const b = new Bench();

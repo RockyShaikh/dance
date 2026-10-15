@@ -48,6 +48,8 @@ export interface KnobInput {
   hand: KnobSample | null;
   /** Frame width / height. */
   aspect: number;
+  /** R4c: what this frame's movement is for, overriding the chosen target (the left hand's shape picks it). */
+  target?: KnobTarget;
 }
 
 export interface KnobState {
@@ -118,11 +120,13 @@ function viewOf(s: KnobState, frozen: boolean): KnobView {
 }
 
 export function stepKnob(prev: KnobState, input: KnobInput, choice: KnobChoice, cfg: KnobConfig, releaseGraceMs: number): { state: KnobState; out: KnobOutput } {
-  const r = stepKnobCore(prev, input, choice, cfg, releaseGraceMs);
-  return { state: r.state, out: { ...r.out, target: choice.target } };
+  // R4c: the two-hand wheel picks the target live (the left hand's shape); the motion and mapping carry on across a switch.
+  const target = input.target ?? choice.target;
+  const r = stepKnobCore(prev, input, choice, target, cfg, releaseGraceMs);
+  return { state: r.state, out: { ...r.out, target } };
 }
 
-function stepKnobCore(prev: KnobState, input: KnobInput, choice: KnobChoice, cfg: KnobConfig, releaseGraceMs: number): { state: KnobState; out: Omit<KnobOutput, "target"> } {
+function stepKnobCore(prev: KnobState, input: KnobInput, choice: KnobChoice, target: KnobTarget, cfg: KnobConfig, releaseGraceMs: number): { state: KnobState; out: Omit<KnobOutput, "target"> } {
   const { t, hand } = input;
   const mi = hand ? { t, tiltDeg: hand.tiltDeg, palm: hand.palm, aspect: input.aspect } : null;
 
@@ -165,7 +169,7 @@ function stepKnobCore(prev: KnobState, input: KnobInput, choice: KnobChoice, cfg
     motion = stepMotion(motion, mi, cfg);
     const r = stepMapping(mapping, motion.angle, dtSec, choice, cfg);
     mapping = r.state;
-    const { apply, rest } = takeWholeMs(prev.pendingSec + r.deltaSec * cfg.targetScale[choice.target]);
+    const { apply, rest } = takeWholeMs(prev.pendingSec + r.deltaSec * cfg.targetScale[target]);
     const state: KnobState = { grabbed: true, lastSeen: t, lastT: t, dropped: false, motion, mapping, pendingSec: rest };
     return { state, out: { grabbed: true, started: false, released: false, applySec: apply, view: viewOf(state, false) } };
   }

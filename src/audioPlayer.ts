@@ -23,6 +23,8 @@ export interface MediaLike {
   readonly duration: number;
   readonly paused: boolean;
   readonly ended: boolean;
+  /** True while a seek has not finished (R4c: the scrub does not stack seeks on one that is still in flight). */
+  readonly seeking?: boolean;
   play(): Promise<void>;
   pause(): void;
   load(): void;
@@ -154,6 +156,11 @@ export class AudioPlayer {
     }
     void this.play();
     return "play";
+  }
+
+  /** A seek is still in flight (the element has not finished moving to the last requested time). */
+  get seeking(): boolean {
+    return this.media.seeking === true;
   }
 
   /** Moves the playhead (clamped to the track) without changing playing or paused. Returns where it landed. */
