@@ -2,7 +2,40 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R6 (one command zone across the top quarter, zoom, hands told by the thumb) on top of R5b (speed rework: hold the right thumbs up for 2x, left shaka + wheel for 0.025 steps), on top of R4d (hands rework: left hand never plays, right fist plays / pauses, circling wheel), R5 (speed), R4c (the steering wheel: left-hand modes, snappy steering, waveform), R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+**This is checkpoint R7 (camera picker, iPhone as the camera through Continuity Camera, latency measurement) on top of R6 (one command zone across the top quarter, zoom, hands told by the thumb) on top of R5b (speed rework: hold the right thumbs up for 2x, left shaka + wheel for 0.025 steps), on top of R4d (hands rework: left hand never plays, right fist plays / pauses, circling wheel), R5 (speed), R4c (the steering wheel: left-hand modes, snappy steering, waveform), R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+
+## R7: camera picker, iPhone as the camera, latency test
+
+**The picker** is in the top bar: a list of the video inputs (the built-in FaceTime HD camera, an iPhone on Continuity Camera, any USB webcam), a picture shape (16:9 = 1920x1080, 4:3 = 1920x1440) and a readout of what the camera **really delivers**, e.g. `1920×1080 · 29.8 fps (camera says 30)`: the pixels come from the video itself, the fps is measured here (frames the page is given per second), and an amber `asked 1920×1080` appears when the camera could only give less.
+
+- **Remembered** by deviceId, with the label as a fallback (Chrome may change ids).
+- **Hot-plug**: when the iPhone is picked up or put back on its mount the list updates. If your saved camera is missing the app uses the default camera and says so in amber ("... is not connected: using the default camera. It switches back when it appears."); the saved choice is kept and it **switches back by itself** when the camera reappears.
+- Switching swaps the stream inside the same video element, so the hand model, the zone, the zoom crop and the music carry on (everything reads the frame size every frame).
+- The camera is asked for 1080p (`APP.camera.requested` in `src/config.ts`: the one value to change; 2K / 4K are a wishlist thread, and Continuity Camera never delivers 4K anyway). Hand tracking runs on the whole delivered frame, as before.
+- **Turn off macOS Reactions** (menu bar > Video > Reactions) for every camera, the built-in one included: V and thumbs-up make macOS draw balloons and effects into the camera picture itself, and the hand model sees them. The picker shows a one-line reminder.
+
+### Set up Continuity Camera (iPhone as the webcam)
+
+1. **Needs:** iPhone XR or newer (iOS 16+), a Mac on macOS 13+ (14+ for the zoom control below), the same Apple Account on both with two-factor on, Wi-Fi and Bluetooth on. It also works with a **USB cable** (tap Trust on the phone the first time). Center Stage needs an iPhone 11 or newer.
+2. **Mount** the phone in **landscape** on a tripod or stand, rear cameras facing the practice space, screen locked. Plugging it in keeps it charged and cool during a long session.
+3. **Wake it once:** open FaceTime, choose the iPhone under Video in the menu bar, then quit FaceTime. (Older Chrome builds only list the iPhone after this and a Chrome restart.)
+4. **Open the app** in Chrome and pick the iPhone in the camera list at the top (Chrome may ask for camera permission again for the new device). Check the readout: it should say 1920×1080.
+5. **Framing** (macOS 14+): menu bar > Video. With **Center Stage off** there is a manual zoom (0.5x to 3x) and you can drag the preview to pan; zooming in about 2x narrows the field of view so a hand far from the camera gets more pixels. With Center Stage on, choose the **Main** lens (the default is Ultra Wide; its crops run out of real pixels sooner). Zooming is macOS's: this app does not control it. Remember the command zone is screen-fixed: re-framing moves it relative to you.
+6. **Reactions off** (same Video menu).
+7. The 4:3 option asks for 1920×1440 (Continuity Camera offers it): more height, so more room above a raised hand.
+
+### The latency test (Bench panel: "Camera latency")
+
+**Frame timing** (always on while the bench is open; rolling over the last ~150 frames): the hand model's time per frame; **camera to app** (frame captured, by the camera's own timestamp `captureTime`, to the page getting it); **captured to processed** (the same, up to the end of our work on that frame); **captured to command fired** (a command's ring completed and the music was told). A camera that gives no timestamp shows n/a for the last three.
+
+**Glass-to-glass test** (the total delay from a screen to the app, per camera):
+
+1. Open the Bench (key `B`). The camera must **see the laptop screen**: aim it at the screen, or at a mirror that shows it. (The iPhone on its mount works if you turn it toward the screen for the test; the built-in camera needs a mirror or a second device's reflection.)
+2. Click **Start latency test**. The whole screen goes black, then white (so it learns how bright each looks to the camera; if it cannot tell the two apart it stops and says the camera does not see the screen), then flashes white 20 times at random gaps. Each flash is timed from the moment the white is drawn to the moment a bright-enough frame reaches the app. `Esc` cancels.
+3. The result line shows **median and p95** (plus min, max, misses, and, where the browser gives a capture time, the split "flash to captured" + "captured to app"), labelled with the camera and the delivered size. **Copy results** puts all lines on the clipboard.
+4. **Compare**: run it for the FaceTime HD camera, the iPhone wireless, and the iPhone over USB (same room, same lighting, Reactions off, the app in the same state). The numbers include the screen's own delay (a few ms, the same for every camera) and the app's event loop: the hand model runs on the same thread, so a busy frame delays the callback, which is the latency the app really has. The absolute numbers matter less than the differences.
+
+Dev: `node scripts/e2e/camera.mjs` (Chrome's fake cameras: picker, switch, persist, hot-plug fallback and switch-back, the 4:3 readout; and the latency test end to end against a canvas camera that shows the page's marker; dev server on `:5189`).
 
 ## R6: one command zone, zoom, hands from the thumb
 
@@ -120,7 +153,7 @@ Other scripts:
 
 | Command | What it does |
 |---|---|
-| `npm test` | Unit tests (Vitest): finger states, palm facing, command box, command state machine, clutch shapes, audio player, gesture-to-audio wiring |
+| `npm test` | Unit tests (Vitest): camera selection and hot-plug fallback, latency stats, the flash test, finger states, palm facing, command box, command state machine, clutch shapes, audio player, gesture-to-audio wiring |
 | `npm run typecheck` | TypeScript check |
 | `npm run build` | Type-check, then production build into `dist/` |
 

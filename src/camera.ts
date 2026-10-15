@@ -1,3 +1,4 @@
+import { videoConstraints, type CameraDevice, type PictureShape } from "./cameraSelect";
 import { APP } from "./config";
 
 /** Something the recognizer can read frames from, plus its pixel size. */
@@ -31,22 +32,20 @@ function explainCameraError(err: unknown): string {
   }
 }
 
-/** Opens the webcam in the given <video> element. */
-export async function openCamera(video: HTMLVideoElement): Promise<FrameSource> {
+/** The requested picture for a shape (APP.camera holds the one value to change). */
+export function requestedSize(shape: PictureShape = "16:9"): { width: number; height: number } {
+  return shape === "4:3" ? APP.camera.requested43 : APP.camera.requested;
+}
+
+/** Opens a camera (the browser's default when `deviceId` is null) in the given <video> element, at the requested picture size. */
+export async function openCamera(video: HTMLVideoElement, deviceId: string | null = null, shape: PictureShape = "16:9"): Promise<FrameSource> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new CameraError("This browser has no camera API (or the page is not on localhost/HTTPS). Use Chrome at http://localhost.");
   }
+  stopCamera(video);
   let stream: MediaStream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        facingMode: "user",
-        width: { ideal: APP.camera.width },
-        height: { ideal: APP.camera.height },
-        frameRate: { ideal: APP.camera.frameRate },
-      },
-    });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints(deviceId, requestedSize(shape), APP.camera.frameRate) });
   } catch (err) {
     throw new CameraError(explainCameraError(err));
   }
@@ -54,6 +53,48 @@ export async function openCamera(video: HTMLVideoElement): Promise<FrameSource> 
   await video.play();
   await waitForSize(video);
   return videoSource(video);
+}
+
+/** Stops the camera currently in the element (so the next one can be opened, and the camera light goes off). */
+export function stopCamera(video: HTMLVideoElement): void {
+  const s = video.srcObject;
+  if (s instanceof MediaStream) for (const t of s.getTracks()) t.stop();
+  video.srcObject = null;
+}
+
+/** The camera video inputs. Labels are empty until the page has had camera permission. */
+export async function listCameras(): Promise<CameraDevice[]> {
+  try {
+    const all = await navigator.mediaDevices.enumerateDevices();
+    return all.filter((d) => d.kind === "videoinput").map((d) => ({ deviceId: d.deviceId, label: d.label }));
+  } catch {
+    return [];
+  }
+}
+
+/** What the open camera really delivers, per its track and per the <video> (the pixels that arrive). */
+export interface Delivered {
+  deviceId: string | null;
+  label: string;
+  width: number;
+  height: number;
+  /** The track's nominal frame rate (null if the browser does not say). */
+  frameRate: number | null;
+  live: boolean;
+}
+
+export function deliveredOf(video: HTMLVideoElement): Delivered | null {
+  const track = video.srcObject instanceof MediaStream ? video.srcObject.getVideoTracks()[0] : undefined;
+  if (!track) return null;
+  const st = track.getSettings();
+  return {
+    deviceId: st.deviceId ?? null,
+    label: track.label,
+    width: video.videoWidth || st.width || 0,
+    height: video.videoHeight || st.height || 0,
+    frameRate: st.frameRate ?? null,
+    live: track.readyState === "live",
+  };
 }
 
 /** Dev-only test mode: play a video file in a loop instead of the camera (?video=URL). */

@@ -10,6 +10,19 @@
     <header id="bar">
       <div id="fps" aria-label="frames per second"><span id="fps-value">--</span><span class="unit"> fps</span></div>
       <div id="status" role="status">Starting…</div>
+      <!-- R7: the camera picker and what the camera really delivers. -->
+      <div id="cam">
+        <div id="cam-row">
+          <select id="cam-select" aria-label="camera" title="Which camera to use (remembered). An iPhone on Continuity Camera shows up here when it is near."></select>
+          <select id="cam-shape" aria-label="picture shape" title="Picture shape asked of the camera: 16:9 is 1920x1080; 4:3 is 1920x1440 (Continuity Camera offers it: more height)">
+            <option value="16:9">16:9</option>
+            <option value="4:3">4:3</option>
+          </select>
+          <span id="cam-readout" title="What the camera delivers: pixels, and frames per second measured here">--</span>
+        </div>
+        <div id="cam-note" class="warn" hidden></div>
+        <div id="cam-reactions">Turn off Reactions (macOS menu bar &gt; Video): V and thumbs-up make Apple draw effects into the picture.</div>
+      </div>
       <div id="fft-status" aria-live="polite"></div>
       <button type="button" id="bench-toggle" aria-pressed="false" title="Show the R2 gesture test bench (key B)">Bench</button>
     </header>
@@ -67,6 +80,24 @@
           <div class="kv"><span class="k">Pinch</span><span id="clutch-pinch" class="pill">released</span></div>
           <div class="kv"><span class="k">Claw</span><span id="clutch-claw" class="pill">released</span></div>
           <div class="kv"><span class="k">Two-hand</span><span id="clutch-two" class="pill">released</span></div>
+        </section>
+
+        <section class="panel" id="latency-panel">
+          <h2>Camera latency</h2>
+          <div class="kv sm"><span class="k">Hand model, per frame</span><span id="lt-model" class="v">-</span></div>
+          <div class="kv sm"><span class="k">Camera to app (captured to our code)</span><span id="lt-c2a" class="v">-</span></div>
+          <div class="kv sm"><span class="k">Captured to processed</span><span id="lt-done" class="v">-</span></div>
+          <div class="kv sm"><span class="k">Captured to command fired</span><span id="lt-fire" class="v">-</span></div>
+          <div class="note">Rolling, the last ~150 frames (fires: the last 50). Captured = the camera's own timestamp (Chrome's captureTime).</div>
+
+          <h2>Glass-to-glass test</h2>
+          <div class="note">The camera must see this screen (aim it at the screen, or at a mirror that shows it). The whole screen flashes black and white 20 times; this times how long until a bright frame reaches the app. Compare FaceTime HD, iPhone wireless and iPhone over USB. The flash and the camera's frame timing are included, and so is the screen's own delay (a few ms, the same for every camera).</div>
+          <div class="presets">
+            <button type="button" id="lt-start">Start latency test</button>
+            <button type="button" id="lt-copy" class="small">Copy results</button>
+          </div>
+          <div id="lt-status" class="note"></div>
+          <ol id="lt-history"></ol>
         </section>
 
         <section class="panel" id="controls">
@@ -176,6 +207,8 @@
         </div>
       </details>
     </footer>
+    <!-- R7: the latency test's marker: black or white over everything. -->
+    <div id="flash-marker" data-m="black" hidden><div id="flash-info"></div></div>
     <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />
     <div id="drop-overlay" hidden>Drop an MP3 or WAV to load it</div>
 
