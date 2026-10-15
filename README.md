@@ -2,7 +2,65 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R7 (camera picker, iPhone as the camera through Continuity Camera, latency measurement) on top of R6 (one command zone across the top quarter, zoom, hands told by the thumb) on top of R5b (speed rework: hold the right thumbs up for 2x, left shaka + wheel for 0.025 steps), on top of R4d (hands rework: left hand never plays, right fist plays / pauses, circling wheel), R5 (speed), R4c (the steering wheel: left-hand modes, snappy steering, waveform), R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+**This is checkpoint R8 (auto-track: the crop follows you, from body pose) on top of R7 (camera picker, iPhone as the camera through Continuity Camera, latency measurement) on top of R6 (one command zone across the top quarter, zoom, hands told by the thumb) on top of R5b (speed rework: hold the right thumbs up for 2x, left shaka + wheel for 0.025 steps), on top of R4d (hands rework: left hand never plays, right fist plays / pauses, circling wheel), R5 (speed), R4c (the steering wheel: left-hand modes, snappy steering, waveform), R4b (the two-hand scheme and the knob), R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4c" and "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+
+## R8: Auto-track ("our own Center Stage", from body pose)
+
+The hand model's palm detector sees its whole input shrunk to 192 px, so a hand 3-5 m away is a few pixels there and is not found. Body pose survives that shrink, so **the Pose Landmarker says where you are, the picture is cropped there, and only the crop goes to the Gesture Recognizer** (landmarks are mapped back to the full frame, so the zone, the commands, steering, speed and the thumb rule are unchanged).
+
+**Auto-track** selector (below the zone buttons, persisted): 
+- **Off**: as before (the whole picture, or the R6 Zoom crop).
+- **Person**: one crop around head + shoulders + both hands (wrist, index, pinky, thumb points), with room above the head for raised hands (`TRACK.person`); square where the frame allows (extra width is free: the crop is drawn 1:1 into a square, never stretched). The crop is smoothed (`src/cropSmooth.ts`): exponential smoothing (250 ms), a **dead-band with hysteresis** (it moves only when the target is more than 6% of the crop away or 12% off in size, and stops within 2% / 4%), and a **maximum zoom rate** (zoom in at most about x1.8 per second, out about x5 per second). With no pose it holds the crop for 1 s, then relaxes to the full frame.
+- **Wrists**: one square crop per visible wrist, centred just past the wrist toward the knuckles, sized from the forearm, shoulder width or the pose's hand length (largest of the three, `TRACK.wrist`), each with its **own recognizer instance** (`numHands: 1`, VIDEO mode). Why: the recognizer's VIDEO-mode tracking remembers where the hand was in the *previous input's* coordinates, so one instance alternating between a left and a right crop would feed it the wrong picture every frame; one instance per wrist always sees its own crop, which the dead-band keeps still most of the time, so a tracked hand skips the palm detector. `?wrists=image` makes them IMAGE mode (palm detector on every call, no state) for comparison. A crop's hand is the one nearest its pose wrist (a crop can hold both hands). With no wrist in view the whole frame goes to the main recognizer.
+- The **Zoom** checkbox is ignored (and disabled) while Auto-track is on. The zone stays in full-frame coordinates.
+- **Left / right** still comes from the thumb (R6); pose's left/right is not used.
+
+**Measurement readout** (tick **Measure**, or any mode other than Off; shown under the controls) and on the picture: the thin pose skeleton, the wrists (L / R dots) and each crop's outline with its magnification (pink dashes). The readout has: pose ms, gesture ms (crop draw + recognizer calls), fps; the crop size and **magnification** (frame long side / crop's long side: what the detector's input is scaled by); per hand the **palm width** (index to pinky knuckle) in frame pixels and at the detector (`px * 192 / canvas side`), plus the hand length (wrist to middle fingertip), which is steadier when the palm turns edge-on; and the **detection counters** (frames with a hand / frames, and frames with a hand while pose sees a wrist; Reset counters button). With the mode Off, Measure also runs the pose model (only for those counters), so Off's fps then includes pose.
+
+**Model:** `public/models/pose_landmarker_lite.task` (5.8 MB, float16), source <https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task>, SHA-256 `59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a`. Model card: <https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker>. Google publishes MediaPipe and its Tasks models under the Apache License 2.0; check the model card if you plan to redistribute.
+
+**Dev:** `node scripts/e2e/track.mjs` (dev server on :5190) runs Off / Person / Wrists on stills and clips in `public/test/` with the real models in headless Chrome and prints one row per run (see the table in the R8 report: headless times are relative; detection and pixels are real). `node scripts/e2e/autotrack.mjs` (selector, persistence, Zoom ignored, readout, no-person fall-back). `window.__dance.tracker` / `setTrackMode(mode)` in dev. Test pictures: a full-body clip or photo of one person in the git-ignored `public/test/` (for example a CC-licensed dance clip from Wikimedia Commons); shrink it onto a dark canvas with `ffmpeg -vf "scale=iw*0.6:-2,pad=1920:1080:(ow-iw)/2:(oh-ih)/2+80:color=0x141a3a"` to simulate distance.
+
+**Test it at 2-5 m:** pick a mode, tick **Measure**, stand at the mark, hold a shape (V, index up, fist) for ~10 s, note "hand while pose sees a wrist" and the chord readout, press **Reset counters**, change mode, repeat. Compare at 2, 3, 4, 5 m. Watch that the pink crop follows you without jitter, that a raised hand stays inside it, and that it relaxes to the full frame about 1 s after you leave.
+
+**Measured (2026-10-13, headless Chrome with the real models; no real camera, no real distance).** Test media: a solo dancer from a CC BY-SA 4.0 Wikimedia Commons clip (1080p, "Bhojan behar, a part of Sattriya dance", user Das Kamal), in the git-ignored `public/test/`. Distance is simulated by shrinking the picture onto a dark 1920x1080 canvas (x0.6, x0.4) or enlarging a crop of it (near); the label is the hand length in frame pixels and the camera distance that gives that many pixels at 1080p / 70 degrees (`260 / d` px, from the R7 pixel maths). The dancer's hands are dance mudras, not our shapes: **this measures whether a hand is found, not whether the right gesture is read.** "Hand found" = a frame with at least one hand; the pose saw a wrist in 100% of frames in every row. "Hand len @det" = wrist to middle fingertip as the palm detector sees it (its input is the model canvas scaled to 192 px). Stills loop at the display rate (fps is then set by compute); clips play at 30 fps (fps is capped by the clip). Times are headless Chrome's, so relative.
+
+| Picture (hand length, ≈ distance) | Mode | Hand found | Hand len @det (px) | Mag | Pose ms | Gesture ms | fps |
+|---|---|---|---|---|---|---|---|
+| still, near (147 px, ≈1.8 m) | Off | 100% | 14.8 | x1.0 | - | 21.7 | 44.5 |
+| | Person | 100% | 18.9 | x1.29 | 15.1 | 16.4 | 31.0 |
+| | Wrists | 100% | 88.0 | x5.8 | 15.2 | 18.3 | 29.2 |
+| still, arms out (≈60 px, ≈4 m) | Off | **0%** | - | x1.0 | - | 14.6 | 59.9 |
+| | Person | **100%** (2 hands) | 17.1 | x2.77 | 15.3 | 15.2 | 32.0 |
+| | Wrists (video) | 100% (1 of 2 hands) | 70.9 | x12.3 | 15.4 | 23.2 | 25.4 |
+| | Wrists (image) | 100% (1 of 2 hands) | 48.3 | x12.3 | 15.5 | 30.4 | 21.4 |
+| still, x0.6 (37 px, ≈7 m) | Off | **0%** | - | x1.0 | - | 14.3 | 59.8 |
+| | Person | **100%** (2 hands) | 16.8 | x4.59 | 14.9 | 15.5 | 31.9 |
+| | Wrists (video) | 100% (2 hands) | 46.6 | x12.7 | 14.8 | 15.8 | 31.8 |
+| still, x0.4 (23 px, ≈11 m) | Off | **0%** | - | x1.0 | - | 14.5 | 60.0 |
+| | Person | **100%** (2 hands) | 11.7 | x5.08 | 14.6 | 15.3 | 32.5 |
+| | Wrists (video) | 100% (2 hands) | 29.4 | x12.7 | 14.5 | 15.7 | 32.0 |
+| clip, near (≈120-185 px, ≈1.5-2 m) | Off | 59% | 11.6 | x1.0 | - | 22.8 | 30.0 |
+| | Person | 66% | 35.2 | x2.08 | 10.5 | 20.6 | 29.0 |
+| | Wrists (video) | 55% | 86.7 | x6.4 | 10.0 | 25.9 | 27.0 |
+| clip (≈60-115 px, ≈3-4 m) | Off | 36% | 10.7 | x1.0 | - | 23.2 | 30.1 |
+| | Person | 77% | 27.2 | x4.31 | 10.3 | 20.6 | 29.0 |
+| | Wrists (video) | 70% | 73.1 | x12.3 | 10.1 | 23.1 | 28.1 |
+| | Wrists (image) | 57% | 75.4 | x12.3 | 10.0 | 29.8 | 24.1 |
+| clip, x0.6 (≈7 m) | Off | 6% | 8.8 | x1.0 | - | 17.9 | 30.1 |
+| | Person | 85% | 23.8 | x5.04 | 10.1 | 20.0 | 29.9 |
+| | Wrists (video) | 83% | 48.2 | x12.7 | 10.1 | 21.4 | 29.0 |
+| | Wrists (image) | 73% | 52.6 | x12.7 | 10.0 | 30.9 | 23.8 |
+| clip, x0.4 (≈11 m) | Off | **0%** | - | x1.0 | - | 15.1 | 30.4 |
+| | Person | 62% | 14.8 | x5.08 | 10.3 | 20.5 | 29.3 |
+| | Wrists (video) | 84% | 40.3 | x12.7 | 9.9 | 20.9 | 29.4 |
+| | Wrists (image) | 62% | 38.0 | x12.7 | 10.0 | 29.8 | 24.2 |
+| a picture with nobody in it | Person / Wrists | no hand; falls back to the whole frame ("no pose: full frame") | | x1.0 | 15.1 | 12.8 | 34.8 |
+
+What it says:
+- **Person finds hands where Off finds none** (still at about 4 m or more: 100% vs 0%; clip at 3-4 m: 77% vs 36%; 7 m: 85% vs 6%) and is **not worse than Off close up** (still 100% vs 100%; near clip 66% vs 59%). **It is the default** for that reason. Its cost is the pose model: about 10-15 ms per frame here and one more model on the GPU, so latency goes up a little; switch to Off if the live feel or battery suffers.
+- **Wrists** gives the detector the biggest hands (hand length 29-88 px at the detector vs 12-35 for Person) and is best on the farthest clip (84% vs 62%), but it found only one of the two hands on the 4 m still, was worse than Person on the near and 3-4 m clips, and costs 2-5 ms more. **Wrists in VIDEO mode beats IMAGE mode** on both detection (clips: 70 / 83 / 84% vs 57 / 73 / 62%) and cost (21-23 ms vs 30 ms, about 28 vs 24 fps), so VIDEO per-wrist instances are what ships (`?wrists=image` stays for comparison).
+- The pose's wrist points jump by up to ~100 px on the enlarged, soft "near" still, and the crop dead-band holds the crop still for most of that; on a moving dancer the crop changes on 60-85% of frames (the HUD counts it). No ground truth for the clips: a miss can be a hand hidden or blurred by the dance, not only a detector miss.
 
 ## R7: camera picker, iPhone as the camera, latency test
 

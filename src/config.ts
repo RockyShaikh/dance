@@ -441,3 +441,65 @@ export const ZOOM = {
   /** The crop is never smaller than this fraction of the frame in either direction (a tiny zone would be all noise). */
   minCropFrac: 0.12,
 };
+
+/** R8: how a smoothed crop follows its target (src/cropSmooth.ts). Crop sizes are fractions of the crop's own size, zoom speeds are in ln units per second (0.7 = about x2 per second). */
+export interface SmoothConfig {
+  /** Time constant of the exponential smoothing, ms (the crop closes about 63% of the gap to its target in this time). */
+  tauMs: number;
+  /** Dead-band on the crop's centre, as a fraction of the crop's own size: the crop starts moving when its target is further off than `enterPos`, and stops once it is within `exitPos` (hysteresis, so it does not jitter). */
+  enterPos: number;
+  exitPos: number;
+  /** The same for the crop's size, as |ln(target size / size)|. */
+  enterSize: number;
+  exitSize: number;
+  /** Fastest zoom-in (crop shrinking) and zoom-out (crop growing), ln units per second. Zooming out is allowed to be faster: losing a hand is worse than a late zoom-in. */
+  zoomInPerSec: number;
+  zoomOutPerSec: number;
+  /** After the target has been missing this long: person mode relaxes the crop back to the full frame, wrist mode drops the crop. Shorter gaps just hold the last crop. */
+  lostAfterMs: number;
+}
+
+/**
+ * R8: auto-track, "our own Center Stage". The Gesture Recognizer's palm detector sees its whole input shrunk to 192 px, so a
+ * far hand vanishes; body pose survives that shrink, so pose says where to crop. All crops are drawn 1:1 into a square (zoom.ts).
+ */
+export const TRACK = {
+  /** Pose Landmarker (lite), vendored under public/ (see README for source). */
+  poseModelPath: "models/pose_landmarker_lite.task",
+  /** A pose point counts as seen above this visibility. */
+  minVisibility: 0.4,
+  /** Person mode: one crop around head + shoulders + both hands. */
+  person: {
+    /** Room above the head for raised hands, in shoulder widths (a raised hand's fingers reach about 1 shoulder width over the head). */
+    headRoomUnits: 1.0,
+    /** Extra room around a hand point (the fingers reach past the pose's knuckle points), in shoulder widths. */
+    handReachUnits: 0.35,
+    /** Margin around the box, as a fraction of its long side. */
+    marginFrac: 0.1,
+    /** The crop's long side is never smaller than this fraction of the frame height. */
+    minSideFrac: 0.35,
+    smooth: { tauMs: 250, enterPos: 0.06, exitPos: 0.02, enterSize: 0.12, exitSize: 0.04, zoomInPerSec: 0.6, zoomOutPerSec: 1.6, lostAfterMs: 1000 } as SmoothConfig,
+  },
+  /** Wrists mode: one square crop per visible wrist. */
+  wrist: {
+    /** Pose wrist visibility needed to make a crop for that hand. */
+    minVisibility: 0.3,
+    /** Crop side from the forearm length (wrist to elbow), from the shoulder width, and from the pose's own wrist-to-knuckles distance: the largest of the three, then clamped. */
+    forearmFactor: 1.5,
+    shoulderFactor: 0.8,
+    handFactor: 3.2,
+    /** The crop's centre sits this many wrist-to-knuckle lengths along from the wrist (1 = at the knuckles). */
+    handShift: 1.15,
+    /** Side clamp and the side used when neither forearm nor shoulders are visible, as fractions of the frame height. */
+    minSideFrac: 0.14,
+    maxSideFrac: 0.6,
+    fallbackSideFrac: 0.25,
+    smooth: { tauMs: 120, enterPos: 0.12, exitPos: 0.04, enterSize: 0.22, exitSize: 0.08, zoomInPerSec: 0.8, zoomOutPerSec: 1.6, lostAfterMs: 300 } as SmoothConfig,
+    /** A hand the model finds in a wrist crop counts for that wrist only within this distance of it, as a fraction of the crop's side. */
+    maxAnchorFrac: 0.7,
+    /** Two crops finding the same hand (hands together): wrists closer than this fraction of the frame height are one hand. */
+    dupFrac: 0.03,
+  },
+  /** The palm detector's input side, pixels (for the "palm px at the detector" readout). */
+  detectorInput: 192,
+};

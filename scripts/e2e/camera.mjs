@@ -63,7 +63,7 @@ check("status says running", s.status.startsWith("Running"), s.status);
 check("nothing is saved until the user picks", s.pref === null);
 
 console.log("\n== 2. Switching: the loop, the zone and the zoom crop carry on");
-await ev(`const z = document.getElementById('zoom-toggle'); z.checked = true; z.dispatchEvent(new Event('change'))`);
+await ev(`const tm = document.getElementById('track-mode'); tm.value = 'off'; tm.dispatchEvent(new Event('change')); const z = document.getElementById('zoom-toggle'); z.checked = true; z.dispatchEvent(new Event('change'))`);
 await sleep(800);
 const before = s;
 const target = s.options.find((o) => o.id !== s.active);
