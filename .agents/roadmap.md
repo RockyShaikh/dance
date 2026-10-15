@@ -9,14 +9,16 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 | R1 | Bring-up: camera, hand skeleton, pseudo-chords | done |
 | R2 | Recognize the gesture set (command box, dwell, tap/hold, clutch shapes) | done |
 | R3 | Audio + webcam together; play/pause/restart by gesture | done |
-| R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | **active** (R4a → R4b) |
-| R4c | Steering-wheel loop editing: left-hand shape picks the mode (palm = play+scrub, fist = pause+scrub, V = START, index = END), snappy steering, waveform | **active** |
-| R5 | Speed: toggle the whole track to 2× and back (redefined 2026-10-12) | built (`r5-speed`), tested: "pretty good" |
-| R4d | Hands rework: left hand = mode anchor only (fist = pause while closed); right fist = play/pause; circling wheel default | tested |
-| R5b | Speed rework: hold right thumbs up = 2× while held; left shaka + right wheel = fine speed in 0.05 steps, heard live | tested; finer wheel amended (0311d40) |
-| R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | built (`r6-zone`), awaiting test. Full-width zoom gives ×1.00 |
-| R7 | iPhone camera via Continuity Camera in the current app: camera picker, 1080p, latency measurement (body-first auto-tracking deferred) | built (`r7-camera`), awaiting test (Chrome doesn't list the iPhone yet; troubleshooting given) |
-| R8 | Auto-tracking from body pose: Off / Person auto-frame / Wrist crops, with a measurement HUD | built (`r8-autotrack`), awaiting live test |
+| R4 | Loops marked as the music plays + knob nudge for the loop start; restart to loop start | done (merged 2026-10-15) |
+| R4c | Steering-wheel loop editing: left-hand shape picks the mode (palm = play+scrub, fist = pause+scrub, V = START, index = END), snappy steering, waveform | done (merged 2026-10-15) |
+| R5 | Speed: toggle the whole track to 2× and back (redefined 2026-10-12) | done (merged 2026-10-15) |
+| R4d | Hands rework: left hand = mode anchor only (fist = pause while closed); right fist = play/pause; circling wheel default | done (merged 2026-10-15) |
+| R5b | Speed rework: hold right thumbs up = 2× while held; left shaka + right wheel = fine speed in 0.05 steps, heard live | done (merged 2026-10-15) |
+| R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | done (merged 2026-10-15) |
+| R7 | iPhone camera via Continuity Camera in the current app: camera picker, 1080p, latency measurement (body-first auto-tracking deferred) | done (merged 2026-10-15) |
+| R8 | Auto-tracking from body pose: Off / Person auto-frame / Wrist crops, with a measurement HUD | done (merged 2026-10-15) |
+| R9 | Video: local MP4, big video + small camera view, mirror toggle, slow-mo/loops/restart/scrub reused; spoken feedback; claw vaulted from the UI | **active** (`r9-video`) |
+| EXP | Push-and-swipe measurement prototype (zone as trackpad, scrub bar at the hand, push detection) | **active** (`exp-push-swipe`) |
 
 ---
 

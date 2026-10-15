@@ -59,6 +59,11 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-13 — Fist is inconsistent: the label doesn't hold for the 0.6 s ring, and fist joint detection is poor. The user's idea: define a fist as **the four fingers down, ignoring the thumb**, and debounce it. Also considered: going back to an open palm on the other hand.
 - 2026-10-13 — **R7 = the iPhone as the camera via Continuity Camera, built into the current app.** Use case: iPhone fixed on a tripod, laptop free to fiddle with. A USB cable is fine if it lowers latency. Start at **1080p**, running CV on that image; 2K/4K stays a thread. Measure streaming latency. Future: the iPhone runs all the CV and the laptop only receives commands, kept as a companion option. Test the "direct on Mac" path first.
 - 2026-10-13 — **R8 = our own auto-tracking from body pose** (user: "try to get the center-stage thingy working (or whatever mechanism you want it to be) to auto-track based on body pose"). Modes: Off / Person (pose auto-frame crop) / Wrists (a crop per hand), with a measurement HUD to compare at 2–5 m.
+- 2026-10-15 — R8 live test: Person and Wrists cropping both helped. **The fist is unusable at distance**; peace sign and index work well; **movement (sliding, marking) works well.** Direction: movement-based controls: a slider/swipe (zone as the "touch surface", re-swipe to go further), a scrub bar drawn at the hand, **push forward = pause / set mark** (depth from palm-size growth plus forearm foreshortening), and **levels** relative to the body. Prototype and measure first, on experiment branch `exp-push-swipe`.
+- 2026-10-15 — **R9 = video:** local MP4 with slow-mo, loops, restart and scrub reused. YouTube → MP4 pipeline later.
+- 2026-10-15 — **Spoken feedback with real words** ("loop in", "loop out", "no loop set"…) rather than chimes, to start.
+- 2026-10-15 — **Vault the claw grab:** hide it from the UI but keep the code, to show dancers later.
+- 2026-10-15 — Merged the chain R4a → R8 into main (`--no-ff`, tags `r4a-done` … `r8-done`), on the user's word.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->

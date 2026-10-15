@@ -172,3 +172,8 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Shape reading at distance still unproven** (R8 measured detection, not gesture correctness) | unresolved | If it fails: more pixels (4K / phone camera) |
 | **Pose wrist jitter (~100 px) makes Wrists-mode crops change on 60–90% of frames** | bug? | Tune crop size/dead-band on live video |
 | **e2e: zone.mjs crash left headless Chrome holding the shared profile, breaking later suites** | bug? | Close Chrome on failure; separate profiles per suite |
+| **Everything should be doable with both hands up**: setting IN/OUT currently needs the other hand down, and play/pause moved to the main hand | unresolved | User 2026-10-15: "more to be desired" |
+| **"No loop set" behaviour** (what should happen and be said) | unresolved | User 2026-10-15: wants to discuss |
+| **YouTube → MP4 pipeline** (yt-dlp) | later | After R9; YouTube ToS matters before testers |
+| **Readability at distance**: full-screen video, big overlays, TV/second screen | later | User 2026-10-15 |
+| **Claw grab vaulted** (code kept, hidden from UI) | later | Bring back to show dancers |
