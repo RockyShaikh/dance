@@ -37,6 +37,8 @@
 
     <main id="layout">
       <section id="stage">
+        <!-- R9: the practice video (also the player for audio files: no picture, hidden). Large when a video is loaded; the camera frame then shrinks to the corner. -->
+        <div id="media-wrap"><video id="media" playsinline preload="auto"></video></div>
         <div id="frame">
           <!-- The video and skeleton canvas are mirrored together, so landmarks stay aligned. -->
           <div id="mirror">
@@ -46,13 +48,14 @@
           </div>
           <!-- The HUD (command box, rings) is NOT mirrored: it is drawn and mouse-edited in display coordinates. -->
           <canvas id="hud" aria-label="command zone: drag to move, drag an edge or corner to resize"></canvas>
-          <div id="banner" hidden aria-live="assertive"><div id="banner-main"></div><div id="banner-sub"></div></div>
-          <!-- R4a: shown huge for a moment after each nudge of the loop START. -->
-          <div id="nudge-readout" hidden aria-live="polite">
-            <div id="nudge-title">LOOP START</div>
-            <div id="nudge-time">0:00.0</div>
-            <div id="nudge-sub"></div>
-          </div>
+        </div>
+        <!-- The banner and the nudge readout sit over the whole stage (not the camera frame), so they stay big when the camera shrinks to the corner. -->
+        <div id="banner" hidden aria-live="assertive"><div id="banner-main"></div><div id="banner-sub"></div></div>
+        <!-- R4a: shown huge for a moment after each nudge of the loop START. -->
+        <div id="nudge-readout" hidden aria-live="polite">
+          <div id="nudge-title">LOOP START</div>
+          <div id="nudge-time">0:00.0</div>
+          <div id="nudge-sub"></div>
         </div>
         <div id="message" hidden></div>
       </section>
@@ -140,7 +143,7 @@
         <div id="tl-head"></div>
       </div>
       <div id="controls-row">
-        <button type="button" id="btn-open">Open track…</button>
+        <button type="button" id="btn-open">Open track or video…</button>
         <button type="button" id="btn-toggle"><span id="btn-toggle-label">Play</span> <kbd>Space</kbd></button>
         <button type="button" id="btn-restart" title="Index tap: the loop START if one is set, else 0:00">Restart <kbd>R</kbd></button>
         <button type="button" id="btn-top" title="0:00, even with a loop set">From top <kbd>Home</kbd></button>
@@ -164,6 +167,11 @@
           <button type="button" id="btn-faster" title="0.025 faster (up to 1.0x)">faster <kbd>=</kbd></button>
           <button type="button" id="btn-speed-reset" title="Back to 1x">1× <kbd>0</kbd></button>
         </span>
+        <span class="group" id="video-group" aria-label="video">
+          <span class="note">Video</span>
+          <label class="check" title="Flip the practice video left-to-right, like a mirror (the usual way to learn a routine). Only the picture is flipped, never the sound or the file."><input id="mirror-video" type="checkbox" /> Mirror video (like a mirror)</label>
+          <label class="check" id="show-camera-label" title="Show the small camera view (skeleton, command zone) in the corner while a video is loaded"><input id="show-camera" type="checkbox" /> Camera view</label>
+        </span>
         <span class="group" aria-label="command zone and zoom">
           <span class="note">Zone</span>
           <button type="button" data-zone="topQuarter" title="The command zone: the top quarter of the picture">Top quarter</button>
@@ -176,7 +184,7 @@
           <label class="check" title="Show the measurement overlay (model times, magnification, palm pixels, detection rate). With Auto-track off this also runs the pose model, only for the counters, which costs time."><input id="track-measure" type="checkbox" /> Measure</label>
           <span id="track-note" class="note"></span>
         </span>
-        <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
+        <span id="track-name" class="note">No track loaded. Drop an MP3, WAV or MP4 anywhere, or click Open track or video.</span>
       </div>
       <!-- R8: the auto-track measurement readout: shown when Auto-track is on or Measure is ticked. -->
       <div id="track-hud" hidden><pre id="track-hud-body"></pre><button type="button" id="track-reset" class="small">Reset counters</button></div>
@@ -217,8 +225,8 @@
     </footer>
     <!-- R7: the latency test's marker: black or white over everything. -->
     <div id="flash-marker" data-m="black" hidden><div id="flash-info"></div></div>
-    <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />
-    <div id="drop-overlay" hidden>Drop an MP3 or WAV to load it</div>
+    <input id="file-input" type="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.m4v,.mov,.webm" hidden />
+    <div id="drop-overlay" hidden>Drop an MP3, WAV or MP4 to load it</div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

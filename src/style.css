@@ -983,3 +983,118 @@ kbd {
   font: 12px/1.35 ui-monospace, Menlo, monospace;
   white-space: pre-wrap;
 }
+
+/* --- R9: the practice video ------------------------------------------------------------------ */
+
+/* The one media element plays every file. Its picture shows only for a video (body.has-video); audio files keep the camera large. */
+#media-wrap {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+body.has-video #media-wrap {
+  display: flex;
+}
+
+#media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The mirror choice flips the picture only (CSS), so the sound and the file stay as they are. */
+#media[data-mirrored="1"] {
+  transform: scaleX(-1);
+}
+
+/* With a video loaded the camera view shrinks to a corner (picture-in-picture); the hand skeleton, zone and HUD scale with it. */
+body.has-video #frame {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  width: min(28%, 420px);
+  max-width: none;
+  max-height: none;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55), 0 6px 24px rgba(0, 0, 0, 0.7);
+}
+
+body.has-video #video,
+body.has-video #still {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+}
+
+/* Camera view off: the picture stays in the layout (so the hand model keeps its frames) but is not shown or clickable. */
+body.has-video.camera-hidden #frame {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.has-video #banner,
+body.has-video #nudge-readout {
+  z-index: 4;
+}
+
+/* The big readout keeps clear of the corner camera. */
+body.has-video:not(.camera-hidden) #nudge-readout {
+  right: calc(min(28%, 420px) + 28px);
+}
+
+/* The camera-view switch only means something while a video is loaded. */
+body:not(.has-video) #show-camera-label {
+  display: none;
+}
+
+/*
+ * Video mode gives the picture the room: the status word and clock float over the top of the video (big, outlined, so they read
+ * on any picture and from across the room), and the long cheat sheet is tucked away (it is back with the Bench).
+ */
+body.has-video #practice-head {
+  position: relative;
+  z-index: 6;
+  height: 0; /* takes no room: its content overflows onto the stage below */
+  align-items: flex-start;
+  padding-top: 6px;
+  pointer-events: none;
+}
+
+body.has-video #status-word,
+body.has-video #clock,
+body.has-video #speed-badge {
+  text-shadow: 0 0 8px #000, 0 0 22px rgba(0, 0, 0, 0.9);
+  -webkit-text-stroke: 5px rgba(0, 0, 0, 0.7);
+  paint-order: stroke fill;
+}
+
+body.has-video #status-word {
+  font-size: clamp(48px, 10vh, 120px);
+}
+
+body.has-video #t-elapsed {
+  font-size: clamp(40px, 9vh, 104px);
+}
+
+body.has-video #t-total {
+  font-size: clamp(22px, 4.5vh, 52px);
+}
+
+body.has-video #banner {
+  top: 22%;
+}
+
+body.has-video:not(.bench-open) #cheat {
+  display: none;
+}
+
+/* The corner camera never takes more than about half the stage's height. */
+body.has-video #frame {
+  width: min(28%, 420px, calc(var(--stage-h, 400px) * 0.5 * 16 / 9));
+}

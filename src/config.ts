@@ -393,6 +393,11 @@ export const WAVE = {
   binSamples: 32,
   /** The zoomed steering view shows this many seconds either side of what is being steered. */
   zoomHalfWindowSec: 3,
+  /**
+   * R9: a file bigger than this is not decoded for the waveform (decoding reads the whole file into memory; a long video would
+   * stall the page and eat RAM). The timeline then simply shows no waveform; playback is unaffected.
+   */
+  maxDecodeBytes: 250 * 1024 * 1024,
 } as const;
 
 /**

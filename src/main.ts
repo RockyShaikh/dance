@@ -18,6 +18,7 @@ import type { Handedness } from "./hand";
 import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
 import { drawHud } from "./hud";
 import { createBrowserPlayer } from "./audioPlayer";
+import { bindMediaView } from "./mediaView";
 import { Practice } from "./practice";
 import { loadRecognizer } from "./recognizer";
 import { TrackPanel } from "./trackPanel";
@@ -107,7 +108,9 @@ let lastScrubT = -Infinity;
 
 // --- R3: the music ------------------------------------------------------------------
 
-const player = createBrowserPlayer();
+// R9: one media element plays every file; a video file's picture shows on the stage, an audio file's does not.
+const player = createBrowserPlayer(document.getElementById("media") as HTMLVideoElement);
+bindMediaView(settings, () => saveSettings(settings));
 const practice = new Practice(player, {
   announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON"),
 });

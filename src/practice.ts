@@ -1,5 +1,6 @@
 import type { AudioPlayer } from "./audioPlayer";
-import { LOOP } from "./config";
+import { LOOP, WAVE } from "./config";
+import { looksLikeMedia } from "./mediaFile";
 import { NO_LOOP, type LoopState } from "./loop";
 import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
@@ -22,11 +23,6 @@ function el<T extends HTMLElement = HTMLElement>(id: string): T {
 }
 
 const CLICK_HINT = "Click anywhere on the page once, so Chrome lets your hand start the music.";
-const AUDIO_EXT = /\.(mp3|wav|m4a|aac|ogg|oga|opus|flac)$/i;
-
-export function looksLikeAudio(file: { name: string; type: string }): boolean {
-  return file.type.startsWith("audio/") || AUDIO_EXT.test(file.name);
-}
 
 export interface PracticeHooks {
   /** A key or button ran an action: show the banner (gestures are shown by the bench). */
@@ -113,6 +109,8 @@ export class Practice {
       if (e.type === "loaded") {
         this.needClick = this.needsClick();
         this.loop = NO_LOOP; // a new track: the old marks mean nothing
+        // R9: a file with a picture puts the video on the stage and the camera in the corner; sound only keeps the camera large.
+        document.body.classList.toggle("has-video", player.hasVideo);
       }
       if (e.type === "blocked") this.needClick = true;
       if (e.type === "error") this.message = e.message;
@@ -222,8 +220,8 @@ export class Practice {
   }
 
   load(file: File): void {
-    if (!looksLikeAudio(file)) {
-      this.showHint(`"${file.name}" is not an audio file. Try an MP3 or WAV.`);
+    if (!looksLikeMedia(file)) {
+      this.showHint(`"${file.name}" is not an audio or video file. Try an MP3, WAV or MP4.`);
       return;
     }
     this.fileName = file.name;
@@ -239,6 +237,9 @@ export class Practice {
     this.peaks = null;
     drawOverview(this.waveEl, null);
     let peaks: Peaks | null = null;
+    // R9: a video's waveform comes from its own audio track (the browser decodes the container). Too big, or no decodable
+    // audio: no waveform, and nothing else changes.
+    if (file.size > WAVE.maxDecodeBytes) return;
     try {
       peaks = await decodePeaks(await file.arrayBuffer());
     } catch {
@@ -384,7 +385,7 @@ export class Practice {
       this.setText("rate", this.rateEl, formatRate(p.rate));
       this.rateEl.dataset.slow = p.rate < 1 ? "1" : "0";
     }
-    this.setText("track", this.trackName, state === "empty" && !this.fileName ? "No track loaded. Drop an MP3 or WAV anywhere, or click Open track." : this.fileName);
+    this.setText("track", this.trackName, state === "empty" && !this.fileName ? "No track loaded. Drop an MP3, WAV or MP4 anywhere, or click Open track or video." : this.fileName);
     const f = playheadFraction(p.currentTime, p.duration);
     const pct = `${(f * 100).toFixed(2)}%`;
     if (this.last.get("pct") !== pct) {

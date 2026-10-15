@@ -115,3 +115,37 @@ export class FakeUrls implements UrlFactory {
     this.revoked.push(u);
   }
 }
+
+/**
+ * A stand-in for HTMLVideoElement (R9): the same clock, seeking and speed rules as the audio fake, plus a picture size that
+ * is known once the metadata is in. The player must drive it exactly as it drives audio.
+ */
+export class FakeVideoMedia extends FakeMedia {
+  private _vw = 0;
+  private _vh = 0;
+  get videoWidth() {
+    return this._vw;
+  }
+  get videoHeight() {
+    return this._vh;
+  }
+  set src(v: string) {
+    super.src = v;
+    this._vw = 0;
+    this._vh = 0;
+  }
+  get src() {
+    return super.src;
+  }
+  finishLoading() {
+    this._vw = 1280;
+    this._vh = 720;
+    super.finishLoading();
+  }
+}
+
+/** Every transport / loop / audio test runs against both kinds: `describe.each(MEDIA_KINDS)("%s element", (_name, Media) => ...)`. */
+export const MEDIA_KINDS: ReadonlyArray<readonly [string, new () => FakeMedia]> = [
+  ["audio", FakeMedia],
+  ["video", FakeVideoMedia],
+];

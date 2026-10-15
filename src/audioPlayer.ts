@@ -13,10 +13,15 @@
  *  Cost: R4's loop wrap is checked from a timer, not sample-exact. If that proves audibly
  *  loose, a Web Audio engine can replace this behind the same interface.
  *
- * The element is injected (`MediaLike`), so the unit tests drive a fake.
+ * R9 (video): the same engine drives a `<video>` element. An HTMLVideoElement is an HTMLMediaElement with the same
+ * clock, seeking, `playbackRate` and `preservesPitch`, so play / pause, restart, the loop wrap, the scrub, the speed and
+ * the hold-2x all work unchanged; the picture just follows the clock. The app uses ONE element (a `<video>`) for every
+ * file: an audio file has no picture (`hasVideo` is false) and the stage stays on the camera view.
+ *
+ * The element is injected (`MediaLike`), so the unit tests drive a fake (an audio-like one and a video-like one).
  */
 
-/** The slice of HTMLAudioElement this module uses. */
+/** The slice of HTMLMediaElement (an audio or a video element) this module uses. */
 export interface MediaLike {
   src: string;
   currentTime: number;
@@ -29,6 +34,9 @@ export interface MediaLike {
   playbackRate: number;
   /** R5: keep the pitch when the speed changes (the browser time-stretches). */
   preservesPitch?: boolean;
+  /** R9: a video element's picture size, 0 until a picture is known (and for an audio-only file). Audio elements have none. */
+  readonly videoWidth?: number;
+  readonly videoHeight?: number;
   play(): Promise<void>;
   pause(): void;
   load(): void;
@@ -73,7 +81,7 @@ export class AudioPlayer {
     forward("ended", () => ({ type: "ended" }));
     forward("seeked", () => ({ type: "seeked", time: this.currentTime }));
     forward("ratechange", () => ({ type: "rate", rate: this.rate }));
-    forward("error", () => ({ type: "error", message: "This file can't be played. Try an MP3 or WAV." }));
+    forward("error", () => ({ type: "error", message: "This file can't be played. Try an MP3, WAV, or an MP4 / WebM video." }));
   }
 
   /** Playback speed now (1 = normal). */
@@ -127,6 +135,11 @@ export class AudioPlayer {
   private releaseUrl(): void {
     if (this.url) this.urls.revoke(this.url);
     this.url = null;
+  }
+
+  /** R9: the loaded file has a picture (a video), not only sound. */
+  get hasVideo(): boolean {
+    return this.loaded && (this.media.videoWidth ?? 0) > 0;
   }
 
   /** True once a track's length is known. */
@@ -202,11 +215,14 @@ export class AudioPlayer {
   }
 }
 
-/** The real thing: an audio element and object URLs. Only called in the browser. */
-export function createBrowserPlayer(): AudioPlayer {
-  const audio = new Audio();
-  audio.preload = "auto";
-  return new AudioPlayer(audio, {
+/**
+ * The real thing: a media element and object URLs. Only called in the browser. Pass the page's `<video>` (R9) to play
+ * video files with their picture; with none, a bare audio element (audio files only).
+ */
+export function createBrowserPlayer(element?: HTMLMediaElement): AudioPlayer {
+  const media = element ?? new Audio();
+  media.preload = "auto";
+  return new AudioPlayer(media, {
     create: (f) => URL.createObjectURL(f),
     revoke: (u) => URL.revokeObjectURL(u),
   });

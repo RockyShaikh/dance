@@ -16,6 +16,10 @@ export interface Settings {
   pinchGrab: number;
   stillness: boolean;
   sound: boolean;
+  /** R9: show the practice video flipped left-to-right, like a mirror (dancers often learn mirrored). CSS only; the file is untouched. */
+  mirrorVideo: boolean;
+  /** R9: while a video is loaded, show the small camera view (skeleton, zone, HUD) in the corner. */
+  showCamera: boolean;
 }
 
 const KEY = "dance.r2.settings";
@@ -29,6 +33,8 @@ export function defaultSettings(): Settings {
     pinchGrab: CLUTCH.pinch.grabRatio,
     stillness: COMMANDS.stillness.enabled,
     sound: true,
+    mirrorVideo: true,
+    showCamera: true,
   };
 }
 
@@ -57,6 +63,8 @@ export function loadSettings(): Settings {
       pinchGrab: num(j.pinchGrab, CLUTCH.pinch.sliderMin, CLUTCH.pinch.sliderMax, d.pinchGrab),
       stillness: typeof j.stillness === "boolean" ? j.stillness : d.stillness,
       sound: typeof j.sound === "boolean" ? j.sound : d.sound,
+      mirrorVideo: typeof j.mirrorVideo === "boolean" ? j.mirrorVideo : d.mirrorVideo,
+      showCamera: typeof j.showCamera === "boolean" ? j.showCamera : d.showCamera,
     };
   } catch {
     return d; // storage blocked or corrupt: fall back to defaults
