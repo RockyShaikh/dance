@@ -132,6 +132,29 @@ describe("LoopWrapper", () => {
     }
   });
 
+  it("R5b: wraps cleanly at the slowed speeds too (0.5, 0.75, 0.85): lands on START, keeps the speed, overshoot is one poll of real time, fewer passes", async () => {
+    const base = setup({ start: 5, end: 8 });
+    base.player.seek(5);
+    await base.player.play();
+    base.run(30, 0.01);
+    for (const rate of [0.5, 0.75, 0.85]) {
+      const s = setup({ start: 5, end: 8 });
+      s.player.setRate(rate);
+      s.player.seek(5);
+      await s.player.play();
+      s.run(30, 0.01);
+      expect(s.player.rate).toBe(rate);
+      expect(s.player.state).toBe("playing");
+      expect(s.wrapper.wraps).toBeLessThan(base.wrapper.wraps);
+      expect(s.wrapper.wraps).toBeGreaterThanOrEqual(Math.floor(base.wrapper.wraps * rate) - 1);
+      for (const w of s.wrapper.history) {
+        expect(w.landedAt).toBe(5);
+        expect(w.overshootSec).toBeGreaterThanOrEqual(0);
+        expect(w.overshootSec).toBeLessThan(0.0101 * rate + 1e-6);
+      }
+    }
+  });
+
   it("R5: the speed can change in the middle of a loop without upsetting the wrap", async () => {
     const { player, wrapper, run } = setup({ start: 5, end: 8 });
     player.seek(5);

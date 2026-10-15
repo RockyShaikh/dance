@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Box, Vec2 } from "./box";
 import { PRESETS } from "./box";
-import { INITIAL_STATE, stepCommands, type FireEvent, type HandObs, type MachineState, type MachineView } from "./commands";
+import { INITIAL_STATE, chordAgrees, stepCommands, type FireEvent, type HandObs, type MachineState, type MachineView } from "./commands";
 import { COMMANDS, type CommandConfig } from "./config";
 
 const FRAME = 33; // ~30 fps
@@ -132,16 +132,17 @@ describe("dwell: a shape must be held", () => {
     expect(b.view.seen).toBeNull();
   });
 
-  it("R5: Thumb_Up is a command (it toggles the speed), and fires once when its ring fills", () => {
-    const b = new Bench();
+  it("R5b: the thumbs up is not a classifier command any more (holding it is a state: holdSpeed.ts)", () => {
+    const b = new Bench(COMMANDS);
     b.show(5000, [hand("Thumb_Up")]);
-    expect(b.fires.map((f) => f.shape)).toEqual(["Thumb_Up"]);
+    expect(b.fires).toHaveLength(0);
+    expect(COMMANDS.shapes).not.toContain("Thumb_Up");
   });
 
-  it("R5: a thumbs up does not show the palm, so the palm-facing rule does not apply to it (it still applies to the others)", () => {
-    const b = new Bench();
-    b.show(2000, [hand("Thumb_Up", INSIDE, { palmFacing: false })]);
-    expect(b.fires.map((f) => f.shape)).toEqual(["Thumb_Up"]);
+  it("the fist, like the thumbs up before it, does not show the palm, so the palm-facing rule does not apply to it (it still applies to the others)", () => {
+    const b = new Bench(COMMANDS);
+    b.show(2000, [hand("Closed_Fist", INSIDE, { palmFacing: false })]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
     const c = new Bench();
     c.show(2000, [hand("Victory", INSIDE, { palmFacing: false })]);
     expect(c.fires).toHaveLength(0);
@@ -302,7 +303,7 @@ describe("the command box", () => {
       b.show(2000, [hand(shape, INSIDE)]);
       b.idle(1500);
     }
-    expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist", "Pointing_Up", "Victory", "Thumb_Up"]);
+    expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist", "Pointing_Up", "Victory"]);
   });
 
   it("the palm centre decides, edges included", () => {
@@ -525,11 +526,13 @@ describe("R4d: the fist is a command, and the fist / thumbs up guard", () => {
     expect(b.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
   });
 
-  it("a fist the model labels Thumb_Up (the thumb is not out) does NOT fire as a thumbs up", () => {
-    const b = new Bench(COMMANDS);
-    b.show(5000, [hand("Thumb_Up", INSIDE, { chord: FIST })]);
-    expect(b.fires).toHaveLength(0);
-    expect(b.view.blocked).toBe("fingers disagree");
+  it("a fist the model labels Thumb_Up (the thumb is not out) does NOT count as a thumbs up (chordAgrees; holdSpeed's arming uses it)", () => {
+    expect(chordAgrees("Thumb_Up", FIST)).toBe(false);
+    expect(chordAgrees("Thumb_Up", POINT)).toBe(false);
+    expect(chordAgrees("Thumb_Up", THUMB)).toBe(true);
+    expect(chordAgrees("Closed_Fist", THUMB)).toBe(false);
+    expect(chordAgrees("Closed_Fist", FIST)).toBe(true);
+    expect(chordAgrees("Thumb_Up", undefined)).toBe(true);
   });
 
   it("a thumbs up the model labels Closed_Fist (the thumb is out) does NOT fire as a fist", () => {
@@ -539,13 +542,10 @@ describe("R4d: the fist is a command, and the fist / thumbs up guard", () => {
     expect(b.view.blocked).toBe("fingers disagree");
   });
 
-  it("each fires when label and fingers agree", () => {
+  it("the fist fires when label and fingers agree", () => {
     const fist = new Bench(COMMANDS);
     fist.show(2000, [hand("Closed_Fist", INSIDE, { chord: FIST })]);
     expect(fist.fires.map((f) => f.shape)).toEqual(["Closed_Fist"]);
-    const up = new Bench(COMMANDS);
-    up.show(2000, [hand("Thumb_Up", INSIDE, { chord: THUMB })]);
-    expect(up.fires.map((f) => f.shape)).toEqual(["Thumb_Up"]);
   });
 
   it("a fist with a finger still out is not a fist either", () => {

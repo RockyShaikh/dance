@@ -93,10 +93,16 @@ export interface KnobOutput {
   released: boolean;
   /** Move the target by this many seconds (whole milliseconds, 0 when nothing to do). Already scaled for the target. */
   applySec: number;
+  /**
+   * R5b: how far the motion turned this frame, in degrees of the motion's own angle (circling: degrees of the circle;
+   * tilt: degrees of wrist), clockwise positive; 0 when frozen or on the frame a pose is re-based. The speed mode of
+   * the wheel counts these, whatever the mapping.
+   */
+  turnDeg: number;
   view: KnobView | null;
 }
 
-const NONE: Omit<KnobOutput, "target"> = { grabbed: false, started: false, released: false, applySec: 0, view: null };
+const NONE: Omit<KnobOutput, "target"> = { grabbed: false, started: false, released: false, applySec: 0, turnDeg: 0, view: null };
 
 /** Splits `pending` into whole milliseconds to apply now and the sub-millisecond rest. */
 export function takeWholeMs(pending: number): { apply: number; rest: number } {
@@ -148,14 +154,14 @@ function stepKnobCore(prev: KnobState, input: KnobInput, choice: KnobChoice, tar
       mapping: startMapping(choice.mapping, motion.angle),
       pendingSec: 0,
     };
-    return { state, out: { grabbed: true, started: true, released: false, applySec: 0, view: viewOf(state, false) } };
+    return { state, out: { grabbed: true, started: true, released: false, applySec: 0, turnDeg: 0, view: viewOf(state, false) } };
   }
 
   // Held, but the steering hand is gone: freeze, then release after the grace period.
   if (!mi) {
     if (t - prev.lastSeen >= releaseGraceMs) return { state: { ...IDLE_KNOB, lastT: t }, out: { ...NONE, released: true } };
     const state: KnobState = { ...prev, lastT: t, dropped: true };
-    return { state, out: { grabbed: true, started: false, released: false, applySec: 0, view: viewOf(state, true) } };
+    return { state, out: { grabbed: true, started: false, released: false, applySec: 0, turnDeg: 0, view: viewOf(state, true) } };
   }
 
   // Held, hand in view: measure and move.
@@ -171,8 +177,8 @@ function stepKnobCore(prev: KnobState, input: KnobInput, choice: KnobChoice, tar
     mapping = r.state;
     const { apply, rest } = takeWholeMs(prev.pendingSec + r.deltaSec * cfg.targetScale[target]);
     const state: KnobState = { grabbed: true, lastSeen: t, lastT: t, dropped: false, motion, mapping, pendingSec: rest };
-    return { state, out: { grabbed: true, started: false, released: false, applySec: apply, view: viewOf(state, false) } };
+    return { state, out: { grabbed: true, started: false, released: false, applySec: apply, turnDeg: motion.angle - (prev.motion as MotionState).angle, view: viewOf(state, false) } };
   }
   const state: KnobState = { grabbed: true, lastSeen: t, lastT: t, dropped: false, motion, mapping, pendingSec: prev.pendingSec };
-  return { state, out: { grabbed: true, started: false, released: false, applySec: 0, view: viewOf(state, false) } };
+  return { state, out: { grabbed: true, started: false, released: false, applySec: 0, turnDeg: 0, view: viewOf(state, false) } };
 }

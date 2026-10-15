@@ -99,6 +99,7 @@ export class Practice {
     this.bindButton("btn-speed", "speedToggle");
     this.bindButton("btn-slower", "speedDown");
     this.bindButton("btn-faster", "speedUp");
+    this.bindButton("btn-speed-reset", "speedReset");
     for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-nudge]")) {
       btn.addEventListener("click", () => {
         this.nudgeStart(Number(btn.dataset.nudge));
@@ -280,13 +281,16 @@ export class Practice {
         case "KeyC":
           return "clearLoop";
         case "KeyT":
-          return "speedToggle"; // R5: 2x <-> 1x
+          return "speedToggle"; // 2x <-> 1x
         case "Minus":
         case "NumpadSubtract":
-          return "speedDown"; // R5: the next preset down
+          return "speedDown"; // R5b: one 0.025 step down (0.5 to 1.0)
         case "Equal":
         case "NumpadAdd":
           return "speedUp";
+        case "Digit0":
+        case "Numpad0":
+          return "speedReset"; // back to 1x
         default:
           return null;
       }
@@ -373,7 +377,7 @@ export class Practice {
     this.setText("elapsed", this.elapsedEl, formatTime(p.currentTime));
     this.setText("total", this.totalEl, `/ ${formatTime(p.duration, false)}`);
     this.setText("toggle", this.toggleLabel, state === "playing" ? "Pause" : "Play");
-    // R5: the speed, huge, whenever it is not 1x.
+    // R5: the speed, whenever it is not 1x (R5b: a modest number; hearing it matters more than seeing it).
     const fast = Math.abs(p.rate - 1) > 1e-9;
     if (this.rateEl.hidden === fast) this.rateEl.hidden = !fast;
     if (fast) {

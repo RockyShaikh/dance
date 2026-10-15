@@ -4,6 +4,7 @@
  *
  *   open palm = the playhead (the music is left as it is)   fist  = the playhead, and pause while the fist is closed
  *   V         = loop START                                  index = loop END
+ *   shaka     = the playback SPEED (R5b: thumb and pinky out, the other three curled; the wheel steps it by 0.025)
  *
  * (What the music does is steerAudio.ts: the left hand never starts playback by itself.)
  *
@@ -16,9 +17,10 @@
  */
 import type { KnobTarget } from "./config";
 import { STEER } from "./config";
+import type { PseudoChord } from "./pseudoChord";
 
-export type SteerShape = "palm" | "fist" | "v" | "index";
-export type SteerMode = "palm" | "fist" | "start" | "end";
+export type SteerShape = "palm" | "fist" | "v" | "index" | "shaka";
+export type SteerMode = "palm" | "fist" | "start" | "end" | "speed";
 
 /** The bits of a detected hand the classification needs. */
 export interface SteerHandObs {
@@ -27,11 +29,23 @@ export interface SteerHandObs {
   shapeScore: number;
   /** Mean finger reach (handFeatures.clawExtension): about 1.9 open, 1.0 fist. */
   clawExt: number;
+  /**
+   * Which fingers are out (pseudoChord.ts). The shaka has no MediaPipe label, so it is found from this alone: thumb and
+   * pinky out, index, middle and ring curled (chord 10001). Left out, no shaka is ever found.
+   */
+  chord?: PseudoChord;
+}
+
+/** The shaka: a custom rule on the finger chord (T I M R P = 1 0 0 0 1), whatever the model's label says. */
+export function isShaka(chord: PseudoChord | undefined): boolean {
+  return !!chord && chord.T && !chord.I && !chord.M && !chord.R && chord.P;
 }
 
 const LABELS: Record<string, SteerShape> = { Open_Palm: "palm", Victory: "v", Pointing_Up: "index" };
 
 export function classifySteerShape(h: SteerHandObs, cfg: typeof STEER = STEER): SteerShape | null {
+  // The shaka first: it has no label, and the model may call it a thumbs up, a fist or nothing.
+  if (isShaka(h.chord)) return "shaka";
   const named = LABELS[h.shape];
   if (named && h.shapeScore >= cfg.minShapeScore) return named;
   if (h.shape === "Closed_Fist" && h.shapeScore >= cfg.minFistScore) return "fist";
@@ -40,9 +54,9 @@ export function classifySteerShape(h: SteerHandObs, cfg: typeof STEER = STEER): 
   return null;
 }
 
-export const MODE_OF: Record<SteerShape, SteerMode> = { palm: "palm", fist: "fist", v: "start", index: "end" };
+export const MODE_OF: Record<SteerShape, SteerMode> = { palm: "palm", fist: "fist", v: "start", index: "end", shaka: "speed" };
 
-/** What the knob's movement is applied to in a mode. */
+/** What the knob's movement is applied to in a mode (speed mode has no knob target: its turn steps the speed). */
 export function targetOf(mode: SteerMode): KnobTarget {
   return mode === "start" ? "start" : mode === "end" ? "end" : "playhead";
 }

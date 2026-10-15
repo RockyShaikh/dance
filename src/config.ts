@@ -107,8 +107,8 @@ export interface CommandConfig {
 
 export const COMMANDS: CommandConfig = {
   // R4d: the open palm is no command (a hand coming into frame must not pause); the RIGHT fist is play / pause.
-  // R5: Thumb_Up (right hand) toggles the whole track between 2x and 1x.
-  shapes: ["Closed_Fist", "Pointing_Up", "Victory", "Thumb_Up"],
+  // R5b: the thumbs up is not a command any more: holding it is a state (holdSpeed.ts), so it is not in this list.
+  shapes: ["Closed_Fist", "Pointing_Up", "Victory"],
   dwellMs: 600,
   dwellMinMs: 600,
   dwellMaxMs: 1200,
@@ -118,7 +118,7 @@ export const COMMANDS: CommandConfig = {
   minShapeScore: 0.5,
   requirePalmFacing: true,
   palmFacingExempt: ["Thumb_Up", "Closed_Fist"],
-  rightOnlyShapes: ["Thumb_Up", "Closed_Fist"],
+  rightOnlyShapes: ["Closed_Fist"],
   stillness: { enabled: false, maxMove: 0.06 },
 };
 
@@ -364,7 +364,7 @@ export const SCRUB: ScrubConfig = {
  */
 export const STEER = {
   /** Left-hand shapes that may START a grab. The fist may only continue one. */
-  startShapes: ["palm", "v", "index"] as readonly string[],
+  startShapes: ["palm", "v", "index", "shaka"] as readonly string[],
   /** A different left-hand shape must hold this long (ms) before the mode changes: a flicker must not toggle play / pause. */
   modeDebounceMs: 120,
   /**
@@ -390,13 +390,22 @@ export const WAVE = {
 } as const;
 
 /**
- * R5: playback speed. Not a knob (user: "just speeding up and slowing down the entire track and just letting it
- * play"): the right-hand thumbs up toggles the whole track between 2x and 1x, and `-` / `=` step through presets.
+ * R5/R5b: playback speed. Two gestures (user: "the instagram hold to speed up", and fine 0.025 steps for slowing down
+ * to learn the dance, where hearing it matters more than seeing it):
+ *  - hold the right thumbs up: `fast` (2x) while held, the previous speed on release (holdSpeed.ts);
+ *  - a left shaka + the right hand on the wheel: the wheel steps the speed by `step` every `stepDeg` of turn,
+ *    between `min` and `max` (1.0 is a natural stop). Keys: `-` / `=` step, `0` resets, `T` toggles 2x / 1x.
  */
 export const SPEED = {
-  /** The toggle's two speeds. */
   fast: 2,
   normal: 1,
-  /** `-` and `=` step through these. */
-  steps: [0.5, 0.75, 1, 1.5, 2],
+  min: 0.5,
+  max: 1,
+  step: 0.025,
+  /** Degrees of wheel turn (circling or tilt) per 0.025 step: a fifth of a circle (R5b amendment: fine and deliberate). 20 steps * 72 degrees = 1440 degrees = 4 full turns for 0.5 to 1.0. */
+  stepDeg: 72,
+  /** The thumbs up must be held this long to arm the 2x (short: it engages at once when armed). */
+  holdArmMs: 300,
+  /** ...and 2x ends when the shape has been gone this long. */
+  holdReleaseMs: 150,
 } as const;

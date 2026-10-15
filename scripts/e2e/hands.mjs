@@ -154,7 +154,7 @@ await ev(`await T.show([T.right(0, { shape: 'Closed_Fist', fingers: '10000', cur
 check("label Closed_Fist but the thumb is out (a thumbs up): no play/pause", (await ev(`return T.state()`)) === "playing" && (await ev(`return T.fires()`)) === 0);
 await ev(`await T.show([], 1200)`);
 await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1 })], 1200)`);
-check("a real thumbs up still fires (the R5 toggle, until R5b)", (await ev(`return __dance.player.rate`)) === 2);
+check("a real thumbs up held still speeds up (R5b: 2x while held)", (await ev(`return __dance.player.rate`)) === 2);
 
 console.log("\n== 6. Circling: the default wheel, direction latency (end to end through the sim)");
 await fresh();

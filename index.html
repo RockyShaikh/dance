@@ -17,8 +17,8 @@
     <!-- R3 practice view: the giant status word and the clock, readable from across the room. -->
     <section id="practice-head" aria-live="polite">
       <div id="status-word" data-state="empty">LOAD A TRACK</div>
-      <!-- R5: the playback speed, huge, whenever it is not 1x. -->
-      <div id="speed-badge" hidden title="Playback speed (thumbs up with the right hand, or T, - and =)">2×</div>
+      <!-- R5b: the playback speed (a modest number), whenever it is not 1x. -->
+      <div id="speed-badge" hidden title="Playback speed (hold the right thumbs up for 2x; left shaka + wheel for 0.025 steps; keys - = 0 T)">2×</div>
       <div id="clock"><span id="t-elapsed">0:00.0</span><span id="t-total">/ 0:00</span></div>
     </section>
 
@@ -133,13 +133,14 @@
         </span>
         <span class="group" aria-label="speed">
           <span class="note">Speed</span>
-          <button type="button" id="btn-speed" title="Right-hand thumbs up: the whole track 2x, and back to 1x">2× / 1× <kbd>T</kbd></button>
-          <button type="button" id="btn-slower" title="The next slower preset (0.5, 0.75, 1, 1.5, 2)">slower <kbd>-</kbd></button>
-          <button type="button" id="btn-faster" title="The next faster preset">faster <kbd>=</kbd></button>
+          <button type="button" id="btn-speed" title="The whole track 2x, and back to 1x (hold the right thumbs up does the same while held)">2× / 1× <kbd>T</kbd></button>
+          <button type="button" id="btn-slower" title="0.025 slower (down to 0.5x)">slower <kbd>-</kbd></button>
+          <button type="button" id="btn-faster" title="0.025 faster (up to 1.0x)">faster <kbd>=</kbd></button>
+          <button type="button" id="btn-speed-reset" title="Back to 1x">1× <kbd>0</kbd></button>
         </span>
         <span id="track-name" class="note">No track loaded. Drop an MP3 or WAV anywhere, or click Open track.</span>
       </div>
-      <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · thumbs up = speed 2× / 1× (keys T, - and =); an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in its box, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END. Keys: Shift+[ ] = 1 s nudge</div>
+      <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · <b>hold thumbs up</b> = 2× while held, back to your speed when you let go; an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in its box, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END · <b>shaka</b> (thumb + pinky out) = speed: circle the right hand to step the speed by 0.025 (0.5 to 1.0×, four full circles), the music keeps playing. Keys: - / = 0.025 slower / faster, 0 = 1×, T = 2× / 1×, Shift+[ ] = 1 s nudge</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
@@ -149,7 +150,7 @@
           <div class="knob-col">
             <label class="field"><span>Moves (target)</span><select id="knob-target"></select></label>
             <label class="field"><span>Grab (clutch)</span><select id="knob-clutch"></select></label>
-            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT hand as a palm, V or index (right hand in its box) and circle the right hand (or tilt it, if you pick Tilt below). Left open palm = playhead, music left as it is · fist = playhead, paused while closed (a palm resumes it) · V = loop START · index = loop END. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
+            <div id="knob-twohand-warning" class="note" hidden>Steering wheel: raise the LEFT hand as a palm, V or index (right hand in its box) and circle the right hand (or tilt it, if you pick Tilt below). Left open palm = playhead, music left as it is · fist = playhead, paused while closed (a palm resumes it) · V = loop START · index = loop END · shaka = speed in 0.025 steps. "Moves" below is ignored: the left hand picks. With the left hand not steering, V / index still set START / END.</div>
             <label class="field"><span>Turning (motion)</span><select id="knob-motion"></select></label>
             <label class="field"><span>Mapping</span><select id="knob-mapping"></select></label>
             <label class="slider"><span>Gain <b id="knob-gain-value"></b></span><input id="knob-gain" type="range" /></label>

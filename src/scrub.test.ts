@@ -296,7 +296,7 @@ describe("palm <-> fist: the mode switches under a held grab", () => {
 
 describe("at 2x speed (R5)", () => {
   it("playing: the scrub still lands where the hand put the music, whatever the speed, and keeps playing", () => {
-    for (const rate of [0.5, 1, 2]) {
+    for (const rate of [0.5, 0.75, 0.85, 1, 2]) {
       const r = new Rig(true, 30);
       r.rate = rate;
       r.run(1500, -1.5);
