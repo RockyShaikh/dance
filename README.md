@@ -2,22 +2,40 @@
 
 A hands-free tool for learning choreography: control the music you practice to with hand gestures seen by the laptop webcam. See `docs/spec.md` for the product and `.agents/roadmap.md` for the checkpoints.
 
-**This is checkpoint R4a (loops marked as the music plays), on top of R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV, and control it hands-free: open palm in the command box = play/pause, index up = restart, V = mark a loop (see "R4a loops" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
+**This is checkpoint R4b (the two-hand scheme and the knob: scrub the playhead, mark IN/OUT), on top of R4a (loops), R3 (audio + webcam), R2 (gesture test bench) and R1 (bring-up).** Load a local MP3/WAV and control it hands-free with two hands (see "R4b" below). The R2 test bench (rings, event log, clutch shapes, tuning) is still there behind the **Bench** button (key `B`).
 
-## R4a loops
+## R4b: two hands, scrub, mark IN / OUT
+
+Every gesture fires once, when its ring fills (~0.6 s); nothing depends on how long you hold it (user: "no button that is variable based off how long you are holding it"). Each hand has its **own command box** (mouse-editable: drag inside to move, drag an edge or corner to resize; presets in the Bench). A shape counts only while that hand's palm centre is in that hand's box. Defaults: right hand = right half, left hand = left half of the picture as you see it.
+
+| | Right hand (transport + scrub) | Left hand (marks) |
+|---|---|---|
+| **Open palm** | play / pause | play / pause |
+| **Index up** | back to START (0:00 if none), plays | **set OUT (END)** at the playhead and start looping |
+| **V** | clear the loop | **set IN (START)** at the playhead (again = move IN) |
+| **Claw grab + tilt** | **scrub the playhead** (default); the grab must start in the right-hand box | not a grab |
+
+- **OUT** at or before IN + 0.5 s is ignored with a message; **IN** is refused if it would land within 0.5 s of OUT. The V-cycle is key / button only now (`V`, Mark).
+- **Late-mark offset (0.15 s)** applies only when marking while playing and not scrubbing. While paused, while scrubbing, and for 2.5 s after a scrub (`LOOP.exactAfterScrubMs`) the mark is the exact playhead.
+- **Scrub (audible):** while grabbed the playhead is seeked live, at most 20 times a second (`SCRUB.maxSeeksPerSec`). Playing: the music keeps playing from the new spot. Paused: each seek plays a ~160 ms snippet (`SCRUB.snippetMs`) and it stays paused on release. Tilt clockwise = later, counter-clockwise = earlier.
+- **The knob** (docs/spec.md section 5) is three swappable pure pieces: **clutch** (claw, pinch, two-hand) -> **motion** (tilt, circling) -> **mapping** (joystick, absolute, relative + ratchet, jog), whose output is a delta in seconds for a **target**: the playhead (default), loop START or loop END. Pick all of them live in the collapsible **Knob** panel under the transport; the choice is saved in localStorage. Defaults: claw + tilt + joystick, playhead. Gain and dead-zone sliders; "flip direction".
+- **Two-hand clutch** keeps its R2 meaning (left open palm up = modifier, right hand steers). The left hand is then the modifier, so **the left-hand marks are switched off** while it is selected (the panel says so).
+- **While grabbed** the steering (right) hand's commands are blocked (a claw can read as an open palm or a V), and for 0.5 s after. The left hand still works with claw or pinch. If tracking drops the value freezes and the grab releases after 0.3 s.
+- **Feedback:** a big GRABBED word with a dial at the hand (tilt needle against the grab angle, dead zone shaded; circling: turns), and the target's time huge on the picture (PLAYHEAD / LOOP START / LOOP END) with "+1.4 s since grab".
+- **Experiment log** (in the Knob panel): the tally counts loop edits per variant automatically; "Felt best" / "Not great" and a note are saved per variant; **Copy results** puts a text summary on the clipboard.
+- Code: `src/knob.ts` (pipeline: grab life, freeze, release, ms carry), `knobClutch.ts`, `knobMotion.ts`, `knobMapping.ts`, `scrub.ts`, `handCommands.ts` (per-hand classifiers), `loop.ts` (`nudgeEnd`, `markPlayhead`). All thresholds in `src/config.ts` (`KNOB`, `SCRUB`, `LOOP`, `CLUTCH`).
+- Dev sim: `window.__dance.setHands([{ shape: "None", hand: "Right", curl: 0.6, tilt: 30 }])` (`curl` ~0.6 reads as a claw; `tilt` is degrees clockwise as you see it); `__dance.scrubSeeks` lists the scrub seek times.
+
+## R4a loops (the loop model; the gestures for it changed in R4b above)
 
 Let the music play and mark where it is; you will always mark the start a little late, so the START can be nudged back.
 
-| Gesture (in the box) | Tap (drop the hand after the ring fills) | Hold (~1.5 s) |
-|---|---|---|
-| **V** | 1st = set loop START, 2nd = set END and loop, 3rd = clear | clear the loop |
-| **Index up** | back to the loop START (0:00 if none is set), plays | 0:00, plays |
-| **Open palm** | play / pause | same |
+(R4a's single-hand V cycle is replaced by the two-hand IN/OUT gestures above; the V key and Mark button still cycle START, END, clear.)
 
 - Gesture marks are stamped where the music was when the ring **started**, minus `LOOP.markOffsetSec` (0.15 s, `src/config.ts`). Keys and buttons mark the playhead as it is.
 - An END at or before the START (closer than `LOOP.minGapSec`, 0.5 s) is ignored with a message.
 - The wrap (END back to START) is a 4 ms timer plus an animation-frame check on the audio element (`src/loopWrap.ts`); each wrap records its overshoot and seek time (`__dance.practice.wrapper.history` in dev).
-- **Keys:** `V` mark (cycle), `S` set start, `E` set end, `C` clear, `R` restart (loop start), `Home` from the top, `[` / `]` nudge the START by 0.1 s earlier / later, with `Shift` 1 s. Only the marker moves; restart to hear it. The START can't go below 0:00 or within 0.5 s of the END. There are buttons for all of them.
+- **Keys:** `V` mark (cycle), `S` set start, `E` set end, `C` clear, `R` restart (loop start), `Home` from the top (0:00, keyboard only), `[` / `]` nudge the START by 0.1 s earlier / later, with `Shift` 1 s. Only the marker moves; restart to hear it. The START can't go below 0:00 or within 0.5 s of the END. There are buttons for all of them.
 - The logic is in `src/loop.ts` (pure, tested); `Practice.nudgeStart(deltaSec)` is the entry point R4b's knob will call.
 - `?sim&track=/test/click-track.wav` (dev) loads a track with scripted hands; `window.__dance.setHands([{ shape: "Victory" }])` then `setHands([])` is a V tap.
 
@@ -25,7 +43,7 @@ Let the music play and mark where it is; you will always mark the start a little
 
 - **Load a track:** drag an MP3/WAV onto the page, or click **Open track…**. Local files only.
 - **Status word** (PLAYING / PAUSED / READY), a big **clock**, and a **timeline** with a moving white playhead, readable from across the room.
-- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts and plays (R4a: tap = loop start, hold = 0:00; a tap fires on release, as in the bench).
+- **Gestures** (inside the command box, ring ~0.6 s): **open palm** toggles play/pause and resumes from the same spot; **index up** restarts and plays (to the loop start if one is set, else 0:00). Every command fires when its ring fills.
 - **Keys and buttons:** `Space` = play/pause, `R` = restart, `Home` = from the top, `B` = bench (more keys in R4a below).
 - Chrome lets a hand gesture start audio only after the page has seen one click or key press; if you only dragged a file in, the page asks for one click.
 - Audio engine: `src/audioPlayer.ts` (an `HTMLAudioElement` behind a small interface: why is in its header comment). Gesture/key/button wiring: `src/transport.ts`; DOM: `src/practice.ts`.
@@ -95,13 +113,12 @@ The page feeds the model the un-mirrored camera frame (only the *display* is mir
 |---|---|
 | Counts | Shape label at least 50% sure, palm facing the camera, palm centre in the box, and only one hand showing a command shape in the box (two: ignored) |
 | Dwell | Hold for the dwell time (slider, default 0.6 s, range 0.6 to 1.2 s); the inner ring fills. Flickers shorter than 120 ms are ignored |
-| Open palm | Fires as soon as the ring is full |
-| Index up, V | **Tap:** drop the hand after the ring filled and it fires on release. **Hold:** keep holding until the outer ring (1.5 s total) fills and it fires. A hold fires once; releasing afterwards adds nothing |
+| Fire | Every command (open palm, index up, V) fires once, the moment the ring is full. Nothing waits for the release, and holding on or letting go afterwards adds nothing |
 | Cooldown | 1.0 s after any fire, no new dwell can start |
-| Hand lost or leaves the box | Before the ring is full: cancelled, nothing fires. After it is full (index up, V): counts as a release, so a tap |
+| Hand lost or leaves the box | Before the ring is full: cancelled, nothing fires. After it fired: adds nothing |
 | Stillness (checkbox, off) | If on, the palm centre must stay within 6% of the frame height during the hold, else the dwell restarts |
 
-On fire: a banner, a beep (tap and hold sound different; checkbox), and a timestamped row in the log. The **false-fire test** counts fires for 2 minutes (rows tagged `test`).
+On fire: a banner, a beep (checkbox), and a timestamped row in the log. The **false-fire test** counts fires for 2 minutes (rows tagged `test`).
 
 **Clutch shapes** (detection only, nothing is controlled): shown as GRABBED / released. Each must *start* in the box; once grabbed the hand may leave it, and a lost hand releases after 0.3 s.
 - **Pinch:** thumb tip to index tip, divided by palm size, below the slider value. It must open to 1.6x that to release. A **fist is not a pinch**: the middle, ring and pinky must be out (finger reach at least 1.3) to start one.

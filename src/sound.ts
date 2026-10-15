@@ -1,6 +1,4 @@
-import type { FireKind } from "./commands";
-
-/** A short Web Audio beep on fire. Different pitch for a tap and a hold. */
+/** A short Web Audio beep on fire. */
 
 let ctx: AudioContext | null = null;
 
@@ -28,14 +26,8 @@ function tone(c: AudioContext, freq: number, start: number, dur: number): void {
 }
 
 /** Returns true if a sound was scheduled (false when audio is locked or unavailable). */
-export function beep(kind: FireKind): boolean {
+export function beep(): boolean {
   if (!ctx || ctx.state !== "running") return false;
-  const t = ctx.currentTime;
-  if (kind === "tap") {
-    tone(ctx, 880, t, 0.12);
-  } else {
-    tone(ctx, 587, t, 0.12);
-    tone(ctx, 880, t + 0.13, 0.18);
-  }
+  tone(ctx, 880, ctx.currentTime, 0.12);
   return true;
 }

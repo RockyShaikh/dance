@@ -69,25 +69,22 @@ export const APP = {
 } as const;
 
 /**
- * R2: the command classifier (command box + dwell + tap/hold + cooldown).
+ * R2: the command classifier (command box + dwell + cooldown). Every command fires once, when its
+ * ring fills: no gesture depends on how long it is held (R4a amendment).
  * Times are in milliseconds. See docs/spec.md sections 4.2 and 4.4.
  */
 export interface CommandConfig {
   /** MediaPipe Gesture Recognizer labels that count as commands. */
   shapes: readonly string[];
-  /** Shapes that also have a hold action (an outer ring). The others fire when the first ring fills. */
-  holdShapes: readonly string[];
-  /** How long a shape must be held before the first ring is full. */
+  /** How long a shape must be held before the ring is full and the command fires. */
   dwellMs: number;
   /** Tunable range of `dwellMs` (the spec's 0.6 s is a minimum; tune up from there). */
   dwellMinMs: number;
   dwellMaxMs: number;
-  /** Hold fires when the shape has been held this long in total (outer ring)... */
-  holdMs: number;
-  /** ...but never sooner than this long after the first ring fills, so the slider can't squash the tap window. */
-  holdMinGapMs: number;
   /** After anything fires, no new dwell may start for this long. */
   cooldownMs: number;
+  /** R4b: how long commands stay blocked after a knob grab ends (a grab suppresses them; see `StepInput.suppress`). */
+  suppressCooldownMs: number;
   /**
    * A shape that vanishes for less than this (a dropped or flickering frame)
    * still counts as held. A longer gap is a release.
@@ -106,13 +103,11 @@ export interface CommandConfig {
 
 export const COMMANDS: CommandConfig = {
   shapes: ["Open_Palm", "Pointing_Up", "Victory"],
-  holdShapes: ["Pointing_Up", "Victory"],
   dwellMs: 600,
   dwellMinMs: 600,
   dwellMaxMs: 1200,
-  holdMs: 1500,
-  holdMinGapMs: 400,
   cooldownMs: 1000,
+  suppressCooldownMs: 500,
   dropoutGraceMs: 120,
   minShapeScore: 0.5,
   requirePalmFacing: true,
@@ -192,6 +187,8 @@ export const LOOP = {
    * plus recognition time makes marks land late. (A key or button marks the playhead as is.)
    */
   markOffsetSec: 0.15,
+  /** R4b: for this long after a scrub ends (and while one runs, or while paused) a mark is the exact playhead, no offset. */
+  exactAfterScrubMs: 2500,
   /** Smallest loop: the END must be at least this far after the START (also bounds the nudge). */
   minGapSec: 0.5,
   /** Nudge step for [ and ], and with Shift. */
@@ -207,3 +204,101 @@ export const LOOP = {
   /** How long the huge START time stays up after a nudge. */
   nudgeReadoutMs: 1800,
 } as const;
+
+/**
+ * R4b: the knob (docs/spec.md section 5). Three separate, swappable pieces:
+ *   CLUTCH (am I grabbing?) -> MOTION (what am I turning?) -> MAPPING (how turning moves the value).
+ * R4b's value is the loop START, in seconds of music. Angles are in degrees, display-clockwise
+ * positive (as the user sees the mirrored picture). Clockwise = later, counter-clockwise = earlier.
+ */
+export type ClutchKind = "claw" | "pinch" | "twoHand";
+export type MotionKind = "tilt" | "circling";
+export type MappingKind = "joystick" | "absolute" | "relative" | "jog";
+/** What the knob moves (the output is a delta in seconds applied to one of these). Default: the playhead, audibly. */
+export type KnobTarget = "playhead" | "start" | "end";
+
+export interface KnobConfig {
+  /** What the settings panel starts with (the user's choice: claw as the default grab). */
+  defaults: { clutch: ClutchKind; motion: MotionKind; mapping: MappingKind; target: KnobTarget; gain: number; deadZoneDeg: number; invert: boolean };
+  /** Seconds-per-second multiplier per target: scrubbing the playhead wants to be faster than nudging a marker. */
+  targetScale: Record<KnobTarget, number>;
+  /**
+   * Which of the dancer's hands steers a claw or pinch grab (docs/spec.md 5.2, two-hand roles: the right
+   * hand is transport + scrub, the left hand marks). A grab by the other hand is ignored by the knob.
+   */
+  steeringHand: "Left" | "Right";
+  /** Panel slider ranges. `gain` multiplies every mapping; the dead zone is the joystick's. */
+  gainMin: number;
+  gainMax: number;
+  deadZoneMinDeg: number;
+  deadZoneMaxDeg: number;
+  tilt: {
+    /** Weight of the newest sample in a running average (1 = no smoothing). Landmarks jitter by a degree or two. */
+    smoothing: number;
+  };
+  circling: {
+    /** The circle's centre is the average palm position over this long ("a ~1 s running average"). */
+    windowMs: number;
+    /** The palm must be at least this far from that centre (as a fraction of the frame HEIGHT) to count as circling. */
+    minRadius: number;
+    /** Nothing is measured until the window holds at least this much history. */
+    warmupMs: number;
+  };
+  joystick: {
+    /** Tilt (away from where you grabbed) at which the rate is at its maximum. */
+    fullTiltDeg: number;
+    /** Maximum nudge speed, seconds of music per second. Low: the job is "a couple of counts". */
+    maxRateSecPerSec: number;
+    /** 1 = linear; above 1 gives finer control near the centre. */
+    curve: number;
+  };
+  absolute: {
+    /** The wiper's world range: tilt is clamped to +-this from straight up, so a sweep can run out. */
+    worldRangeDeg: number;
+    /** Seconds of START per degree of tilt. */
+    secPerDeg: number;
+  };
+  relative: {
+    /** Seconds of START per degree turned since the grab (no end to the range: re-grab to keep going). */
+    secPerDeg: number;
+  };
+  jog: {
+    /** Seconds of START per full circle of the hand. */
+    secPerTurn: number;
+  };
+  /** A frame gap longer than this counts as this long, so a stall can't make a jump. */
+  maxDtSec: number;
+}
+
+export const KNOB: KnobConfig = {
+  defaults: { clutch: "claw", motion: "tilt", mapping: "joystick", target: "playhead", gain: 1, deadZoneDeg: 12, invert: false },
+  targetScale: { playhead: 1.5, start: 1, end: 1 },
+  steeringHand: "Right",
+  gainMin: 0.25,
+  gainMax: 3,
+  deadZoneMinDeg: 3,
+  deadZoneMaxDeg: 30,
+  tilt: { smoothing: 0.5 },
+  circling: { windowMs: 1000, minRadius: 0.035, warmupMs: 300 },
+  joystick: { fullTiltDeg: 60, maxRateSecPerSec: 3, curve: 1.5 },
+  absolute: { worldRangeDeg: 70, secPerDeg: 0.06 },
+  relative: { secPerDeg: 0.06 },
+  jog: { secPerTurn: 2 },
+  maxDtSec: 0.1,
+};
+
+/**
+ * R4b: audible scrub of the playhead (the knob's default target). While grabbed the playhead is
+ * seeked live so the music follows. Seeks are rate-limited so the audio element does not stutter.
+ */
+export interface ScrubConfig {
+  /** At most this many seeks per second. */
+  maxSeeksPerSec: number;
+  /** Paused scrub: each seek plays this much audio (a short snippet), then pauses again. */
+  snippetMs: number;
+}
+
+export const SCRUB: ScrubConfig = {
+  maxSeeksPerSec: 20,
+  snippetMs: 160,
+};

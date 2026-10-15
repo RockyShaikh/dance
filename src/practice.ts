@@ -1,6 +1,7 @@
 import type { AudioPlayer } from "./audioPlayer";
 import { LOOP } from "./config";
 import { NO_LOOP, type LoopState } from "./loop";
+import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
 import { formatTime, playheadFraction, runNudge, runTransport, statusWord, type TransportAction, type TransportOptions, type TransportResult } from "./transport";
 
@@ -57,6 +58,11 @@ export class Practice {
   private loop: LoopState = NO_LOOP;
   private nudgeUntil = 0;
   private nudgeNote = "";
+  /** R4b: the knob is grabbed, so the START readout stays up. */
+  private nudgeHeld = false;
+  /** Which time the huge readout shows: the loop START, END or the playhead. */
+  private readoutTarget: "start" | "end" | "playhead" = "start";
+  private readonly nudgeTitle = el("nudge-title");
   /** The END-to-START wrap. Public so the dev console can read its measurements. */
   readonly wrapper: LoopWrapper;
 
@@ -128,19 +134,60 @@ export class Practice {
 
   /**
    * Moves the loop START by `deltaSec` (negative = earlier) and shows it huge for a moment. Only the
-   * marker moves: index-tap to hear it. Keys, buttons and (R4b) the knob all come through here.
+   * marker moves: index up to hear it. Keys, buttons and (R4b) the knob all come through here.
    */
-  nudgeStart(deltaSec: number): TransportResult {
-    const result = runNudge(this.player, this.loop, deltaSec);
+  nudgeStart(deltaSec: number, opts: { note?: (limited: boolean) => string } = {}): TransportResult {
+    return this.nudgeMarker("start", deltaSec, opts);
+  }
+
+  /** R4b: the same for the loop END, with the clamps mirrored (END stays at least the minimum gap after START, and inside the track). */
+  nudgeEnd(deltaSec: number, opts: { note?: (limited: boolean) => string } = {}): TransportResult {
+    return this.nudgeMarker("end", deltaSec, opts);
+  }
+
+  private nudgeMarker(which: "start" | "end", deltaSec: number, opts: { note?: (limited: boolean) => string }): TransportResult {
+    const result = runNudge(this.player, this.loop, deltaSec, which);
     this.loop = result.loop;
-    if (this.loop.start !== null) {
-      this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;
+    if (this.loop[which] !== null) {
+      this.readoutTarget = which;
+      if (!this.nudgeHeld) this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;
       const mag = Math.round(Math.abs(deltaSec) * 1000) / 1000;
-      this.nudgeNote = `${deltaSec < 0 ? "−" : "+"}${mag} s${result.limited ? "  LIMIT" : ""}`;
+      this.nudgeNote = opts.note ? opts.note(!!result.limited) : `${deltaSec < 0 ? "−" : "+"}${mag} s${result.limited ? "  LIMIT" : ""}`;
     }
-    this.showHint(this.loop.start === null ? result.label : null);
+    this.showHint(this.loop[which] === null ? result.label : null);
     this.render();
     return result;
+  }
+
+  /**
+   * R4b: runs the player calls the scrub asked for (seek, play a snippet, pause). The seek lands on the
+   * audio element at once; the playhead on screen follows on the next frame.
+   */
+  runScrub(actions: readonly ScrubAction[]): void {
+    for (const a of actions) {
+      if (a.type === "seek") this.player.seek(a.to);
+      else if (a.type === "play") void this.player.play();
+      else this.player.pause();
+    }
+    if (actions.length > 0) this.render();
+  }
+
+  /**
+   * R4b: while the knob is grabbed the huge time of its target (the playhead, the START or the END)
+   * stays up, also when nothing is moving, with `note` under it; letting go starts the usual timeout.
+   * With no START / END set there is nothing to show for those.
+   */
+  setNudgeHold(held: boolean, note = "", target: "start" | "end" | "playhead" = this.readoutTarget): void {
+    this.nudgeHeld = held;
+    this.readoutTarget = target;
+    this.nudgeNote = note;
+    this.nudgeUntil = held ? Infinity : performance.now() + LOOP.nudgeReadoutMs;
+    this.render();
+  }
+
+  /** Under the huge START time while the knob is grabbed (a note of how far it has moved). */
+  setNudgeNote(note: string): void {
+    this.nudgeNote = note;
   }
 
   /** The loop as the view knows it (for the dev console and tests). */
@@ -179,11 +226,11 @@ export class Practice {
         case "Space":
           return "toggle";
         case "KeyR":
-          return "restart"; // loop START if set, else 0:00 (like an index tap)
+          return "restart"; // loop START if set, else 0:00 (like index up)
         case "Home":
-          return "restartTop"; // 0:00 (like an index hold)
+          return "restartTop"; // 0:00 (keyboard only)
         case "KeyV":
-          return "loopStep"; // like a V tap
+          return "loopStep"; // like V
         case "KeyS":
           return "setStart";
         case "KeyE":
@@ -315,10 +362,13 @@ export class Practice {
       this.layoutFlags();
     }
 
-    const nudging = start !== null && performance.now() < this.nudgeUntil;
+    const shown = this.readoutTarget === "playhead" ? this.player.currentTime : this.loop[this.readoutTarget];
+    const nudging = shown !== null && performance.now() < this.nudgeUntil;
     if (this.nudgeEl.hidden === nudging) this.nudgeEl.hidden = !nudging;
     if (nudging) {
-      this.setText("nudge-time", this.nudgeTime, formatTime(start as number));
+      this.setText("nudge-title", this.nudgeTitle, this.readoutTarget === "playhead" ? "PLAYHEAD" : this.readoutTarget === "start" ? "LOOP START" : "LOOP END");
+      this.nudgeEl.dataset.target = this.readoutTarget;
+      this.setText("nudge-time", this.nudgeTime, formatTime(shown as number));
       this.setText("nudge-sub", this.nudgeSub, this.nudgeNote);
       this.nudgeEl.dataset.limit = this.nudgeNote.includes("LIMIT") ? "1" : "0";
     }

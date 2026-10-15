@@ -12,21 +12,27 @@ function loadedPlayer() {
   return { media, player };
 }
 
-describe("actionForFire", () => {
-  it("open palm toggles, tap or hold alike", () => {
-    expect(actionForFire({ shape: "Open_Palm", kind: "tap" })).toBe("toggle");
-    expect(actionForFire({ shape: "Open_Palm", kind: "hold" })).toBe("toggle");
+describe("actionForFire (two hands)", () => {
+  const R = (shape: string) => actionForFire({ hand: "Right", shape });
+  const L = (shape: string) => actionForFire({ hand: "Left", shape });
+
+  it("right hand = transport: open palm toggles, index up restarts (loop start if set, else 0:00), V clears the loop", () => {
+    expect(R("Open_Palm")).toBe("toggle");
+    expect(R("Pointing_Up")).toBe("restart");
+    expect(R("Victory")).toBe("clearLoop");
   });
-  it("index tap restarts (loop start if set), index hold goes to the top", () => {
-    expect(actionForFire({ shape: "Pointing_Up", kind: "tap" })).toBe("restart");
-    expect(actionForFire({ shape: "Pointing_Up", kind: "hold" })).toBe("restartTop");
+  it("left hand = marks: V sets IN (START), index up sets OUT (END), open palm also toggles", () => {
+    expect(L("Victory")).toBe("setStart");
+    expect(L("Pointing_Up")).toBe("setEnd");
+    expect(L("Open_Palm")).toBe("toggle");
   });
-  it("V tap steps the loop, V hold clears it", () => {
-    expect(actionForFire({ shape: "Victory", kind: "tap" })).toBe("loopStep");
-    expect(actionForFire({ shape: "Victory", kind: "hold" })).toBe("clearLoop");
+  it("the V-cycle action is no longer reachable by any gesture (key / button only), nor is the top-of-track", () => {
+    const all = (["Right", "Left"] as const).flatMap((hand) => ["Open_Palm", "Pointing_Up", "Victory", "Closed_Fist", "Thumb_Up", "None"].map((shape) => actionForFire({ hand, shape })));
+    expect(all).not.toContain("loopStep");
+    expect(all).not.toContain("restartTop");
   });
   it("ignores other shapes", () => {
-    expect(actionForFire({ shape: "Closed_Fist", kind: "tap" })).toBeNull();
+    expect(actionForFire({ hand: "Right", shape: "Closed_Fist" })).toBeNull();
   });
 });
 

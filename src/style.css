@@ -159,10 +159,6 @@ body {
   line-height: 1.1;
 }
 
-#banner[data-kind="hold"] {
-  background: rgba(150, 90, 0, 0.9);
-}
-
 #banner-main {
   font-size: clamp(36px, 7vw, 84px);
   font-weight: 800;
@@ -460,23 +456,6 @@ button.small {
   font-size: 15px;
 }
 
-#log .kind {
-  font-weight: 700;
-  font-size: 12px;
-  padding: 1px 7px;
-  border-radius: 4px;
-}
-
-#log .kind.tap {
-  background: #14472e;
-  color: var(--on);
-}
-
-#log .kind.hold {
-  background: #523600;
-  color: var(--warn);
-}
-
 #log .gap {
   margin-left: auto;
   color: var(--dim);
@@ -738,12 +717,14 @@ kbd {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 8%;
+  bottom: 2%;
   text-align: center;
   line-height: 1;
   pointer-events: none;
-  padding: 16px 0 12px;
-  background: rgba(0, 0, 0, 0.62);
+  padding: 10px 0 8px;
+  /* Mostly see-through, so the dial at the hand stays visible behind the numbers. */
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
 }
 
 #nudge-title {
@@ -754,7 +735,7 @@ kbd {
 }
 
 #nudge-time {
-  font-size: clamp(72px, 22vh, 220px);
+  font-size: clamp(64px, 16vh, 180px);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: #fff;
@@ -764,6 +745,14 @@ kbd {
   font-size: clamp(20px, 4vh, 40px);
   font-weight: 800;
   color: var(--dim);
+}
+
+#nudge-readout[data-target="end"] #nudge-title {
+  color: var(--flag-end);
+}
+
+#nudge-readout[data-target="playhead"] #nudge-title {
+  color: var(--accent);
 }
 
 #nudge-readout[data-limit="1"] #nudge-sub {
@@ -786,4 +775,78 @@ kbd {
     width: auto;
     overflow-y: visible;
   }
+}
+
+/* --- R4b: the knob panel (collapsible, under the transport) --------------------------------- */
+
+#knob-panel {
+  margin-top: 8px;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+
+#knob-panel > summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style-position: inside;
+}
+
+#knob-label {
+  font-weight: 400;
+  color: var(--dim);
+}
+
+#knob-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 10px;
+}
+
+.knob-col {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.field select,
+#knob-note {
+  background: #0d0f12;
+  color: var(--text);
+  border: 1px solid #3a4350;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 15px;
+}
+
+.knob-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note.warn {
+  color: var(--warn);
+}
+
+/* Opened, the panel scrolls instead of squeezing the camera picture away. */
+#knob-panel[open] {
+  max-height: 38vh;
+  overflow-y: auto;
 }

@@ -7,7 +7,7 @@
  * into the palm (a fist has its thumb against the index too).
  *
  * Common rules, from the spec:
- *  - A grab must START inside the command box; once grabbed the hand may leave it.
+ *  - A grab must START inside the command box (R4b: that hand's own box); once grabbed the hand may leave it.
  *  - If the hand is lost while grabbed, the grab holds for `releaseGraceMs`
  *    (the knob value would freeze meanwhile), then releases.
  */
@@ -105,24 +105,32 @@ function loseHand(s: HandClutch, t: number, cfg: ClutchConfig): HandClutch {
 }
 
 /**
+ * Which of exactly two hands is the modifier and which steers, by screen side (never the model's
+ * left/right label). Null unless two hands are in view. R4b's knob uses this to find the steering hand.
+ */
+export function twoHandRoles<H extends { palm: Vec2 }>(hands: readonly H[], cfg: ClutchConfig): { modifier: H; steering: H } | null {
+  if (hands.length !== 2) return null;
+  const [a, b] = hands;
+  // Display x grows to the right as the user sees it.
+  const leftMost = a.palm.x <= b.palm.x ? a : b;
+  const rightMost = leftMost === a ? b : a;
+  return cfg.twoHand.modifierSide === "left" ? { modifier: leftMost, steering: rightMost } : { modifier: rightMost, steering: leftMost };
+}
+
+/**
  * Two-hand: the hand on the modifier side of the screen holds an open palm up while
  * the other hand (the "steering" hand) is present. Hands are told apart by screen
  * side, not by the model's left/right label (which can flip). To start, the steering
  * hand's palm centre must be in the box; once started it may be anywhere.
  */
-function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly ClutchHand[], box: Box, cfg: ClutchConfig): ClutchState["twoHand"] {
+function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly ClutchHand[], boxes: Record<Handedness, Box>, cfg: ClutchConfig): ClutchState["twoHand"] {
   const s = { ...prev };
   let present = false;
   let startOk = false;
-  if (hands.length === 2) {
-    const [a, b] = hands;
-    // Display x grows to the right as the user sees it.
-    const leftMost = a.palm.x <= b.palm.x ? a : b;
-    const rightMost = leftMost === a ? b : a;
-    const modifier = cfg.twoHand.modifierSide === "left" ? leftMost : rightMost;
-    const steering = modifier === leftMost ? rightMost : leftMost;
-    present = modifier.shape === cfg.twoHand.modifierShape;
-    startOk = present && contains(box, steering.palm);
+  const roles = twoHandRoles(hands, cfg);
+  if (roles) {
+    present = roles.modifier.shape === cfg.twoHand.modifierShape;
+    startOk = present && contains(boxes[roles.steering.hand], roles.steering.palm);
   }
   if (!s.grabbed) {
     s.grabbed = startOk;
@@ -137,23 +145,25 @@ function stepTwoHand(prev: ClutchState["twoHand"], t: number, hands: readonly Cl
 
 export function stepClutches(
   prev: ClutchState,
-  input: { t: number; hands: readonly ClutchHand[]; box: Box },
+  input: { t: number; hands: readonly ClutchHand[]; box: Box | Record<Handedness, Box> },
   cfg: ClutchConfig,
 ): { state: ClutchState; view: ClutchView } {
-  const { t, hands, box } = input;
+  const { t, hands } = input;
+  // One box for both hands (R2), or one per hand (R4b: the right-hand grab must start in the right-hand box).
+  const boxes: Record<Handedness, Box> = "x" in input.box ? { Left: input.box, Right: input.box } : input.box;
   const byHand: Partial<Record<Handedness, ClutchHand>> = {};
   for (const h of hands) byHand[h.hand] ??= h;
 
   const state: ClutchState = {
     pinch: {
-      Left: stepPinch(prev.pinch.Left, t, byHand.Left, box, cfg),
-      Right: stepPinch(prev.pinch.Right, t, byHand.Right, box, cfg),
+      Left: stepPinch(prev.pinch.Left, t, byHand.Left, boxes.Left, cfg),
+      Right: stepPinch(prev.pinch.Right, t, byHand.Right, boxes.Right, cfg),
     },
     claw: {
-      Left: stepClaw(prev.claw.Left, t, byHand.Left, box, cfg),
-      Right: stepClaw(prev.claw.Right, t, byHand.Right, box, cfg),
+      Left: stepClaw(prev.claw.Left, t, byHand.Left, boxes.Left, cfg),
+      Right: stepClaw(prev.claw.Right, t, byHand.Right, boxes.Right, cfg),
     },
-    twoHand: stepTwoHand(prev.twoHand, t, hands, box, cfg),
+    twoHand: stepTwoHand(prev.twoHand, t, hands, boxes, cfg),
   };
   const who = (m: Record<Handedness, HandClutch>): Handedness | null =>
     m.Right.grabbed ? "Right" : m.Left.grabbed ? "Left" : null;

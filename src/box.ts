@@ -33,6 +33,9 @@ export type PresetName = keyof typeof PRESETS;
 /** Default: the right half of the frame as the user sees it. */
 export const DEFAULT_BOX: Box = { ...PRESETS.right };
 
+/** R4b: each hand has its own command box. Defaults: the right hand's is the right half, the left hand's the left half (as the user sees the mirrored picture). */
+export const DEFAULT_BOXES = { Left: { ...PRESETS.left }, Right: { ...PRESETS.right } } as const satisfies Record<"Left" | "Right", Box>;
+
 /** Which part of the box the pointer is on: the inside (move), an edge, or a corner. */
 export type Handle = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -117,4 +120,21 @@ export function cursorFor(handle: Handle | null): string {
     default:
       return "default";
   }
+}
+
+/**
+ * With one box per hand: which box would a press at `p` grab, and which part of it? A corner or an
+ * edge beats the inside of the other box (so an edge stays reachable on top of a bigger box); between
+ * two equal kinds of hit the smaller box wins (a small box inside a big one stays grabbable).
+ */
+export function pickBox<K extends string>(boxes: Record<K, Box>, p: Vec2, tol: Vec2): { key: K; handle: Handle } | null {
+  let best: { key: K; handle: Handle; edge: boolean; area: number } | null = null;
+  for (const key of Object.keys(boxes) as K[]) {
+    const b = boxes[key];
+    const handle = hitTest(b, p, tol);
+    if (!handle) continue;
+    const cand = { key, handle, edge: handle !== "move", area: b.w * b.h };
+    if (!best || (cand.edge && !best.edge) || (cand.edge === best.edge && cand.area < best.area)) best = cand;
+  }
+  return best ? { key: best.key, handle: best.handle } : null;
 }

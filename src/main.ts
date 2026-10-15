@@ -5,17 +5,25 @@ import { normalizeBox, type Box } from "./box";
 import { attachBoxEditor } from "./boxEditor";
 import { CameraError, openCamera, openImage, openVideoFile, type FrameSource } from "./camera";
 import { initialClutchState, stepClutches, type ClutchView } from "./clutch";
-import { INITIAL_STATE, stepCommands, type HandObs, type MachineView } from "./commands";
-import { APP, CLUTCH, COMMANDS, type ClutchConfig, type CommandConfig } from "./config";
+import type { MachineView } from "./commands";
+import { APP, CLUTCH, COMMANDS, KNOB, SCRUB, type ClutchConfig, type CommandConfig, type KnobTarget } from "./config";
 import { drawHands } from "./draw";
+import type { Handedness } from "./hand";
+import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
 import { drawHud } from "./hud";
 import { createBrowserPlayer } from "./audioPlayer";
 import { Practice } from "./practice";
 import { loadRecognizer } from "./recognizer";
 import { renderHands, setFps, setMessage, setStatus } from "./readout";
 import { loadSettings, saveSettings } from "./settings";
-import { markTime, trackRingStart, type RingStamp } from "./loop";
+import { markPlayhead, trackRingStart, type RingStamp } from "./loop";
 import { actionForFire } from "./transport";
+import { IDLE_KNOB, stepKnob, type KnobOutput } from "./knob";
+import { selectClutch, suppressFor, type KnobHand } from "./knobClutch";
+import type { KnobDraw } from "./knobHud";
+import { KnobPanel } from "./knobPanel";
+import { CLUTCH_NAMES, MAPPING_NAMES, MOTION_NAMES, TARGET_NAMES, loadKnobSettings } from "./knobSettings";
+import { IDLE_SCRUB, stepScrub } from "./scrub";
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const still = document.getElementById("still") as HTMLImageElement;
@@ -43,17 +51,44 @@ class FpsMeter {
 
 const settings = loadSettings();
 const bench = new Bench(settings, { setBox });
-let machine = INITIAL_STATE;
+/** R4b: one command classifier per hand, each with its own box. */
+let machines: HandMachines = INITIAL_MACHINES;
 let clutch = initialClutchState();
 let hands: HandReading[] = [];
-let view: MachineView | null = null;
+let views: Partial<Record<Handedness, MachineView>> = {};
 let clutchView: ClutchView | null = null;
+
+// --- R4b: the knob ------------------------------------------------------------------
+
+const knobSettings = loadKnobSettings();
+let knob = IDLE_KNOB;
+let knobDraw: KnobDraw | null = null;
+let lastKnobPalm = { x: 0.75, y: 0.5 };
+/** At the start of this grab: the value of the target (null: no loop START / END to move yet), for "moved N s since grab". */
+let valueAtGrab: number | null = null;
+/** Total movement requested during this grab, to count it as a nudge in the log. */
+let grabMovedSec = 0;
+let knobPanel: KnobPanel;
+
+/** Audible scrub of the playhead. */
+let scrub = IDLE_SCRUB;
+/** The last frame time at which a scrub was running (-Infinity if never): marks right after a scrub are exact. */
+let lastScrubT = -Infinity;
+let lastFrameT = 0;
 
 // --- R3: the music ------------------------------------------------------------------
 
 const player = createBrowserPlayer();
 const practice = new Practice(player, {
-  announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON", "tap"),
+  announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON"),
+});
+
+knobPanel = new KnobPanel(knobSettings, () => {
+  // A different variant or slider mid-grab: let go (the new settings apply from the next grab).
+  if (knob.grabbed) practice.setNudgeHold(false);
+  knob = IDLE_KNOB;
+  knobDraw = null;
+  valueAtGrab = null;
 });
 
 /** Current thresholds: the config defaults with the slider/toggle settings applied. */
@@ -63,26 +98,27 @@ const commandCfg = (): CommandConfig => ({
   stillness: { ...COMMANDS.stillness, enabled: settings.stillness },
 });
 
-/** Where the music was when the current ring started (null when no shape is being held): gesture marks are stamped there. */
-let ringStamp: RingStamp | null = null;
+/** Where the music was when each hand's current ring started (null when it holds no shape): gesture marks are stamped there. */
+const ringStamps: Record<Handedness, RingStamp | null> = { Left: null, Right: null };
 const clutchCfg = (): ClutchConfig => ({ ...CLUTCH, pinch: { ...CLUTCH.pinch, grabRatio: settings.pinchGrab } });
 
-function setBox(b: Box): void {
-  settings.box = normalizeBox(b);
+function setBox(hand: Handedness, b: Box): void {
+  settings.boxes[hand] = normalizeBox(b);
   saveSettings(settings);
-  bench.showBox(settings.box);
+  bench.showBoxes(settings.boxes);
   redrawHud();
 }
 
-const editor = attachBoxEditor(hudCanvas, () => settings.box, setBox, () => redrawHud());
+const editor = attachBoxEditor(hudCanvas, () => settings.boxes, setBox, () => redrawHud());
 
 function redrawHud(): void {
   drawHud(hudCtx, {
-    box: settings.box,
+    boxes: settings.boxes,
     active: editor.active,
     dragging: editor.dragging,
-    palms: hands.map((h) => h.palm),
-    view,
+    palms: hands.map((h) => ({ hand: h.hand, x: h.palm.x, y: h.palm.y })),
+    views,
+    knob: knobDraw,
   });
 }
 
@@ -95,50 +131,160 @@ function sizeCanvases(width: number, height: number): void {
   }
 }
 
-/** One frame of results through the whole bench: skeleton, classifier, clutches, panels. */
+/** One frame of results through the whole bench: skeleton, clutches, knob, per-hand commands, panels. */
 function processFrame(ts: number, found: HandReading[], width: number, height: number): void {
   hands = found;
   sizeCanvases(width, height);
   drawHands(ctx, hands);
+  const aspect = width / height;
+  const dtSec = lastFrameT > 0 ? Math.max(0, (ts - lastFrameT) / 1000) : 0;
+  lastFrameT = ts;
 
-  const obs: HandObs[] = hands.map((h) => ({ shape: h.shape, shapeScore: h.shapeScore, palmFacing: h.palmFacing, palm: h.palm }));
-  const r = stepCommands(machine, { t: ts, hands: obs, box: settings.box, aspect: width / height }, commandCfg());
-  machine = r.state;
-  view = r.view;
-  if (r.fired) {
-    // The music reacts on the very frame the ring completes, before any logging or drawing.
-    const action = actionForFire(r.fired);
-    const before = performance.now();
-    // A loop mark lands where the music was when the ring started, minus the late-mark offset.
-    const markAt = markTime(ringStamp?.playhead ?? player.currentTime, player.duration);
-    const result = action ? practice.perform(action, { markAt }) : null;
-    if (import.meta.env.DEV) recordTiming(r.fired.shape, ts, before, result?.label ?? null, markAt);
-    bench.fire(r.fired, result?.label);
-  }
-  // After the fire (a tap fires on release, when the machine has already gone idle).
-  ringStamp = trackRingStart(ringStamp, machine.shape, machine.since, player.currentTime);
-
+  // The clutches and the knob come first: while the knob is grabbed, the steering hand's commands are blocked.
   const c = stepClutches(
     clutch,
     {
       t: ts,
-      box: settings.box,
+      box: settings.boxes,
       hands: hands.map((h) => ({ hand: h.hand, shape: h.shape, palm: h.palm, pinchRatio: h.pinchRatio, clawExt: h.clawExt, othersReach: h.othersReach })),
     },
     clutchCfg(),
   );
   clutch = c.state;
   clutchView = c.view;
+  const knobHands: KnobHand[] = hands.map((h) => ({ hand: h.hand, palm: h.palm, tiltDeg: h.tiltDeg }));
+  const pick = selectClutch(knobSettings.clutch, clutchView, knobHands, clutchCfg());
+  const k = stepKnob(
+    knob,
+    { t: ts, grabbed: pick.grabbed, hand: pick.steering ? { tiltDeg: pick.steering.tiltDeg, palm: pick.steering.palm } : null, aspect },
+    knobSettings,
+    KNOB,
+    CLUTCH.releaseGraceMs,
+  );
+  knob = k.state;
+  applyKnob(k.out, pick.steering, ts, dtSec);
+  const grabbed = pick.grabbed || k.out.grabbed;
 
-  renderHands(hands, settings.box);
-  bench.renderCommand(view);
+  // Per-hand commands. The steering hand is blocked while grabbed; with the two-hand clutch the left hand is
+  // the modifier, so its commands (the marks) are off altogether.
+  const suppress = suppressFor(knobSettings.clutch, grabbed, pick.steering?.hand ?? null);
+  const obs = hands.map((h) => ({ hand: h.hand, shape: h.shape, shapeScore: h.shapeScore, palmFacing: h.palmFacing, palm: h.palm }));
+  const r = stepHandCommands(machines, { t: ts, hands: obs, boxes: settings.boxes, aspect, suppress }, commandCfg());
+  machines = r.state;
+  views = r.views;
+  for (const fired of r.fired) {
+    // The music reacts on the very frame the ring completes, before any logging or drawing.
+    const action = actionForFire(fired);
+    const before = performance.now();
+    // A mark lands where the music was when the ring started, less the late-mark offset: but exact while paused or around a scrub.
+    const markAt = markPlayhead(ringStamps[fired.hand], {
+      current: player.currentTime,
+      playing: player.state === "playing",
+      scrubbing: scrub.active,
+      lastScrubT,
+      t: ts,
+      duration: player.duration,
+    });
+    const result = action ? practice.perform(action, { markAt }) : null;
+    if (import.meta.env.DEV) recordTiming(`${fired.hand} ${fired.shape}`, ts, before, result?.label ?? null, markAt);
+    bench.fire(fired, result?.label);
+  }
+  // After the fire, so the stamp read above is the one from the ring that just filled.
+  for (const h of ["Left", "Right"] as const) {
+    ringStamps[h] = trackRingStart(ringStamps[h], machines[h].shape, machines[h].since, player.currentTime, player.state === "playing");
+  }
+
+  renderHands(hands, settings.boxes);
+  bench.renderCommand(r.views);
   bench.renderClutch(clutchView);
+  knobPanel.setState(k.out.view?.frozen ? "HOLDING" : k.out.grabbed ? "GRABBED" : "released", k.out.grabbed);
   bench.setPinchLive(hands.map((h) => h.pinchRatio));
   redrawHud();
   if (import.meta.env.DEV) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
-    Object.assign(dance, { hands, view, clutchView, box: settings.box, log: bench.log, fft: bench.falseFireState(), machine });
+    Object.assign(dance, { hands, views, clutchView, boxes: settings.boxes, log: bench.log, fft: bench.falseFireState(), machines, knob, knobSettings, knobView: k.out.view, scrub });
   }
+}
+
+/** What the knob's target is worth right now: the playhead, or the loop START / END (null: not set). */
+function targetValue(target: KnobTarget): number | null {
+  return target === "playhead" ? player.currentTime : practice.loopState[target];
+}
+
+/** R4b: one frame of the knob's result: the target moves, the readout and the dial follow, the tally counts. */
+function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, dtSec: number): void {
+  const target = out.target;
+  const sinceGrab = (): string => {
+    const now = targetValue(target);
+    if (now === null || valueAtGrab === null) return "";
+    const d = Math.round((now - valueAtGrab) * 10) / 10;
+    return d === 0 ? "no change yet" : `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)} s since grab`;
+  };
+  if (out.started) {
+    valueAtGrab = targetValue(target);
+    grabMovedSec = 0;
+    practice.setNudgeHold(true, valueAtGrab === null ? `no loop ${target.toUpperCase()} yet` : "no change yet", target);
+  }
+  grabMovedSec += Math.abs(out.applySec);
+
+  if (target === "playhead") {
+    // Audible scrub: seek the playhead live (rate-limited); paused, play short snippets.
+    const sr = stepScrub(
+      scrub,
+      {
+        t: ts,
+        dtSec,
+        active: out.grabbed && player.loaded,
+        deltaSec: out.applySec,
+        playing: player.state === "playing",
+        current: player.currentTime,
+        duration: player.duration,
+      },
+      SCRUB,
+    );
+    scrub = sr.state;
+    if (sr.scrubbing) lastScrubT = ts;
+    if (sr.actions.length > 0) {
+      practice.runScrub(sr.actions);
+      if (import.meta.env.DEV) recordScrub(ts, sr.actions.filter((a) => a.type === "seek").length);
+    }
+    if (out.grabbed) practice.setNudgeNote(sinceGrab());
+  } else {
+    // A grab with a different target ends any scrub that was running (the target was switched mid-grab).
+    if (scrub.active) practice.runScrub(stepScrub(scrub, { t: ts, dtSec, active: false, deltaSec: 0, playing: player.state === "playing", current: player.currentTime, duration: player.duration }, SCRUB).actions);
+    scrub = IDLE_SCRUB;
+    if (out.applySec !== 0) {
+      const note = (limited: boolean) => `${sinceGrab()}${limited ? "  LIMIT" : ""}`;
+      if (target === "start") practice.nudgeStart(out.applySec, { note });
+      else practice.nudgeEnd(out.applySec, { note });
+    }
+  }
+
+  if (out.released) {
+    const moved = grabMovedSec >= 0.05;
+    practice.setNudgeHold(false, valueAtGrab === null ? "" : sinceGrab(), target);
+    if (moved) knobPanel.countNudge();
+    valueAtGrab = null;
+  }
+  if (steering) lastKnobPalm = steering.palm;
+  const value = targetValue(target);
+  knobDraw = out.view
+    ? {
+        view: out.view,
+        palm: lastKnobPalm,
+        title: `${CLUTCH_NAMES[knobSettings.clutch]} + ${MOTION_NAMES[knobSettings.motion]} + ${MAPPING_NAMES[knobSettings.mapping]} → ${TARGET_NAMES[target]}`,
+        deadZoneDeg: knobSettings.deadZoneDeg,
+        // The huge readout (DOM) already shows the value; here only what is missing.
+        note: value === null ? `No loop ${target === "start" ? "START" : "END"} yet: set one with the left hand first` : "",
+      }
+    : null;
+}
+
+/** DEV only: when each scrub seek was asked for, to measure the seek rate (window.__dance.scrubSeeks). */
+function recordScrub(ts: number, seeks: number): void {
+  const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
+  const list = ((dance.scrubSeeks as number[]) ??= []);
+  for (let i = 0; i < seeks; i++) list.push(ts);
 }
 
 /** DEV only: how long from "the ring completed" to "the audio element changed state" (see window.__dance.timings). */
@@ -216,7 +362,7 @@ async function openSource(): Promise<FrameSource> {
 async function main(): Promise<void> {
   setStatus("Opening camera and loading hand model…");
   setMessage("Allow camera access when Chrome asks.");
-  renderHands([], settings.box);
+  renderHands([], settings.boxes);
   redrawHud();
 
   // Dev-only `?sim`: no camera and no model; hands are scripted from the console or a test

@@ -39,6 +39,24 @@ export function pinchRatio(lm: readonly Point3[]): number {
   return dist(lm[LM.THUMB_TIP], lm[LM.INDEX_TIP]) / size;
 }
 
+/**
+ * The knob's tilt (docs/spec.md 5.3): imagine a needle from the wrist to the base of the middle
+ * finger. Its angle on screen against straight up, in degrees, clockwise POSITIVE AS THE USER SEES
+ * THE MIRRORED PICTURE (0 = upright, +90 = pointing to the right of the screen, 180 = pointing down).
+ *
+ * Input is the raw, un-mirrored landmarks (x right, y down, in equal units), like the other
+ * features; the mirror flip (display x = -raw x) is done here, so a hand tilted to the dancer's
+ * right reads positive. Only x and y are used: this is the tilt in the camera plane.
+ */
+export function tiltDeg(lm: readonly Pick<Point3, "x" | "y">[]): number {
+  const wrist = lm[LM.WRIST];
+  const mcp = lm[LM.MIDDLE_MCP];
+  const dx = -(mcp.x - wrist.x); // mirrored for display
+  const up = -(mcp.y - wrist.y); // image y grows downward
+  if (dx === 0 && up === 0) return 0;
+  return (Math.atan2(dx, up) * 180) / Math.PI;
+}
+
 /** Index, middle, ring, pinky: [knuckle (MCP), tip]. */
 const FINGER_ENDS = [
   [LM.INDEX_MCP, LM.INDEX_TIP],
