@@ -13,6 +13,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 
 ## Conventions
 - Roadmap checkpoints are done strictly in order; do not build past the active one.
+- Stow commits stage only `AGENTS.md`, `CLAUDE.md`, `.agents/` and `.gitignore`, never `git add -A`. A personal music file (`src/test/brotherhood.mp3`) was once swept into the public repo that way (2026-10-15). Media files (`*.mp3 *.m4a *.wav *.mp4 *.mov`) are git-ignored.
 - Branches per checkpoint; merge each with `--no-ff` and tag `rN-done`, so any checkpoint can be reverted on its own.
 - Tunable thresholds live in `src/config.ts`. Pure logic modules (e.g. `src/pseudoChord.ts`, `src/palmFacing.ts`) get Vitest tests with landmark fixtures.
 - Features we can't build yet go in `.agents/wishlist.md`; open "is this a problem?" questions and known-but-deferred issues go in its **Unresolved threads** section.

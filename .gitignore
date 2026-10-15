@@ -10,3 +10,9 @@ public/wasm/
 # local test media for ?image= / ?video= (not committed)
 public/test/
 .agents/*.tmp
+# local music for testing (never commit)
+*.mp3
+*.m4a
+*.wav
+*.mp4
+*.mov
