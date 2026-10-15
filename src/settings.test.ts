@@ -44,8 +44,8 @@ describe("R9 video settings", () => {
   });
 
   it("settings saved before R9 (no video fields) load with the defaults and keep their other values", () => {
-    fakeStorage({ "dance.r2.settings": JSON.stringify({ zoom: true, dwellMs: 900, sound: false }) });
-    expect(loadSettings()).toMatchObject({ zoom: true, dwellMs: 900, sound: false, mirrorVideo: true, showCamera: true });
+    fakeStorage({ "dance.r2.settings": JSON.stringify({ zoom: true, dwellMs: 900, sound: true }) });
+    expect(loadSettings()).toMatchObject({ zoom: true, dwellMs: 900, mirrorVideo: true, showCamera: true });
   });
 
   it("storage blocked: defaults, and saving does not throw", () => {
@@ -59,5 +59,36 @@ describe("R9 video settings", () => {
     });
     expect(loadSettings().mirrorVideo).toBe(true);
     expect(() => saveSettings(defaultSettings())).not.toThrow();
+  });
+});
+
+describe("R9 spoken feedback settings", () => {
+  it("speech is on by default at a clear volume, and the old beep is off", () => {
+    fakeStorage();
+    expect(loadSettings()).toMatchObject({ speech: true, sound: false });
+    expect(loadSettings().speechVolume).toBeGreaterThan(0.5);
+  });
+
+  it("the speech switch and volume persist", () => {
+    fakeStorage();
+    const s = loadSettings();
+    s.speech = false;
+    s.speechVolume = 0.3;
+    saveSettings(s);
+    expect(loadSettings()).toMatchObject({ speech: false, speechVolume: 0.3 });
+  });
+
+  it("a stored volume is clamped to 0..1, and junk falls back", () => {
+    fakeStorage({ "dance.r2.settings": JSON.stringify({ speech: true, speechVolume: 7 }) });
+    expect(loadSettings().speechVolume).toBe(1);
+    fakeStorage({ "dance.r2.settings": JSON.stringify({ speech: "yes", speechVolume: "loud" }) });
+    expect(loadSettings()).toMatchObject({ speech: true, speechVolume: defaultSettings().speechVolume });
+  });
+
+  it("the beep: settings saved before R9 (beep on, no speech field) come up with the beep off; a choice made since is kept", () => {
+    fakeStorage({ "dance.r2.settings": JSON.stringify({ sound: true }) });
+    expect(loadSettings().sound).toBe(false);
+    fakeStorage({ "dance.r2.settings": JSON.stringify({ sound: true, speech: true }) });
+    expect(loadSettings().sound).toBe(true);
   });
 });

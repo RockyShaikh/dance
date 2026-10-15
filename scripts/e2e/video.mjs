@@ -44,6 +44,7 @@ async function fresh() {
   await p.goto(URL);
   await ev(`await new Promise(r=>setTimeout(r,2500))`);
   await ev(prelude);
+  await ev(`document.getElementById('media').muted = true`); // nothing audible, ever (also --mute-audio)
 }
 
 try {

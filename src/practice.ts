@@ -1,6 +1,7 @@
 import type { AudioPlayer } from "./audioPlayer";
 import { LOOP, WAVE } from "./config";
 import { looksLikeMedia } from "./mediaFile";
+import { speechForAction, type SpeechEvent } from "./speech";
 import { NO_LOOP, type LoopState } from "./loop";
 import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
@@ -27,6 +28,8 @@ const CLICK_HINT = "Click anywhere on the page once, so Chrome lets your hand st
 export interface PracticeHooks {
   /** A key or button ran an action: show the banner (gestures are shown by the bench). */
   announce(label: string, via: "key" | "button"): void;
+  /** R9: something worth saying out loud happened (the words are decided in speech.ts). Optional: tests and the dev bench may not speak. */
+  say?(e: SpeechEvent): void;
 }
 
 export class Practice {
@@ -137,8 +140,11 @@ export class Practice {
 
   /** The one entry point for every way of controlling the music. Returns what happened. */
   perform(action: TransportAction, opts: TransportOptions = {}): TransportResult {
+    const before = this.loop;
     const result = runTransport(this.player, this.loop, action, opts);
     this.loop = result.loop;
+    const said = speechForAction(action, { before, after: result.loop, changed: result.changed, playing: this.player.state === "playing", loaded: this.player.loaded });
+    if (said) this.hooks.say?.(said);
     // Setting END while the playhead is already past it starts the loop at once, not at the next pass.
     this.wrapper.check(true);
     this.showHint(result.changed ? null : result.label);
@@ -162,6 +168,8 @@ export class Practice {
   private nudgeMarker(which: "start" | "end", deltaSec: number, opts: { note?: (limited: boolean) => string }): TransportResult {
     const result = runNudge(this.player, this.loop, deltaSec, which);
     this.loop = result.loop;
+    // A key or button nudge with nothing to nudge says so (the knob says it once, when the grab starts: main.ts).
+    if (this.loop[which] === null && !this.nudgeHeld && this.player.loaded) this.hooks.say?.({ type: "noLoop" });
     if (this.loop[which] !== null) {
       this.readoutTarget = which;
       if (!this.nudgeHeld) this.nudgeUntil = performance.now() + LOOP.nudgeReadoutMs;

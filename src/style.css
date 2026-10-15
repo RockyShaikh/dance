@@ -1098,3 +1098,8 @@ body.has-video:not(.bench-open) #cheat {
 body.has-video #frame {
   width: min(28%, 420px, calc(var(--stage-h, 400px) * 0.5 * 16 / 9));
 }
+
+/* R9: the Voice volume slider sits inline with its switch. */
+#speech-volume {
+  width: 90px;
+}

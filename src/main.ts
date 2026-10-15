@@ -19,6 +19,8 @@ import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCom
 import { drawHud } from "./hud";
 import { createBrowserPlayer } from "./audioPlayer";
 import { bindMediaView } from "./mediaView";
+import { createBrowserSpeaker } from "./speech";
+import { bindSpeechView } from "./speechView";
 import { Practice } from "./practice";
 import { loadRecognizer } from "./recognizer";
 import { TrackPanel } from "./trackPanel";
@@ -111,8 +113,16 @@ let lastScrubT = -Infinity;
 // R9: one media element plays every file; a video file's picture shows on the stage, an audio file's does not.
 const player = createBrowserPlayer(document.getElementById("media") as HTMLVideoElement);
 bindMediaView(settings, () => saveSettings(settings));
+// R9: spoken feedback (words, not chimes). The speaker reads the settings object live, so the Voice switch and volume apply at once.
+const speaker = createBrowserSpeaker(settings);
+bindSpeechView(settings, () => saveSettings(settings), speaker);
+player.on((e) => {
+  if (e.type === "rate") speaker.speedChanged(e.rate);
+  if (e.type === "loaded") speaker.cancelSettle();
+});
 const practice = new Practice(player, {
   announce: (label, via) => bench.showBanner(label, via === "key" ? "KEY" : "BUTTON"),
+  say: (e) => speaker.say(e),
 });
 
 knobPanel = new KnobPanel(knobSettings, () => {
@@ -340,10 +350,12 @@ function applyKnob(out: KnobOutput, steering: KnobHand | null, ts: number, mode:
     valueAtGrab = targetValue(target);
     grabMovedSec = 0;
     practice.setNudgeHold(true, valueAtGrab === null ? `no loop ${target.toUpperCase()} yet` : "no change yet", target);
+    if (valueAtGrab === null) speaker.say({ type: "noLoop" });
   } else if (out.grabbed && lastTarget !== null && target !== lastTarget) {
     // The left hand switched what the wheel moves: measure "since" from here, and show the new target's time.
     valueAtGrab = targetValue(target);
     practice.setNudgeHold(true, valueAtGrab === null ? `no loop ${target.toUpperCase()} yet` : "no change yet", target);
+    if (valueAtGrab === null) speaker.say({ type: "noLoop" });
   }
   lastTarget = out.grabbed ? target : null;
   grabMovedSec += Math.abs(out.applySec);
@@ -467,7 +479,7 @@ function devAudioHooks(): void {
   const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
   const events: unknown[] = [];
   player.on((e) => events.push({ ...e, at: performance.now(), state: player.state, currentTime: player.currentTime }));
-  Object.assign(dance, { player, practice, audioEvents: events });
+  Object.assign(dance, { player, practice, speaker, audioEvents: events });
   const track = new URLSearchParams(location.search).get("track");
   if (track) {
     void fetch(track)

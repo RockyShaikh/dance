@@ -122,7 +122,7 @@
             <span>Pinch grab below <b id="pinch-value"></b><span class="note"> · live <span id="pinch-live">—</span></span></span>
             <input id="pinch" type="range" />
           </label>
-          <label class="check"><input id="sound" type="checkbox" /> Sound on fire</label>
+          <label class="check"><input id="sound" type="checkbox" /> Beep on fire (off by default: the Voice speaks instead)</label>
           <label class="check"><input id="stillness" type="checkbox" /> Stillness rule (hand must stay put until the ring fills)</label>
 
           <h2>False-fire test</h2>
@@ -171,6 +171,11 @@
           <span class="note">Video</span>
           <label class="check" title="Flip the practice video left-to-right, like a mirror (the usual way to learn a routine). Only the picture is flipped, never the sound or the file."><input id="mirror-video" type="checkbox" /> Mirror video (like a mirror)</label>
           <label class="check" id="show-camera-label" title="Show the small camera view (skeleton, command zone) in the corner while a video is loaded"><input id="show-camera" type="checkbox" /> Camera view</label>
+        </span>
+        <span class="group" id="voice-group" aria-label="spoken feedback">
+          <span class="note">Voice</span>
+          <label class="check" title="Say short words on key events: loop in, loop out, loop cleared, no loop set, paused, playing, from the top, and the speed once it settles. The first sound needs one click on the page (Chrome's rule)."><input id="speech-on" type="checkbox" /> Speak</label>
+          <input id="speech-volume" type="range" min="0" max="1" step="0.05" title="Voice volume (the music's volume is not touched). Letting go says a sample word." aria-label="voice volume" />
         </span>
         <span class="group" aria-label="command zone and zoom">
           <span class="note">Zone</span>
