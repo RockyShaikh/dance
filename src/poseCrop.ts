@@ -15,6 +15,8 @@ import type { CropRect } from "./zoom";
 export interface PoseLm {
   x: number;
   y: number;
+  /** Depth in the picture's own scale (smaller = nearer the camera); only the EXP push bench uses it. */
+  z?: number;
   visibility?: number;
 }
 

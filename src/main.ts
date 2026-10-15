@@ -36,6 +36,7 @@ import { IDLE_STEER_AUDIO, stepSteerAudio } from "./steerAudio";
 import { IDLE_HOLD, stepHoldSpeed } from "./holdSpeed";
 import { formatRate, wheelSteps } from "./speed";
 import type { ZoomDraw } from "./waveDraw";
+import type { ExpBench } from "./exp/expBench";
 
 const video = document.getElementById("video") as HTMLVideoElement;
 const still = document.getElementById("still") as HTMLImageElement;
@@ -158,6 +159,9 @@ let recognizeMs = 0;
 
 let tracker: AutoTracker | null = null;
 let trackPanel: TrackPanel | null = null;
+/** EXP (`?exp=push`): the push-and-swipe measurement bench. Null in the normal app. */
+let exp: ExpBench | null = null;
+const EXP_ON = new URLSearchParams(location.search).get("exp") === "push";
 /** The last frame's tracker output (pose, crops), for the HUD. */
 let trackFrame: TrackFrame | null = null;
 
@@ -194,6 +198,7 @@ function redrawHud(): void {
     crop: currentCrop ? { box: cropAsDisplayBox(currentCrop), magnification: magnification(currentCrop) } : null,
     track: trackFrame && (autoOn() || tracker?.measurePose) ? { pose: trackFrame.pose, crops: autoOn() ? trackFrame.crops.map((c) => ({ box: cropAsDisplayBox(c.layout), label: c.label, magnification: c.magnification })) : [] } : null,
   });
+  exp?.drawHud(hudCtx, hudCanvas.width, hudCanvas.height);
 }
 
 function sizeCanvases(width: number, height: number): void {
@@ -260,6 +265,8 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   // Per-hand commands. The steering hand is blocked while grabbed; with the two-hand clutch the left hand is
   // the modifier, so its commands (the marks) are off altogether.
   const suppress = suppressFor(knobSettings.clutch, grabbed, pick.steering?.hand ?? null);
+  // EXP: while the swipe owns the right hand, its normal commands are off.
+  if (exp?.ownsRightHand) suppress.Right = true;
   const obs = hands.map((h) => ({ hand: h.hand, shape: h.shape, shapeScore: h.shapeScore, palmFacing: h.palmFacing, palm: h.palm, chord: h.chord }));
   const r = stepHandCommands(machines, { t: ts, hands: obs, boxes: zoneBoxes(), aspect, suppress }, commandCfg());
   machines = r.state;
@@ -287,7 +294,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   // once armed it may leave it. The wheel being grabbed (or the thumb being a steering hand) ends it.
   {
     const right = hands.find((h) => h.hand === "Right");
-    const shape = !!right && right.shape === "Thumb_Up" && right.shapeScore >= COMMANDS.minShapeScore && chordAgrees("Thumb_Up", right.chord);
+    const shape = !exp?.ownsRightHand && !!right && right.shape === "Thumb_Up" && right.shapeScore >= COMMANDS.minShapeScore && chordAgrees("Thumb_Up", right.chord);
     const thumb = shape && (hold.since !== null || contains(settings.zone, right!.palm));
     const hs = stepHoldSpeed(hold, { t: ts, thumb, suppress: grabbed, rate: player.rate });
     hold = hs.state;
@@ -301,6 +308,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
     ringStamps[h] = trackRingStart(ringStamps[h], machines[h].shape, machines[h].since, player.currentTime, player.state === "playing");
   }
 
+  exp?.frame({ ts, hands, pose: trackFrame?.pose ?? null, poseWorld: trackFrame?.poseWorld ?? null, width, height });
   renderHands(hands, settings.zone);
   bench.renderCommand(r.views);
   bench.renderClutch(clutchView);
@@ -559,6 +567,8 @@ async function main(): Promise<void> {
     const params = new URLSearchParams(location.search);
     tracker = new AutoTracker(recognizer, params.get("wrists") === "image" ? "image" : "video", () => trackPanel?.showMode(settings.autoTrack));
     tracker.measurePose = params.has("measure");
+    // EXP: the bench measures with Person auto-track (pose is needed for the forearm, depth and level signals): in-memory, not saved.
+    if (EXP_ON && settings.autoTrack === "off") settings.autoTrack = "person";
     const t = tracker;
     trackPanel = new TrackPanel(t, settings.autoTrack, {
       modeChanged: (mode: TrackMode) => {
@@ -587,12 +597,40 @@ async function main(): Promise<void> {
     }
   }
   updateZoomUi(null);
+  if (EXP_ON) {
+    const { ExpBench } = await import("./exp/expBench");
+    exp = new ExpBench({
+      player,
+      runScrub: (actions) => practice.runScrub(actions),
+      zone: () => settings.zone,
+      camera: () => {
+        const d = deliveredOf(video);
+        const size = source.size();
+        return { label: d?.label ?? (sim ? "sim" : "file / image"), width: size.width, height: size.height, shape: picker?.pref.shape ?? null, frameRate: d?.frameRate ?? null };
+      },
+      trackMode: () => (autoOn() ? settings.autoTrack : "off"),
+    });
+    document.body.classList.add("bench-open"); // the panel lives in the side column (not remembered: the normal app keeps its own choice)
+    if (import.meta.env.DEV) ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {}).exp = exp;
+  }
   let simRaws: import("./sim").SimRaw[] = [];
   if (sim) {
     const dance = ((window as unknown as { __dance?: Record<string, unknown> }).__dance ??= {});
     dance.setHands = (specs: import("./sim").SimHand[]) => {
       simRaws = specs.map((s) => sim.simRaw(s));
     };
+    if (exp) {
+      const expBench = exp;
+      const { makeDriver } = await import("./exp/simDrive");
+      const drv = makeDriver((f) => {
+        simRaws = f.hands.map((h) => sim.simRaw(h));
+        expBench.simBody = { pose: f.pose, world: f.world };
+      });
+      dance.expPlay = drv.play;
+      dance.expClearBody = () => {
+        expBench.simBody = null;
+      };
+    }
   }
 
   const meter = new FpsMeter();

@@ -51,6 +51,8 @@ export interface TrackFrame {
   result: GestureRecognizerResult;
   /** Pose landmarks (full frame, normalized) if pose ran and found a person. */
   pose: PoseLm[] | null;
+  /** The pose's world points (metres, origin at the hips, z smaller = nearer the camera): only the EXP push bench reads these. */
+  poseWorld: { x: number; y: number; z: number; visibility?: number }[] | null;
   crops: TrackCrop[];
   hands: HandPalm[];
   /** This frame's model times, ms. */
@@ -172,12 +174,14 @@ export class AutoTracker {
 
     // 1. Pose on the full frame.
     let pose: PoseLm[] | null = null;
+    let poseWorld: TrackFrame["poseWorld"] = null;
     let poseMs = 0;
     if (poseRuns) {
       const t0 = performance.now();
       const r = this.pose!.detectForVideo(el, ts);
       poseMs = performance.now() - t0;
-      pose = r.landmarks[0] ? r.landmarks[0].map((p) => ({ x: p.x, y: p.y, visibility: p.visibility })) : null;
+      pose = r.landmarks[0] ? r.landmarks[0].map((p) => ({ x: p.x, y: p.y, z: p.z, visibility: p.visibility })) : null;
+      poseWorld = r.worldLandmarks?.[0] ? r.worldLandmarks[0].map((p) => ({ x: p.x, y: p.y, z: p.z, visibility: p.visibility })) : null;
       this.poseMs = ema(this.poseMs, poseMs);
     }
 
@@ -265,7 +269,7 @@ export class AutoTracker {
     if (key !== this.lastCropKey) this.cropMoved++;
     this.lastCropKey = key;
     this.stats.push({ pose: poseRuns ? pose !== null : null, wristVisible: poseRuns ? visibleWrists(pose).length > 0 : null, hand: result.landmarks.length > 0 });
-    this.last = { result, pose, crops, hands: sortedHands, poseMs, gestureMs, note };
+    this.last = { result, pose, poseWorld, crops, hands: sortedHands, poseMs, gestureMs, note };
     return this.last;
   }
 }
