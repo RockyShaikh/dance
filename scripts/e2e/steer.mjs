@@ -150,8 +150,15 @@ check("12 dropouts of the model's label: still one grab, no release", edges6.gra
 await ev(`await T.show([T.left('Closed_Fist', { curl: 1 }), T.right(0)], 400)`);
 check("a held fist does switch (after the debounce)", (await ev(`return T.state()`)) === "paused");
 
-console.log("\n== 7. Panel: claw and pinch are still there");
+console.log("\n== 7. Panel: pinch is there; the claw is vaulted (only with ?claw=1)");
 await fresh();
+check("without ?claw=1 the claw is not in the clutch list or the clutch-shape panel", (await ev(`return JSON.stringify([...document.getElementById('knob-clutch').options].map((o) => o.value))`)) === '["pinch","twoHand"]' && (await ev(`return document.getElementById('clutch-claw-row').hidden`)) && !/claw/i.test(await ev(`return document.body.innerText`)));
+await p.goto(URL + "&claw=1");
+await ev(`await new Promise(r=>setTimeout(r,1500)); localStorage.clear()`);
+await p.goto(URL + "&claw=1");
+await ev(`await new Promise(r=>setTimeout(r,1500))`);
+await ev(prelude);
+check("with ?claw=1 it is back: listed and its row shown", (await ev(`return [...document.getElementById('knob-clutch').options].map((o) => o.value).join()`)) === "claw,pinch,twoHand" && !(await ev(`return document.getElementById('clutch-claw-row').hidden`)));
 await ev(`T.set('knob-clutch', 'claw')`);
 check("claw selectable, panel shows it", (await ev(`return document.getElementById('knob-clutch').value`)) === "claw");
 await shot("07-knob-panel");

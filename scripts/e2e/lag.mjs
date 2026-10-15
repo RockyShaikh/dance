@@ -10,7 +10,8 @@ const label = process.argv[2] ?? "run";
 // WHEEL=1 (R4c and later): the two-hand wheel is driven the way it is used: grab with a left palm, and PAUSE it with a left fist.
 // Without it (the R4b baseline) the left hand just holds a palm and the music is started or paused beforehand.
 const WHEEL = process.env.WHEEL === "1";
-const URL = process.env.DANCE_URL ?? "http://localhost:5178/?sim&simfps=30&track=/test/click-track.wav";
+// R9: the claw is vaulted; ?claw=1 brings it back for this comparison.
+const URL = process.env.DANCE_URL ?? "http://localhost:5178/?sim&simfps=30&track=/test/click-track.wav&claw=1";
 const p = await launch(Number(process.env.DANCE_CDP_PORT ?? 9334));
 
 // Page-side helpers. Hands are scripted frame by frame (every 16 ms, like a hand that is always moving a little).

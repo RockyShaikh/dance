@@ -3,7 +3,8 @@ import { normalizeChoice } from "./knob";
 import { formatResults, loadLog, markVariant, recordNudge, saveLog, setNote, variantKey, type KnobLog } from "./knobLog";
 import {
   CLUTCH_NAMES,
-  CLUTCHES,
+  availableClutches,
+  clawEnabled,
   MAPPING_NAMES,
   MAPPINGS,
   MOTION_NAMES,
@@ -48,7 +49,9 @@ export class KnobPanel {
     private readonly settings: KnobSettings,
     private readonly onChange: () => void,
   ) {
-    fill(this.clutch, CLUTCHES, CLUTCH_NAMES);
+    fill(this.clutch, availableClutches(), CLUTCH_NAMES);
+    // R9: the claw is vaulted (knobSettings.ts): its row in the clutch-shape panel shows only with ?claw=1.
+    el("clutch-claw-row").hidden = !clawEnabled();
     fill(this.motion, MOTIONS, MOTION_NAMES);
     fill(this.mapping, MAPPINGS, MAPPING_NAMES);
     fill(this.target, TARGETS, TARGET_NAMES);

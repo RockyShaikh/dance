@@ -8,6 +8,20 @@ export type KnobSettings = KnobChoice;
 const KEY = "dance.r4d.knob";
 
 export const CLUTCHES: readonly ClutchKind[] = ["claw", "pinch", "twoHand"];
+
+/**
+ * R9: the claw grab is VAULTED: all of its code and tests stay, but it is not offered anywhere in the UI (no dropdown entry, no
+ * clutch-shape row) unless the page is opened with `?claw=1`, so it can be shown to dancers later. A saved "claw" choice falls
+ * back to the default while the flag is off.
+ */
+export function clawEnabled(search: string = typeof location === "undefined" ? "" : location.search): boolean {
+  return new URLSearchParams(search).get("claw") === "1";
+}
+
+/** The clutches the panel offers: all of them with the claw flag, otherwise without the claw. */
+export function availableClutches(claw: boolean = clawEnabled()): readonly ClutchKind[] {
+  return claw ? CLUTCHES : CLUTCHES.filter((c) => c !== "claw");
+}
 export const MOTIONS: readonly MotionKind[] = ["tilt", "circling"];
 export const MAPPINGS: readonly MappingKind[] = ["joystick", "absolute", "relative", "jog"];
 
@@ -32,11 +46,11 @@ const num = (v: unknown, lo: number, hi: number, fallback: number): number =>
 const pick = <T extends string>(v: unknown, all: readonly T[], fallback: T): T => (all.includes(v as T) ? (v as T) : fallback);
 
 /** Anything out of range or unknown falls back to the default for that field. */
-export function sanitizeKnobSettings(raw: unknown): KnobSettings {
+export function sanitizeKnobSettings(raw: unknown, claw: boolean = clawEnabled()): KnobSettings {
   const d = defaultKnobSettings();
   const j = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof KnobSettings, unknown>>;
   return normalizeChoice({
-    clutch: pick(j.clutch, CLUTCHES, d.clutch),
+    clutch: pick(j.clutch, availableClutches(claw), d.clutch),
     motion: pick(j.motion, MOTIONS, d.motion),
     mapping: pick(j.mapping, MAPPINGS, d.mapping),
     target: pick(j.target, TARGETS, d.target),
