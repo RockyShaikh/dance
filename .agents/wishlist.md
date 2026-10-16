@@ -89,6 +89,10 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Swipe jitter filter** (anchored dead-band / low-pass; rest flicker ~0.7 s/s in sim) | QoL | EXP 2026-10-15 |
 | **Push as a pause/mark control** (after real recordings) | later | EXP 2026-10-15; level, shape and hand already logged |
 | **Left-handed swipe option** | overlooked | EXP 2026-10-15 |
+| **Spoken "back to loop in" on index restart** | QoL | R9 2026-10-15 |
+| **Choose speech voice** | QoL | R9 |
+| **Fullscreen video mode** hiding the footer | QoL | R9; ties to readability at distance |
+| **Re-encode/proxy sparse-keyframe videos; seek-latency readout** | later | R9 |
 
 ## Unresolved threads
 
@@ -183,3 +187,7 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Push signals unproven on real camera**: sim says forearm foreshortening + combined score are clean at 2–4 m, palm size alone is fooled by stepping forward, depth chatters | unresolved | User records takes per the EXP protocol |
 | **Forward punch/step dance moves may look like pushes** | risk | EXP 2026-10-15 |
 | **Is "push" a stop-sign push or a forearm swing?** | unresolved | Confirm with the user's recordings |
+| **Real speech untested** (audibility, ducking the music, cost); stubbed under the quiet rule | unresolved | User checks by ear |
+| **Videos over 250 MB get no waveform** | risk | Streaming decode later |
+| **.mov (HEVC/ProRes) may not play in Chrome** | risk | Only H.264 MP4 / WebM tested |
+| **e2e suites share one Chrome profile, so parallel agents block each other** | bug? | Default a per-run profile in cdp.mjs (DANCE_E2E_PROFILE exists) |

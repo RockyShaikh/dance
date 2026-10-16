@@ -17,8 +17,8 @@ Checkpoints are done strictly in order. Exactly one is `active` at a time, and n
 | R6 | Top-quarter command zone for both hands + zoom (track hands on the cropped zone) + thumb-based handedness; head tracking only if needed | done (merged 2026-10-15) |
 | R7 | iPhone camera via Continuity Camera in the current app: camera picker, 1080p, latency measurement (body-first auto-tracking deferred) | done (merged 2026-10-15) |
 | R8 | Auto-tracking from body pose: Off / Person auto-frame / Wrist crops, with a measurement HUD | done (merged 2026-10-15) |
-| R9 | Video: local MP4, big video + small camera view, mirror toggle, slow-mo/loops/restart/scrub reused; spoken feedback; claw vaulted from the UI | **active** (`r9-video`) |
-| EXP | Push-and-swipe measurement prototype (zone as trackpad, scrub bar at the hand, push detection) | **active** (`exp-push-swipe`) |
+| R9 | Video: local MP4, big video + small camera view, mirror toggle, slow-mo/loops/restart/scrub reused; spoken feedback; claw vaulted from the UI | built (`r9-video`), awaiting test |
+| EXP | Push-and-swipe measurement prototype (zone as trackpad, scrub bar at the hand, push detection) | built (`exp-push-swipe`), awaiting recordings |
 
 ---
 
