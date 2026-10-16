@@ -86,6 +86,9 @@ Features we want but aren't building in R1–R5. One line each, plus why it's de
 | **Above-head command zone from pose (nose/eyes)** | later | R8 makes pose available; links to the deferred above-head zone |
 | **Record 10 s of live camera and replay through every mode** (fair A/B) | QoL | Surfaced in R8 |
 | **Whole-frame fallback pass alongside Person when fewer hands than expected** | later | Surfaced in R8 |
+| **Swipe jitter filter** (anchored dead-band / low-pass; rest flicker ~0.7 s/s in sim) | QoL | EXP 2026-10-15 |
+| **Push as a pause/mark control** (after real recordings) | later | EXP 2026-10-15; level, shape and hand already logged |
+| **Left-handed swipe option** | overlooked | EXP 2026-10-15 |
 
 ## Unresolved threads
 
@@ -177,3 +180,6 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **YouTube → MP4 pipeline** (yt-dlp) | later | After R9; YouTube ToS matters before testers |
 | **Readability at distance**: full-screen video, big overlays, TV/second screen | later | User 2026-10-15 |
 | **Claw grab vaulted** (code kept, hidden from UI) | later | Bring back to show dancers |
+| **Push signals unproven on real camera**: sim says forearm foreshortening + combined score are clean at 2–4 m, palm size alone is fooled by stepping forward, depth chatters | unresolved | User records takes per the EXP protocol |
+| **Forward punch/step dance moves may look like pushes** | risk | EXP 2026-10-15 |
+| **Is "push" a stop-sign push or a forearm swing?** | unresolved | Confirm with the user's recordings |

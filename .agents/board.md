@@ -6,9 +6,9 @@ Updated: 2026-10-11
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
 | B9 | R9 video (MP4, mirror, PiP camera), spoken feedback, claw vaulted (?claw=1) | ship | `r9-video` off main | 2026-10-15 |
-| X1 | Push/swipe measurement bench behind ?exp=push (zone-as-trackpad slider, push signals, JSON recording) | ship | `exp-push-swipe` off main | 2026-10-15 |
 
 ## Waiting on user
+- Record EXP takes (push/slow/dance at 2 m and 4 m) at http://localhost:5192/?exp=push and send the JSON files.
 - Decide whether to purge `src/test/brotherhood.mp3` from public git history (rewrite + force-push main), or leave it.
 - Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
 - Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
@@ -17,6 +17,7 @@ Updated: 2026-10-11
 ## Blocked
 
 ## Done (last 10)
+- X1 — push/swipe bench behind ?exp=push; sim: the combined push score is 6/6 with 0 false at 2–4 m, palm size alone is weak; swipe works, rest jitter ~0.7 s/s; JSON recorder; 727 tests — `exp-push-swipe` (pushed, NOT merged), worktree `.claude/worktrees/agent-a6e12eb1588ad5c38` — 2026-10-15
 - MERGE — R4a…R8 merged to main with --no-ff, tags r4a-done…r8-done; 668 tests + build pass on main — 2026-10-15
 - FIX — `src/test/brotherhood.mp3` was swept into a public commit (c20e05a) by a stow `git add -A`; untracked + media git-ignored. History purge pending the user's decision — 2026-10-15
 - B8 — R8 auto-track Off/Person/Wrists; Person default (simulated 4 m stills: Off 0% vs Person 100% hand found; 3–4 m clip 36% → 77%); pose ~10–15 ms; 668 tests; all e2e pass — `r8-autotrack` (pushed, NOT merged), worktree `.claude/worktrees/agent-a1489fa47055283a6` — 2026-10-13
