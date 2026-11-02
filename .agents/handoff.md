@@ -4,17 +4,16 @@
 R9 video (local MP4, slow-mo, loops, mirror, spoken feedback, claw vaulted) and the EXP push/swipe measurement bench, in parallel. Main = R1–R8 merged (tag r8-done).
 
 ## State
-- Memory bootstrapped. Both scouts done (`.agents/research/market-dance-tools.md`, `dancer-workflows.md`).
-- Planner v0 docs exist; P2 done: spec v1, roadmap R1–R5 (proposed), wishlist v1, committed 0a55977.
-- User decisions recorded in AGENTS.md: rotation knob (wiper/steering tilt), pinch clutch first, claw/two-hand/Doctor-Strange circle as alternatives, R5 = speed knob, both in/out methods A/B in R4.
-- Later decisions (in AGENTS.md): joystick knob is the favourite, but all variants get tried; above-head command zone plus a 0.6 s hold; distance deferred; solo user, laptop in front; not a startup. These were also sent to P2.
-- No code yet. Git repo: public https://github.com/RockyShaikh/dance, initial commit 60ed522.
+- main = R1–R8 merged (tags r1-done … r8-done). R9 video on `r9-video` (unmerged; served at :5191 from worktree agent-ae139d…). EXP push/swipe bench on `exp-push-swipe` (unmerged; :5192, ?exp=push).
+- Quiet-machine rule is in ~/.claude/agents/{ship,scout,tutor}.md, ~/.agents/user.md and the project AGENTS.md.
+- brotherhood.mp3 is untracked now but still in public history (c20e05a).
 
 ## Next step
 Wait for B9 and X1. Give the user test steps for each. Ask about purging brotherhood.mp3 from public history. Then a v0.1-for-testers checklist via the review loop. Old worktrees can be cleaned up with the user's OK.
 
 ## Open questions
-- After-restart behaviour (lead-in?); which hand.
+- Merge R9? Purge the mp3 from history / make the repo private / leave it? Quiet-machine extras? EXP recordings pending.
+- Unresolved (wishlist): everything doable with hands up; "no loop set" behaviour.
 
 ## Last updated
-2026-10-11 — Claude Code main thread
+2026-11-01 — Claude Code main thread

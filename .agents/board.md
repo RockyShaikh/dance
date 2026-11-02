@@ -1,18 +1,16 @@
 # Board
 
-Updated: 2026-10-11
+Updated: 2026-11-01
 
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
 
 ## Waiting on user
+- Quiet-machine extras: add to global contract? hard-block hook?
 - Test R9 video at http://localhost:5191/ (drag in an MP4); merge `r9-video` on the user's word.
 - Record EXP takes (push/slow/dance at 2 m and 4 m) at http://localhost:5192/?exp=push and send the JSON files.
 - Decide whether to purge `src/test/brotherhood.mp3` from public git history (rewrite + force-push main), or leave it.
-- Test R6 at http://localhost:5188/?track=/test/click-track.wav. Decide on zoom (narrower zone vs hand-following crop). Merge chain on the user's word.
-- Merge chain pending the user's word: r4a-loops → r4b-knob → r4c-steer → r5-speed (each --no-ff + tag). The user didn't answer "merge R4a/R4b now?".
-- Review doc: roadmap approved by "let's start". Doc stays open for comments; pending doc fix: R3 note "two vision models" → "hand model".
 
 ## Blocked
 
@@ -50,5 +48,5 @@ Updated: 2026-10-11
 - Learning Dashboard (R1 stack) — https://claude.ai/artifact/RQnHUzBeptMZt14sownWyk — live
 - Review doc (Spec / Roadmap / Wish list tabs) — https://claude.ai/code/artifact/57c28193-d565-486b-a796-75bcfb44eaf1 — v1.2, roadmap approved 2026-10-11
 - Spec — `docs/spec.md` — v1.2 (source of truth)
-- Roadmap — `.agents/roadmap.md` — v1.2, approved; R1 done, R2 active; R6+ = calibration
+- Roadmap — `.agents/roadmap.md` — R1–R8 done (merged); R9 + EXP built, awaiting test
 - Wish list + Unresolved threads — `.agents/wishlist.md` — v1.2
