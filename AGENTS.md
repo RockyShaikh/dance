@@ -65,6 +65,7 @@ A hands-free tool for learning choreography: dancers control the music they prac
 - 2026-10-15 — **Spoken feedback with real words** ("loop in", "loop out", "no loop set"…) rather than chimes, to start.
 - 2026-10-15 — **Vault the claw grab:** hide it from the UI but keep the code, to show dancers later.
 - 2026-10-15 — Merged the chain R4a → R8 into main (`--no-ff`, tags `r4a-done` … `r8-done`), on the user's word.
+- 2026-11-05 — R9b (user testing video now): an obvious upload button; **mouse scrubbing** on the timeline (plus draggable loop flags) for when you're close to the laptop; **play/pause gesture selectable**, open palm (default again, since the fist is barely detectable) or fist.
 
 ## Facts
 <!-- Durable, verified facts agents need: env vars, external services, gotchas. -->

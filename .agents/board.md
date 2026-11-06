@@ -5,6 +5,7 @@ Updated: 2026-11-01
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
+| B9b | R9b: upload button, mouse timeline scrub + flag drag, play/pause gesture dropdown (open palm default) | ship | `r9b-controls` on `r9-video` | 2026-11-05 |
 
 ## Waiting on user
 - Quiet-machine extras: add to global contract? hard-block hook?
