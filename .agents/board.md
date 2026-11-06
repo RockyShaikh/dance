@@ -5,7 +5,6 @@ Updated: 2026-11-01
 ## In flight
 | id | task | agent | branch / worktree | started |
 |---|---|---|---|---|
-| B9b | R9b: upload button, mouse timeline scrub + flag drag, play/pause gesture dropdown (open palm default) | ship | `r9b-controls` on `r9-video` | 2026-11-05 |
 
 ## Waiting on user
 - Quiet-machine extras: add to global contract? hard-block hook?
@@ -16,6 +15,7 @@ Updated: 2026-11-01
 ## Blocked
 
 ## Done (last 10)
+- B9b — upload button, mouse timeline scrub + flag drag, play/pause gesture dropdown (palm default); 812 tests; video 38/38, hands 44/44 — `r9b-controls` (pushed, NOT merged), worktree `.claude/worktrees/agent-a60632fa9c73f98e6`, served :5193 — 2026-11-05
 - B9 — R9 video (one media element, mirror default on, camera in a corner), speech (stubbed in tests), claw vaulted (?claw=1); 799 tests; video.mjs 29 / speech.mjs 26 + old suites pass; loop wrap overshoot ≤3 ms — `r9-video` (pushed, NOT merged), worktree `.claude/worktrees/agent-ae139d219527a1af1` — 2026-10-15
 - X1 — push/swipe bench behind ?exp=push; sim: the combined push score is 6/6 with 0 false at 2–4 m, palm size alone is weak; swipe works, rest jitter ~0.7 s/s; JSON recorder; 727 tests — `exp-push-swipe` (pushed, NOT merged), worktree `.claude/worktrees/agent-a6e12eb1588ad5c38` — 2026-10-15
 - MERGE — R4a…R8 merged to main with --no-ff, tags r4a-done…r8-done; 668 tests + build pass on main — 2026-10-15

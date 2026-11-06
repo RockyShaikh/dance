@@ -191,3 +191,5 @@ Things we're unsure are problems, or know are problems but aren't fixing yet. On
 | **Videos over 250 MB get no waveform** | risk | Streaming decode later |
 | **.mov (HEVC/ProRes) may not play in Chrome** | risk | Only H.264 MP4 / WebM tested |
 | **e2e suites share one Chrome profile, so parallel agents block each other** | bug? | Default a per-run profile in cdp.mjs (DANCE_E2E_PROFILE exists) |
+| **Mouse: scrub the zoomed waveform, click to place marks, arrow-key seek** | QoL | R9b 2026-11-05 |
+| **video.mjs layout checks are fragile** (depend on cheat-sheet length) | bug? | R9b |
