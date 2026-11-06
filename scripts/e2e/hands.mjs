@@ -51,12 +51,16 @@ const prelude = `
   { const pl = __dance.player; for (const m of ['seek', 'play', 'pause']) { const o = pl[m].bind(pl); pl[m] = (...a) => { T.calls.push({ t: performance.now(), m, a: a[0] }); return o(...a); }; } }
 `;
 
-async function fresh() {
+const SPEECH_STUB = `{ const synth = window.speechSynthesis; if (synth) { synth.cancel = () => {}; synth.speak = () => {}; } }`; // quiet machine: nothing is ever spoken
+async function fresh(gesture = 'fist') {
   await p.goto(URL);
   await ev(`localStorage.clear()`);
   await p.goto(URL);
   await ev(`await new Promise(r=>setTimeout(r,1500))`);
   await ev(prelude);
+  await ev(SPEECH_STUB);
+  // R9b: the legacy sections below test the FIST as play/pause; the default is now the open palm (section 4b).
+  if (gesture === 'fist') await ev(`T.set('playpause-gesture', 'fist')`);
 }
 const FIST = `{ curl: 1 }`;
 
@@ -143,6 +147,31 @@ await ev(`await T.show([T.left('Closed_Fist', ${FIST})], 4000)`);
 check("a LEFT fist (no right hand) fires nothing and pauses nothing", (await ev(`return T.fires()`)) === 2 && (await ev(`return T.state()`)) === "playing");
 await ev(`await T.show([T.left('Open_Palm')], 4000)`);
 check("a LEFT open palm fires nothing either", (await ev(`return T.fires()`)) === 2 && (await ev(`return T.state()`)) === "playing");
+
+console.log("\n== 4b. R9b: Open palm (the default) = play/pause; the right fist then does nothing; thumbs-up 2x still works");
+await fresh("palm");
+check("the dropdown defaults to Open palm", (await ev(`return document.getElementById('playpause-gesture').value`)) === "palm");
+await ev(`__dance.player.seek(10); await __dance.player.play(); await T.sleep(300)`);
+await ev(`await T.show([T.right(0, { shape: 'Closed_Fist', curl: 1 })], 2500)`);
+check("palm selected: a right fist held 2.5 s does nothing", (await ev(`return T.fires()`)) === 0 && (await ev(`return T.state()`)) === "playing");
+await ev(`await T.show([], 1200)`);
+await ev(`await T.show([T.right(0, { shape: 'Open_Palm' })], 400)`);
+check("right open palm for 0.4 s (ring not full): nothing yet", (await ev(`return T.state()`)) === "playing");
+await ev(`await T.show([T.right(0, { shape: 'Open_Palm' })], 500)`);
+check("right open palm, ring full: PAUSE", (await ev(`return T.state()`)) !== "playing" && (await ev(`return T.fires()`)) === 1);
+await ev(`await T.show([], 1500)`);
+await ev(`await T.show([T.right(0, { shape: 'Open_Palm' })], 900)`);
+check("right open palm again: PLAY", (await ev(`return T.state()`)) === "playing");
+await ev(`await T.show([], 1500)`);
+await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', fingers: '00000', curl: 1 })], 2000)`);
+check("palm selected: a fist labelled Thumb_Up (thumb in) still changes nothing (guard)", (await ev(`return __dance.player.rate`)) === 1);
+await ev(`await T.show([T.right(0, { shape: 'Thumb_Up', curl: 1 })], 1200)`);
+check("palm selected: a real thumbs up still gives 2x while held", (await ev(`return __dance.player.rate`)) === 2);
+await ev(`await T.show([], 800)`);
+check("and the speed returns on release", (await ev(`return __dance.player.rate`)) === 1);
+await ev(`T.set('playpause-gesture', 'fist'); await T.sleep(100); await T.show([], 1200)`);
+await ev(`await T.show([T.right(0, { shape: 'Open_Palm' })], 2500)`);
+check("switching to Fist at runtime: the open palm then does nothing", (await ev(`return T.state()`)) === "playing");
 
 console.log("\n== 5. Guard: a fist can't fire as a thumbs up, and a thumbs up can't fire as a fist");
 await fresh();

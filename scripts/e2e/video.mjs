@@ -34,8 +34,11 @@ const prelude = `
     cur: () => __dance.player.currentTime,
     state: () => __dance.player.state,
     rect: (id) => { const r = document.getElementById(id).getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; },
+    // R9b: a pointer event on the timeline bar at a fraction f (0..1) of its width; the last argument picks another element to press on.
+    ptr: (type, f, on = 'timeline') => { const r = document.getElementById('timeline').getBoundingClientRect(); const x = r.left + f * r.width, y = r.top + r.height / 2; document.getElementById(on).dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y, pointerId: 7, pointerType: 'mouse' })); },
     key: (code) => document.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true })),
   };
+  { const synth = window.speechSynthesis; if (synth) { synth.cancel = () => {}; synth.speak = () => {}; } } // quiet machine: nothing is ever spoken
 `;
 
 async function fresh() {
@@ -147,6 +150,36 @@ try {
   check("loading an audio file afterwards: no video stage, the camera is large again", !aud.hasVideo && !/has-video/.test(aud.cls) && aud.pos === 'relative' && aud.frame.w >= 400 && aud.media.w === 0, JSON.stringify(aud));
   await ev(`__dance.practice.load(new File([new Blob(['nope'])], 'notes.txt', { type: 'text/plain' }))`);
   check("a non-media file is refused with a message", (await ev(`return document.getElementById('hint').textContent`)).includes("not an audio or video file"));
+
+  console.log("\n== R9b. Mouse on the timeline, upload button, play/pause dropdown");
+  await fresh();
+  check("a prominent 'Open video / audio' button is on the main screen, and the file input accepts video and audio", (await ev(`const b = document.getElementById('btn-open'); const i = document.getElementById('file-input'); const r = b.getBoundingClientRect(); return b.textContent.includes('Open video / audio') && r.width > 0 && r.bottom <= innerHeight && /video/.test(i.accept) && /audio/.test(i.accept) && /mp4/.test(i.accept) && /mov/.test(i.accept) && /webm/.test(i.accept) && /m4v/.test(i.accept)`)) === true);
+  await ev(`T.ptr('pointerdown', 0.5); T.ptr('pointerup', 0.5); await T.sleep(400)`);
+  const c1 = await ev(`return T.cur()`);
+  check("click at the middle of the timeline seeks to about 30 s (paused stays paused)", Math.abs(c1 - 30) < 1.5 && (await ev(`return T.state()`)) !== "playing", `cur ${c1}`);
+  await ev(`T.ptr('pointerdown', 0.2); for (let f = 0.2; f <= 0.8; f += 0.02) { T.ptr('pointermove', f); await T.sleep(20); } T.ptr('pointerup', 0.8); await T.sleep(500)`);
+  const c2 = await ev(`return T.cur()`);
+  check("press and drag 20% to 80%: the playhead ends at about 48 s, the video frame is there too, still paused", Math.abs(c2 - 48) < 1.5 && (await ev(`return T.state()`)) !== "playing" && Math.abs((await ev(`return T.media().currentTime`)) - c2) < 0.05, `cur ${c2}`);
+  const seeks = await ev(`T.key('Space'); await T.sleep(300); const a = []; T.ptr('pointerdown', 0.1); for (let f = 0.1; f <= 0.6; f += 0.01) { T.ptr('pointermove', f); a.push(T.cur()); await T.sleep(16); } T.ptr('pointerup', 0.6); await T.sleep(500); return JSON.stringify({ state: T.state(), cur: T.cur() })`);
+  const sk = JSON.parse(seeks);
+  check("dragging while playing: still playing afterwards, and landed near 36 s (+ a moment of play)", sk.state === "playing" && sk.cur > 35 && sk.cur < 38.5, seeks);
+  await ev(`T.key('Space'); await T.sleep(200)`);
+  await ev(`T.key('KeyV'); await T.sleep(100)`); // START at the playhead
+  const s0 = await ev(`return __dance.practice.loopState.start`);
+  await ev(`__dance.player.seek(40); await T.sleep(300); T.key('KeyE'); await T.sleep(100)`);
+  const e0 = await ev(`return __dance.practice.loopState.end`);
+  await ev(`T.ptr('pointerdown', 0.5, 'flag-start'); T.ptr('pointermove', 0.45); T.ptr('pointermove', 0.4); T.ptr('pointerup', 0.4); await T.sleep(200)`);
+  const lp = JSON.parse(await ev(`return JSON.stringify(__dance.practice.loopState)`));
+  check("dragging the START flag moves it to about 24 s (END untouched)", Math.abs(lp.start - 24) < 1.0 && lp.end === e0, JSON.stringify({ s0, e0, lp }));
+  await ev(`T.ptr('pointerdown', 0.6, 'flag-start'); T.ptr('pointermove', 0.95); T.ptr('pointerup', 0.95); await T.sleep(200)`);
+  const lp2 = JSON.parse(await ev(`return JSON.stringify(__dance.practice.loopState)`));
+  check("START dragged past END stops short of END (clamp)", lp2.start < lp2.end && lp2.end - lp2.start < 1.0, JSON.stringify(lp2));
+  await ev(`T.ptr('pointerdown', 0.7, 'flag-end'); T.ptr('pointermove', 1.0); T.ptr('pointerup', 1.0); await T.sleep(200)`);
+  const lp3 = JSON.parse(await ev(`return JSON.stringify(__dance.practice.loopState)`));
+  check("END dragged to the right edge stops at the track end (60 s)", Math.abs(lp3.end - 60) < 0.2, JSON.stringify(lp3));
+  check("the Play/pause dropdown defaults to Open palm", (await ev(`return document.getElementById('playpause-gesture').value`)) === "palm");
+  await ev(`T.set('playpause-gesture', 'fist')`);
+  check("choosing Fist persists in storage", (await ev(`return JSON.parse(localStorage.getItem('dance.r2.settings')).playPauseGesture`)) === "fist");
 } finally {
   console.log(`\n${pass} passed, ${fail} failed`);
   const errs = p.logs.filter((l) => /EXC|Uncaught|error/i.test(l));

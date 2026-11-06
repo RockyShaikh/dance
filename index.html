@@ -18,6 +18,11 @@
             <option value="16:9">16:9</option>
             <option value="4:3">4:3</option>
           </select>
+          <label for="playpause-gesture" id="playpause-label" title="Right hand, same ring dwell. An open palm entering the zone can trigger it; the fist is harder for the camera to see at a distance.">Play/pause gesture</label>
+          <select id="playpause-gesture" aria-label="play/pause gesture" title="Right hand, same ring dwell. An open palm entering the zone can trigger it.">
+            <option value="palm">Open palm</option>
+            <option value="fist">Fist</option>
+          </select>
           <span id="cam-readout" title="What the camera delivers: pixels, and frames per second measured here">--</span>
         </div>
         <div id="cam-note" class="warn" hidden></div>
@@ -143,7 +148,7 @@
         <div id="tl-head"></div>
       </div>
       <div id="controls-row">
-        <button type="button" id="btn-open">Open track or video…</button>
+        <button type="button" id="btn-open" class="primary" title="Choose a video (MP4, MOV, WebM, M4V) or an audio file (MP3, WAV, M4A...). You can also drop a file anywhere on the page.">Open video / audio…</button>
         <button type="button" id="btn-toggle"><span id="btn-toggle-label">Play</span> <kbd>Space</kbd></button>
         <button type="button" id="btn-restart" title="Index tap: the loop START if one is set, else 0:00">Restart <kbd>R</kbd></button>
         <button type="button" id="btn-top" title="0:00, even with a loop set">From top <kbd>Home</kbd></button>
@@ -189,11 +194,11 @@
           <label class="check" title="Show the measurement overlay (model times, magnification, palm pixels, detection rate). With Auto-track off this also runs the pose model, only for the counters, which costs time."><input id="track-measure" type="checkbox" /> Measure</label>
           <span id="track-note" class="note"></span>
         </span>
-        <span id="track-name" class="note">No track loaded. Drop an MP3, WAV or MP4 anywhere, or click Open track or video.</span>
+        <span id="track-name" class="note">No video or audio loaded. Click Open video / audio, or drop a file anywhere.</span>
       </div>
       <!-- R8: the auto-track measurement readout: shown when Auto-track is on or Measure is ticked. -->
       <div id="track-hud" hidden><pre id="track-hud-body"></pre><button type="button" id="track-reset" class="small">Reset counters</button></div>
-      <div id="cheat" class="note">Right hand: <b>fist</b> = play/pause · index up = back to START (or 0:00) · V = clear · <b>hold thumbs up</b> = 2× while held, back to your speed when you let go; an open palm does nothing. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in the zone, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END · <b>shaka</b> (thumb + pinky out) = speed: circle the right hand to step the speed by 0.025 (0.5 to 1.0×, four full circles), the music keeps playing. Keys: - / = 0.025 slower / faster, 0 = 1×, T = 2× / 1×, Shift+[ ] = 1 s nudge. <b>Zone:</b> hands count only inside the zone (top quarter of the picture); which hand is which comes from the thumb (palm to the camera), shown as L / R on the video, and a lone hand with no clear thumb is taken as the right.</div>
+      <div id="cheat" class="note">Right hand: <b>open palm</b> = play/pause (or <b>fist</b>: see the dropdown; a palm entering the zone can trigger it) · index up = back to START (or 0:00) · V = clear · <b>hold thumbs up</b> = 2× while held, back to your speed when you let go. Left hand: V = set START (IN) · index up = set END (OUT) and loop; it never plays or pauses by itself. <b>Steering wheel:</b> raise the LEFT hand (palm, V or index) with the right hand in the zone, then <b>circle</b> the right hand clockwise = forward (no limit). While steering, the left hand picks what moves: open palm = playhead (the music stays as it is) · fist = playhead, paused while the fist is closed (open it to a palm to resume) · V = loop START · index = loop END · <b>shaka</b> (thumb + pinky out) = speed: circle the right hand to step the speed by 0.025 (0.5 to 1.0×, four full circles), the music keeps playing. Keys: - / = 0.025 slower / faster, 0 = 1×, T = 2× / 1×, Shift+[ ] = 1 s nudge. <b>Zone:</b> hands count only inside the zone (top quarter of the picture); which hand is which comes from the thumb (palm to the camera), shown as L / R on the video, and a lone hand with no clear thumb is taken as the right.</div>
       <div id="hint" hidden></div>
 
       <!-- R4b: the knob. Pick the clutch, the motion and the mapping live; the tally records what felt best. -->
@@ -231,7 +236,7 @@
     <!-- R7: the latency test's marker: black or white over everything. -->
     <div id="flash-marker" data-m="black" hidden><div id="flash-info"></div></div>
     <input id="file-input" type="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.m4v,.mov,.webm" hidden />
-    <div id="drop-overlay" hidden>Drop an MP3, WAV or MP4 to load it</div>
+    <div id="drop-overlay" hidden>Drop a video or audio file (MP4, MOV, WebM, MP3, WAV) to load it</div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>
