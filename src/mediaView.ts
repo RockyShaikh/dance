@@ -3,6 +3,18 @@
  * DOM only; the values live in `Settings` (settings.ts, persisted).
  */
 import type { Settings } from "./settings";
+import { readPlayPause } from "./playPause";
+
+/** R9b: the "Play/pause gesture" dropdown (right hand): open palm (default) or fist. Persisted in `Settings`; read live each frame. */
+export function bindPlayPause(settings: Pick<Settings, "playPauseGesture">, save: () => void): void {
+  const sel = document.getElementById("playpause-gesture") as HTMLSelectElement;
+  sel.value = settings.playPauseGesture;
+  sel.addEventListener("change", () => {
+    settings.playPauseGesture = readPlayPause(sel.value);
+    save();
+    sel.blur(); // so a later Space press is the play/pause shortcut
+  });
+}
 
 export function bindMediaView(settings: Pick<Settings, "mirrorVideo" | "showCamera">, save: () => void): void {
   const media = document.getElementById("media")!;

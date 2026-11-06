@@ -138,7 +138,7 @@ describe.each(MEDIA_KINDS)("%s element", (_kind, Media) => {
         const r = stepHandCommands(machines, { t, hands, boxes: DEFAULT_BOXES, suppress: { Left: false, Right: false } }, COMMANDS);
         machines = r.state;
         for (const f of r.fired) {
-          const action = actionForFire(f);
+          const action = actionForFire(f, "fist");
           const markAt = markPlayhead(stamps[f.hand], { current: player.currentTime, playing: player.state === "playing", scrubbing, lastScrubT, t, duration: player.duration });
           let label: string | null = null;
           let changed = false;

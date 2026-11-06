@@ -18,7 +18,8 @@ import type { Handedness } from "./hand";
 import { INITIAL_MACHINES, stepHandCommands, type HandMachines } from "./handCommands";
 import { drawHud } from "./hud";
 import { createBrowserPlayer } from "./audioPlayer";
-import { bindMediaView } from "./mediaView";
+import { bindMediaView, bindPlayPause } from "./mediaView";
+import { withPlayPause } from "./playPause";
 import { createBrowserSpeaker } from "./speech";
 import { bindSpeechView } from "./speechView";
 import { Practice } from "./practice";
@@ -113,6 +114,7 @@ let lastScrubT = -Infinity;
 // R9: one media element plays every file; a video file's picture shows on the stage, an audio file's does not.
 const player = createBrowserPlayer(document.getElementById("media") as HTMLVideoElement);
 bindMediaView(settings, () => saveSettings(settings));
+bindPlayPause(settings, () => saveSettings(settings));
 // R9: spoken feedback (words, not chimes). The speaker reads the settings object live, so the Voice switch and volume apply at once.
 const speaker = createBrowserSpeaker(settings);
 bindSpeechView(settings, () => saveSettings(settings), speaker);
@@ -137,11 +139,8 @@ knobPanel = new KnobPanel(knobSettings, () => {
 });
 
 /** Current thresholds: the config defaults with the slider/toggle settings applied. */
-const commandCfg = (): CommandConfig => ({
-  ...COMMANDS,
-  dwellMs: settings.dwellMs,
-  stillness: { ...COMMANDS.stillness, enabled: settings.stillness },
-});
+const commandCfg = (): CommandConfig =>
+  withPlayPause({ ...COMMANDS, dwellMs: settings.dwellMs, stillness: { ...COMMANDS.stillness, enabled: settings.stillness } }, settings.playPauseGesture);
 
 /** Where the music was when each hand's current ring started (null when it holds no shape): gesture marks are stamped there. */
 const ringStamps: Record<Handedness, RingStamp | null> = { Left: null, Right: null };
@@ -279,7 +278,7 @@ function processFrame(ts: number, found: HandReading[], width: number, height: n
   views = r.views;
   for (const fired of r.fired) {
     // The music reacts on the very frame the ring completes, before any logging or drawing.
-    const action = actionForFire(fired);
+    const action = actionForFire(fired, settings.playPauseGesture);
     const before = performance.now();
     // A mark lands where the music was when the ring started, less the late-mark offset: but exact while paused or around a scrub.
     const markAt = markPlayhead(ringStamps[fired.hand], {

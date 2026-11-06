@@ -9,6 +9,7 @@ import { clearLoop, isLooping, loopStep, nudgeEnd, nudgeStart, restartTarget, se
 import { formatTime } from "./time";
 import { SPEED } from "./config";
 import { formatRate, stepSpeed, toggleSpeed } from "./speed";
+import { PLAY_PAUSE_DEFAULT, playPauseShape, type PlayPauseGesture } from "./playPause";
 
 export { formatTime };
 
@@ -42,9 +43,10 @@ export type TransportAction =
  * The V key / Mark button still cycle START, END, clear (`loopStep`); no gesture does.
  * R5b: the right thumbs up is not a command: holding it is a state (holdSpeed.ts), not an action that fires.
  */
-export function actionForFire(ev: Pick<HandFire, "shape" | "hand">): TransportAction | null {
+export function actionForFire(ev: Pick<HandFire, "shape" | "hand">, playPause: PlayPauseGesture = PLAY_PAUSE_DEFAULT): TransportAction | null {
   if (ev.hand === "Right") {
-    if (ev.shape === "Closed_Fist") return "toggle";
+    // R9b: the chosen shape (open palm by default, or the fist) toggles; the other one does nothing.
+    if (ev.shape === playPauseShape(playPause)) return "toggle";
     if (ev.shape === "Pointing_Up") return "restart";
     if (ev.shape === "Victory") return "clearLoop";
     return null;

@@ -2,6 +2,7 @@ import { DEFAULT_ZONE, normalizeBox, type Box } from "./box";
 import type { TrackMode } from "./autoTrack";
 import { CLUTCH, COMMANDS } from "./config";
 import { SPEECH } from "./speech";
+import { PLAY_PAUSE_DEFAULT, readPlayPause, type PlayPauseGesture } from "./playPause";
 
 /** The test bench's adjustable settings. Kept in the browser's localStorage so the box and sliders survive a reload. */
 export interface Settings {
@@ -26,6 +27,8 @@ export interface Settings {
   mirrorVideo: boolean;
   /** R9: while a video is loaded, show the small camera view (skeleton, zone, HUD) in the corner. */
   showCamera: boolean;
+  /** R9b: the right-hand shape that is play / pause: open palm (default) or fist. */
+  playPauseGesture: PlayPauseGesture;
 }
 
 const KEY = "dance.r2.settings";
@@ -43,6 +46,7 @@ export function defaultSettings(): Settings {
     speechVolume: SPEECH.defaultVolume,
     mirrorVideo: true,
     showCamera: true,
+    playPauseGesture: PLAY_PAUSE_DEFAULT,
   };
 }
 
@@ -76,6 +80,7 @@ export function loadSettings(): Settings {
       speechVolume: num(j.speechVolume, 0, 1, d.speechVolume),
       mirrorVideo: typeof j.mirrorVideo === "boolean" ? j.mirrorVideo : d.mirrorVideo,
       showCamera: typeof j.showCamera === "boolean" ? j.showCamera : d.showCamera,
+      playPauseGesture: readPlayPause(j.playPauseGesture, d.playPauseGesture),
     };
   } catch {
     return d; // storage blocked or corrupt: fall back to defaults

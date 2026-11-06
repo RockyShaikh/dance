@@ -14,7 +14,7 @@ describe.each(MEDIA_KINDS)("%s element", (_kind, Media) => {
   }
 
   describe("actionForFire (two hands)", () => {
-    const R = (shape: string) => actionForFire({ hand: "Right", shape });
+    const R = (shape: string) => actionForFire({ hand: "Right", shape }, "fist");
     const L = (shape: string) => actionForFire({ hand: "Left", shape });
 
     it("right hand = transport: the FIST toggles (R4d), index up restarts (loop start if set, else 0:00), V clears the loop", () => {
@@ -28,9 +28,15 @@ describe.each(MEDIA_KINDS)("%s element", (_kind, Media) => {
       expect(L("Open_Palm")).toBeNull();
       expect(L("Closed_Fist")).toBeNull();
     });
-    it("R4d: an open palm is nobody's command", () => {
+    it("R4d: with the fist chosen an open palm is nobody's command", () => {
       expect(R("Open_Palm")).toBeNull();
       expect(L("Open_Palm")).toBeNull();
+    });
+    it("R9b: the open palm is the default play/pause; then the right fist does nothing, and the left hand still has no toggle", () => {
+      expect(actionForFire({ hand: "Right", shape: "Open_Palm" })).toBe("toggle");
+      expect(actionForFire({ hand: "Right", shape: "Closed_Fist" })).toBeNull();
+      expect(actionForFire({ hand: "Right", shape: "Pointing_Up" })).toBe("restart");
+      expect(actionForFire({ hand: "Left", shape: "Open_Palm" })).toBeNull();
     });
     it("the V-cycle action is no longer reachable by any gesture (key / button only), nor is the top-of-track", () => {
       const all = (["Right", "Left"] as const).flatMap((hand) => ["Open_Palm", "Pointing_Up", "Victory", "Closed_Fist", "Thumb_Up", "None"].map((shape) => actionForFire({ hand, shape })));
