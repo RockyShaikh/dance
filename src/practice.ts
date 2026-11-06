@@ -6,6 +6,7 @@ import { NO_LOOP, type LoopState } from "./loop";
 import type { ScrubAction } from "./scrub";
 import { LoopWrapper } from "./loopWrap";
 import { formatRate } from "./speed";
+import { flagDelta, nextScrubSeek, timeAtX } from "./timelineMouse";
 import { drawOverview } from "./waveDraw";
 import { decodePeaks, type Peaks } from "./waveform";
 import { formatTime, playheadFraction, runNudge, runTransport, statusWord, type TransportAction, type TransportOptions, type TransportResult } from "./transport";
@@ -131,7 +132,10 @@ export class Practice {
     document.addEventListener("pointerdown", clear);
     document.addEventListener("keydown", clear);
 
+    this.bindTimelineMouse();
+
     const tick = () => {
+      this.pumpMouseSeek();
       this.render();
       requestAnimationFrame(tick);
     };
@@ -261,6 +265,70 @@ export class Practice {
   private needsClick(): boolean {
     const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
     return ua !== undefined && !ua.hasBeenActive;
+  }
+
+  // --- R9b: the mouse on the timeline ---
+  /** What the pointer is doing: null (nothing), "seek" (scrubbing the playhead) or a flag being dragged. */
+  private drag: "seek" | "start" | "end" | null = null;
+  private dragTarget: number | null = null;
+  private lastDragSeek: number | null = null;
+
+  /**
+   * Click anywhere on the bar to seek; press and drag to scrub (the picture follows); drag a START / END flag to move it, with the
+   * loop's own clamps. Playing stays playing and paused stays paused: only the playhead moves. Hand scrubbing is untouched.
+   */
+  private bindTimelineMouse(): void {
+    const t = this.timeline;
+    const timeAt = (e: PointerEvent): number => {
+      const r = t.getBoundingClientRect();
+      return timeAtX(e.clientX, r.left, r.width, this.player.duration);
+    };
+    t.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || !this.player.loaded || !(this.player.duration > 0)) return;
+      const flag = (e.target as Element).closest?.(".flag");
+      this.drag = flag === this.flagStart ? "start" : flag === this.flagEnd ? "end" : "seek";
+      this.lastDragSeek = null;
+      try {
+        t.setPointerCapture(e.pointerId); // keep getting moves when the pointer leaves the bar
+      } catch {
+        /* a synthetic pointer: no capture, the drag still works inside the bar */
+      }
+      e.preventDefault();
+      this.dragTo(timeAt(e));
+    });
+    t.addEventListener("pointermove", (e) => {
+      if (this.drag) this.dragTo(timeAt(e));
+    });
+    const end = (e: PointerEvent) => {
+      if (!this.drag) return;
+      this.dragTo(timeAt(e));
+      if (this.drag === "seek" && this.dragTarget !== null) this.player.seek(this.dragTarget); // the final spot, even if a seek is still in flight
+      this.drag = null;
+      this.dragTarget = null;
+      this.lastDragSeek = null;
+      this.blurFocus(); // so a later Space press is the play/pause shortcut
+      this.render();
+    };
+    t.addEventListener("pointerup", end);
+    t.addEventListener("pointercancel", end);
+  }
+
+  private dragTo(time: number): void {
+    if (this.drag === "seek") {
+      this.dragTarget = time;
+      this.pumpMouseSeek();
+    } else if (this.drag) {
+      this.nudgeMarker(this.drag, flagDelta(this.loop, this.drag, time), { note: () => "drag" });
+    }
+  }
+
+  /** Latest wins, no stacking: one seek at a time, always to where the pointer is now. */
+  private pumpMouseSeek(): void {
+    if (this.drag !== "seek") return;
+    const to = nextScrubSeek(this.dragTarget, this.lastDragSeek, this.player.seeking);
+    if (to === null) return;
+    this.lastDragSeek = this.player.seek(to);
+    this.render();
   }
 
   private bindButton(id: string, action: TransportAction): void {
@@ -393,7 +461,7 @@ export class Practice {
       this.setText("rate", this.rateEl, formatRate(p.rate));
       this.rateEl.dataset.slow = p.rate < 1 ? "1" : "0";
     }
-    this.setText("track", this.trackName, state === "empty" && !this.fileName ? "No track loaded. Drop an MP3, WAV or MP4 anywhere, or click Open track or video." : this.fileName);
+    this.setText("track", this.trackName, state === "empty" && !this.fileName ? "No video or audio loaded. Click Open video / audio, or drop a file anywhere." : this.fileName);
     const f = playheadFraction(p.currentTime, p.duration);
     const pct = `${(f * 100).toFixed(2)}%`;
     if (this.last.get("pct") !== pct) {
